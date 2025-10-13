@@ -1,0 +1,31 @@
+# === CORE UI & ASYNC ===
+PySide6>=6.7
+qasync>=0.26
+
+# === HTTP & ODPORNOŚĆ ===
+httpx[http2]>=0.27
+tenacity>=9.0
+
+# === MODELE / UTYLITY ===
+pydantic>=2.7
+rapidfuzz>=3.6
+python-dotenv>=1.0
+platformdirs>=4.2
+loguru>=0.7
+
+# === WYKRESY (jeden z wariantów) ===
+# matplotlib>=3.8
+# pyqtgraph>=0.13
+
+# === DANE / SQLITE (opcjonalnie async) ===
+# aiosqlite>=0.20
+# pandas>=2.2
+
+# === BUILD ===
+pyinstaller>=6.9
+
+# === TESTY / DEV (opcjonalnie) ===
+# pytest>=8.2
+# pytest-qt>=4.4
+# ruff>=0.6
+# mypy>=1.11
