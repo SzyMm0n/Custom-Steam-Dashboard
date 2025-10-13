@@ -1,0 +1,158 @@
+# =========================
+#  PYTHON / PROJECT BUILD
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+pip-wheel-metadata/
+*.egg-info/
+.eggs/
+.build/
+
+# Compiled binaries / builds
+build/
+dist/
+*.spec
+*.manifest
+*.so
+*.dll
+*.dylib
+*.pyd
+*.exe
+*.app
+*.bin
+
+# =========================
+#  APPLICATION FILES
+# =========================
+
+# Local cache & databases
+*.db
+*.sqlite
+*.sqlite3
+cache/
+app_cache/
+.tmp/
+temp/
+tmp/
+
+# Logs
+*.log
+logs/
+log/
+app.log
+
+# Local exports / analytics
+exports/
+reports/
+*.csv
+*.json
+*.xlsx
+*.parquet
+
+# =========================
+#  ENVIRONMENT / CONFIG
+# =========================
+
+# Environment variables & secrets
+.env
+.env.local
+.env.dev
+.env.prod
+.env.test
+.env.*      # safety net
+
+# Private config & credentials
+secrets.json
+secret_config.json
+config.json
+config.yaml
+settings.yaml
+appsettings.json
+credentials.json
+steam_api_key.txt
+token.txt
+*.pem
+*.key
+*.crt
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
+desktop.ini
+Icon?
+ehthumbs.db
+
+# IDE / EDITOR settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# =========================
+#  TESTS / COVERAGE
+# =========================
+.coverage
+.coverage.*
+.cache/
+pytest_cache/
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+
+# =========================
+#  PYINSTALLER / BUNDLES
+# =========================
+# One-file or folder builds
+dist/
+build/
+pyinstaller_temp/
+*.spec
+
+# Intermediate packaging files
+MANIFEST
+MANIFEST.in
+
+# =========================
+#  MISC / NOTEBOOKS / DOCS
+# =========================
+*.ipynb_checkpoints
+notebooks/.ipynb_checkpoints/
+docs/_build/
+docs/build/
+*.bak
+*.old
+*.orig
+*.tmp
+*.swp
+*.swo
+*~
+
+# =========================
+#  CUSTOM PROJECT FILES
+# =========================
+# Local assets not for repo (user images, downloads)
+app/ui/assets/tmp/
+downloads/
+screenshots/
+userdata/
+__local_tests__/
+local_results/
+
+# =========================
+#  SAFETY GUARD: disallow accidental credentials
+# =========================
+# Never commit environment keys or API tokens even if misnamed
+*steam*key*
+*apikey*
+*api_key*
+*password*
+*secret*
+*token*
