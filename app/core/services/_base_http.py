@@ -42,4 +42,3 @@ class BaseAsyncService:
         resp = await self._client.get(url, params=safe_params, headers=headers)
         resp.raise_for_status()
         return resp.json()
-
