@@ -7,7 +7,7 @@ from typing import List, Optional
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
-from _base_http import BaseAsyncService
+from ._base_http import BaseAsyncService
 
 # === Pydantic models ===
 
