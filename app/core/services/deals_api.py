@@ -1,3 +1,5 @@
+# services/deals_api.py
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -5,7 +7,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from _base_http import BaseAsyncService
+# Import bazowej klasy za pomocą względnej ścieżki (POPRAWNY DLA TEJ STRUKTURY)
+from ._base_http import BaseAsyncService
 
 
 class Deal(BaseModel):
