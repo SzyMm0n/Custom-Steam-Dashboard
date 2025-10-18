@@ -1,7 +1,7 @@
-﻿from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QToolBar
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QToolBar
 from PySide6.QtGui import QAction
 from PySide6.QtCore import QSize
-from views.home_view import HomeView
+from ui.home_view import HomeView
 
 class MainWindow(QMainWindow):
     def __init__(self):
