@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "game-dashboard"
 version = "0.1.0"
-description = "Desktopowy dashboard gier: aktywność, premiery, ceny i alerty (Steam/RAWG/Deals)."
+description = "Desktopowy dashboard gier: aktywność, premiery, ceny (Steam/Deals)."
 readme = "README.md"
 requires-python = ">=3.11,<3.13"  # rekomendujemy 3.12
-authors = [{ name = "Twoja para projektowa", email = "you@example.com" }]
+authors = [{ name = "Szymon Marciniak i Natan Misztal", email = "szymon.marciniak.media@gmail.com" }]
 license = { text = "MIT" }
 
 # CORE zależności aplikacji (MVP)
