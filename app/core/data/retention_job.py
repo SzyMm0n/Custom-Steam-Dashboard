@@ -4,49 +4,42 @@ import argparse
 import asyncio
 import time
 from typing import Optional
-from unicodedata import category
 
 from app.core.data.db import Database
 from app.core.services.steam_api import SteamStoreClient
 
 
-async def seed_watchlist_top(db: Database, limit: int = 150, *, cc: str = "pl", lang: str = "pl") -> int:
+async def seed_watchlist_top(db: Database, limit: int = 150) -> int:
     """Fetch most played games and seed watchlist.
     For each app, also fetch AppDetails and upsert genres/categories.
     Returns number of items inserted/updated.
     """
     inserted = 0
-    async with SteamStoreClient() as store:
+    async with SteamStoreClient() as steam:
         try:
-            most = await store.get_most_played(limit=limit)
+            most = await steam.get_most_played(limit=limit)
         except Exception as e:
             print(f"Failed to fetch most played list: {e}")
             return 0
         for g in most:
             title = g.name
-            details = None
-            try:
-                details = await store.get_app_details(g.appid, cc=cc, lang=lang)
-                if details and details.name:
-                    title = details.name
-            except Exception:
-                details = None
+            genres = g.genres or []
+            categories = g.categories or []
             try:
                 db.add_to_watchlist(g.appid, title or None)
-                if details:
-                    db.upsert_watchlist_tags(
-                        g.appid,
-                        genres=(details.genres or []),
-                        categories=(details.categories or []),
-                        replace=True,
-                    )
+                db.upsert_watchlist_tags(
+                    g.appid,
+                    genres=(genres or []),
+                    categories=(categories or []),
+                    replace=True,
+                )
                 inserted += 1
             except Exception as e:
                 print(f"Failed to insert appid={g.appid} into watchlist: {e}")
     return inserted
 
 
-async def refresh_watchlist_tags(db: Database, *, cc: str = "pl", lang: str = "pl") -> int:
+async def refresh_watchlist_tags(db: Database) -> int:
     """Fetch AppDetails for all watchlisted appids and upsert genres/categories.
     Returns number of apps updated.
     """
@@ -55,9 +48,9 @@ async def refresh_watchlist_tags(db: Database, *, cc: str = "pl", lang: str = "p
     if not rows:
         return 0
     async with SteamStoreClient() as store:
-        for appid, title, cat in rows:
+        for appid, title in rows:
             try:
-                d = await store.get_app_details(appid, cc=cc, lang=lang)
+                d = await store.get_app_details(appid)
                 if not d:
                     continue
                 db.upsert_watchlist_tags(appid, genres=(d.genres or []), categories=(d.categories or []), replace=True)
@@ -74,7 +67,7 @@ async def collect_once(db: Database, *, now_ts: Optional[int] = None) -> None:
         print("Watchlist empty. Add some appids first.")
         return
     async with SteamStoreClient() as store:
-        for appid, title, category in watch:
+        for appid, title in watch:
             try:
                 pc = await store.get_number_of_current_players(appid)
                 db.insert_player_count_raw(appid=appid, ts_unix=now, players=pc.player_count)
