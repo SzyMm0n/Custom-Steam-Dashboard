@@ -32,13 +32,10 @@ class BaseAsyncService:
         retry=retry_if_exception_type(httpx.HTTPError),
     )
     async def _get_json(self, url: str, *, params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, str]] = None) -> Any:
+        # Avoid double-encoding if caller passes already percent-encoded values (e.g., '%2B', '%3D').
         safe_params = None
         if params is not None:
-            safe_params = {
-                k: (unquote(v) if isinstance(v, str) and "%" in v else v)
-                for k, v in params.items()
-            }
-
+            safe_params = {k: (unquote(v) if isinstance(v, str) and "%" in v else v) for k, v in params.items()}
         resp = await self._client.get(url, params=safe_params, headers=headers)
         resp.raise_for_status()
         return resp.json()
