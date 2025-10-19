@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 from abc import ABC, abstractmethod
 from os import getenv
 from typing import List, Optional
 
 import httpx
-import asyncio
 from pydantic import BaseModel, ConfigDict, Field
 
-from _base_http import BaseAsyncService
+from app.core.services._base_http import BaseAsyncService
 
 # === Pydantic models ===
 
