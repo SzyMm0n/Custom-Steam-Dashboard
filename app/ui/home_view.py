@@ -1,7 +1,7 @@
 import asyncio
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget, QFrame
 from PySide6.QtCore import QTimer, Qt
-from core.services.steam_api import SteamStoreClient 
+from app.core.services.steam_api import SteamStoreClient
 
 # Statyczna lista popularnych AppID do sprawdzenia liczby graczy
 TOP_GAME_APP_IDS = [
