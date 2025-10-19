@@ -1,6 +1,6 @@
 import asyncio
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QListWidget, QFrame
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QTimer
 from app.core.services.steam_api import SteamStoreClient
 
 # Statyczna lista popularnych AppID do sprawdzenia liczby graczy
@@ -35,8 +35,8 @@ class HomeView(QWidget):
 
         # Separator 1
         self.separator_1 = QFrame()
-        self.separator_1.setFrameShape(QFrame.HLine)
-        self.separator_1.setFrameShadow(QFrame.Sunken)
+        self.separator_1.setFrameShape(QFrame.Shape.HLine)
+        self.separator_1.setFrameShadow(QFrame.Shadow.Sunken)
 
         # === Sekcja 2: Best Deals (Największe Promocje) ===
         self.trending_title = QLabel("Best Deals")
@@ -45,8 +45,8 @@ class HomeView(QWidget):
 
         # Separator 2
         self.separator_2 = QFrame()
-        self.separator_2.setFrameShape(QFrame.HLine)
-        self.separator_2.setFrameShadow(QFrame.Sunken)
+        self.separator_2.setFrameShape(QFrame.Shape.HLine)
+        self.separator_2.setFrameShadow(QFrame.Shadow.Sunken)
 
         # === Sekcja 3: Best Upcoming Releases (Nadchodzące) ===
         self.top_title = QLabel("Best Upcoming Releases")

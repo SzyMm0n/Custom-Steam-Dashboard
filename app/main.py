@@ -5,7 +5,6 @@ from app.core.data.db import Database
 from app.core.data.retention_job import seed_watchlist_top
 from main_window import MainWindow
 from qasync import QEventLoop, run
-from PySide6.QtCore import QTimer # Import opcjonalny, ale warto mieć
 
 async def bootstrap(app):
     db = Database()
