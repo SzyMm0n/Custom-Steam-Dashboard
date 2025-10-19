@@ -1,9 +1,21 @@
 import sys
 import asyncio
 from PySide6.QtWidgets import QApplication
+from app.core.data.db import Database
+from app.core.data.retention_job import seed_watchlist_top
 from main_window import MainWindow
 from qasync import QEventLoop, run
 from PySide6.QtCore import QTimer # Import opcjonalny, ale warto mieć
+
+async def bootstrap(app):
+    db = Database()
+    try:
+        # Upewnij się, że schemat istnieje
+        db.init_schema()
+        inserted_count = await seed_watchlist_top(db, limit=150)
+        print(f"Wstawiono/aktualizowano {inserted_count} pozycji w watchliście.")
+    except Exception as e:
+        print(f"Seeding failed: {e}")
 
 async def main_coro(app, window):
     """Główna korutyna, która uruchamia i utrzymuje okno."""
@@ -30,6 +42,7 @@ async def main_coro(app, window):
 def main():
     # 1. Inicjalizacja aplikacji
     app = QApplication(sys.argv)
+    asyncio.run(bootstrap(app))
     
     # 2. Utworzenie i ustawienie pętli zdarzeń QEventLoop
     loop = QEventLoop(app)
