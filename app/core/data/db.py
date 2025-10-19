@@ -129,13 +129,9 @@ class Database:
         self._conn.execute("DELETE FROM watchlist WHERE appid= ?", (appid,))
         self._conn.commit()
 
-    def get_watchlist(self) -> List[Tuple[int, Optional[str], Optional[List[str]], Optional[List[str]]]]:
-        cur = self._conn.execute("""SELECT wl.appid, title, genre, category FROM
-                                    watchlist wl 
-                                    INNER JOIN watchlist_genres wg ON wl.appid = wg.appid 
-                                    INNER JOIN watchlist_categories wc on wl.appid = wc.appid 
-                                    ORDER BY appid""")
-        return [(int(r[0]), r[1],r[2], r[3]) for r in cur.fetchall()]
+    def get_watchlist(self) -> List[Tuple[int, str]]:
+        cur = self._conn.execute("SELECT appid, title FROM watchlist ORDER BY appid")
+        return [(int(r[0]), r[1]) for r in cur.fetchall()]
 
     def upsert_watchlist_tags(
         self,
@@ -431,6 +427,7 @@ if __name__ == "__main__":
     db = Database()
     db.init_schema()
     now = int(time.time())
+    print(db.db_path)
     # seed few samples for a demo appid
     appid = 2807960
     for i in range(12):
