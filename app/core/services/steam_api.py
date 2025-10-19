@@ -5,9 +5,10 @@ from os import getenv
 from typing import List, Optional
 
 import httpx
+import asyncio
 from pydantic import BaseModel, ConfigDict, Field
 
-from ._base_http import BaseAsyncService
+from _base_http import BaseAsyncService
 
 # === Pydantic models ===
 
@@ -52,6 +53,9 @@ class AppDetails(BaseModel):
 
     appid: int
     name: Optional[str] = None
+    dlc: Optional[List[int]] = None
+    genres: Optional[List[str]] = None
+    categories: Optional[List[str]] = None
     release_date: Optional[ReleaseInfo] = None
     is_free: Optional[bool] = None
     price_overview: Optional[PriceOverview] = None
@@ -76,6 +80,15 @@ class SteamGame(BaseModel):
     playtime_forever: Optional[int] = Field(default=0, description="Total playtime in minutes")
     playtime_2weeks: Optional[int] = Field(default=0, description="Playtime in the last 2 weeks in minutes")
 
+class TopGame(BaseModel):
+    model_config = ConfigDict(extra="ignore", frozen=True)
+
+    appid: int
+    name: Optional[str] = None
+    categories: Optional[List[str]] = None
+    genres: Optional[List[str]] = None
+    rank: Optional[int] = None
+
 
 # === Interface ===
 
@@ -94,6 +107,12 @@ class ISteamStore(ABC):
 
     @abstractmethod
     async def get_new_releases(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]: ...
+
+    @abstractmethod
+    async def get_top_sellers(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]: ...
+
+    @abstractmethod
+    async def get_most_played(self, limit: int = 150) -> List[TopGame]: ...
 
 
 class ISteamWebApi(ABC):
@@ -158,9 +177,17 @@ class SteamStoreClient(BaseAsyncService, ISteamStore):
         d = node.get("data", {})
         release_block = d.get("release_date", {}) or {}
         price_block = d.get("price_overview", {}) or {}
+        genres_raw = d.get("genres") or []
+        categories_raw = d.get("categories") or []
+        genres_list = [str(g.get("description")) for g in genres_raw if isinstance(g, dict) and g.get("description")]
+        categories_list = [str(c.get("description")) for c in categories_raw if isinstance(c, dict) and c.get("description")]
+        dlc_list = d.get("dlc") if isinstance(d.get("dlc"), list) else None
         return AppDetails(
             appid=appid,
             name=d.get("name"),
+            dlc=dlc_list,
+            genres=genres_list or None,
+            categories=categories_list or None,
             release_date=ReleaseInfo(
                 coming_soon=bool(release_block.get("coming_soon") or False),
                 date=release_block.get("date"),
@@ -181,7 +208,8 @@ class SteamStoreClient(BaseAsyncService, ISteamStore):
     async def _get_featured_category_items(self, key: str, *, cc: str, lang: str, limit: int) -> List[FeaturedItem]:
         url = "https://store.steampowered.com/api/featuredcategories/"
         data = await self._get_json(url, params={"cc": cc, "l": lang})
-        cat = (data or {}).get(key) or {}
+        # Some deployments may use keys like "top_sellers" or "topsellers"; try both gracefully
+        cat = (data or {}).get(key) or (data or {}).get(key.replace("_", "")) or {}
         items_raw = cat.get("items", [])
         items: List[FeaturedItem] = []
         for item in items_raw[: max(0, limit)]:
@@ -203,6 +231,50 @@ class SteamStoreClient(BaseAsyncService, ISteamStore):
 
     async def get_new_releases(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]:
         return await self._get_featured_category_items("new_releases", cc=cc, lang=lang, limit=limit)
+
+    async def get_top_sellers(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]:
+        return await self._get_featured_category_items("top_sellers", cc=cc, lang=lang, limit=limit)
+
+    async def get_most_played(self, limit: int = 150) -> List[TopGame]:
+        limit = max(0, limit)
+        results: List[TopGame] = []
+
+        async def _fetch_details(appid: int, sem: asyncio.Semaphore) -> Optional[AppDetails]:
+            async with sem:
+                try:
+                    return await self.get_app_details(appid)
+                except Exception:
+                    return None
+
+        # Główne źródło: SteamChartsService
+        try:
+            url = "https://api.steampowered.com/ISteamChartsService/GetMostPlayedGames/v1/"
+            data = await self._get_json(url)
+            ranks = (((data or {}).get("response", {}) or {}).get("ranks", []) or [])[:limit]
+            app_ids = [int(r.get("appid")) for r in ranks if r.get("appid") is not None]
+
+            sem = asyncio.Semaphore(16)  # ograniczenie współbieżności
+            details = await asyncio.gather(*(_fetch_details(appid, sem) for appid in app_ids))
+            details_map = {d.appid: d for d in details if isinstance(d, AppDetails)}
+
+            for node in ranks:
+                appid = int(node.get("appid"))
+                rank = int(node["rank"]) if node.get("rank") is not None else None
+                d = details_map.get(appid)
+                results.append(
+                    TopGame(
+                        appid=appid,
+                        name=(d.name if d else None),
+                        categories=(d.categories if d else None),
+                        genres=(d.genres if d else None),
+                        rank=rank,
+                    )
+                )
+        except Exception:
+            results = []
+
+        return results
+
 
 
 class SteamWebApiClient(BaseAsyncService, ISteamWebApi):
@@ -304,4 +376,7 @@ if __name__ == "__main__":
 
             newr = await client.get_new_releases(limit=5)
             print("New releases sample:", [i.name for i in newr])
+
+            most = await client.get_most_played()
+            print("Most played sample:", [(g.rank, g.appid, g.name, g.categories, g.genres) for g in most])
     asyncio.run(demo())
