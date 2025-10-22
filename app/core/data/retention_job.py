@@ -1,11 +1,12 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import asyncio
 import time
 from typing import Optional
 
-from app.core.data.db import Database
+# ZMIANA: Poprawka importu na AsyncDatabase (jak wcześniej zrobiliśmy)
+from app.core.data.db import AsyncDatabase as Database 
 from app.core.services.steam_api import SteamStoreClient
 
 
@@ -26,8 +27,10 @@ async def seed_watchlist_top(db: Database, limit: int = 150) -> int:
             genres = g.genres or []
             categories = g.categories or []
             try:
-                db.add_to_watchlist(g.appid, title or None)
-                db.upsert_watchlist_tags(
+                # ZMIANA 1: DODANIE `await`
+                await db.add_to_watchlist(g.appid, title or None)
+                # ZMIANA 2: DODANIE `await`
+                await db.upsert_watchlist_tags(
                     g.appid,
                     genres=(genres or []),
                     categories=(categories or []),
@@ -37,7 +40,6 @@ async def seed_watchlist_top(db: Database, limit: int = 150) -> int:
             except Exception as e:
                 print(f"Failed to insert appid={g.appid} into watchlist: {e}")
     return inserted
-
 
 async def refresh_watchlist_tags(db: Database) -> int:
     """Fetch AppDetails for all watchlisted appids and upsert genres/categories.

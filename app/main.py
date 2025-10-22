@@ -1,64 +1,75 @@
 import sys
 import asyncio
 from PySide6.QtWidgets import QApplication
-from app.core.data.db import Database
-from app.core.data.retention_job import seed_watchlist_top
-from main_window import MainWindow
-from qasync import QEventLoop, run
 
-async def bootstrap(app):
+# POPRAWIONE: Teraz importujemy main_window bezpośrednio z katalogu 'app'
+from app.core.data.db import AsyncDatabase as Database
+from app.core.data.retention_job import seed_watchlist_top
+from app.main_window import MainWindow 
+
+from qasync import QEventLoop, run 
+
+
+async def bootstrap(app) -> Database: 
+    """Inicjalizuje bazę danych i zasiewa watchlistę."""
+    # Używamy AsyncDatabase, aby zapewnić, że jest to klasa z wrapperami do asyncio.to_thread
     db = Database()
     try:
-        # Upewnij się, że schemat istnieje
-        db.init_schema()
-        inserted_count = await seed_watchlist_top(db, limit=150)
+        db.init_schema() 
+        # Zmieniamy limit na 30, aby przyspieszyć seeding podczas debugowania
+        inserted_count = await seed_watchlist_top(db, limit=30) 
         print(f"Wstawiono/aktualizowano {inserted_count} pozycji w watchliście.")
     except Exception as e:
-        print(f"Seeding failed: {e}")
+        print(f"Błąd podczas seedingu bazy danych: {e}")
+        
+    return db
+
 
 async def main_coro(app, window):
-    """Główna korutyna, która uruchamia i utrzymuje okno."""
+    """Główna korutyna, która uruchamia i utrzymuje okno aplikacji."""
     window.show()
     
     future = asyncio.Future()
     
     def on_quit():
-        # Ustawienie wyniku Future (kończy await future)
         if not future.done():
             future.set_result(True)
 
-    # KLUCZOWE: Łączymy sygnał o zamykaniu aplikacji (QApplication) z naszą funkcją
     app.aboutToQuit.connect(on_quit)
 
-    # Czekamy, aż future zostanie zakończone (czyli aplikacja się zamknie)
     try:
         await future
     except asyncio.CancelledError:
         pass
-    
+        
     return None
+
 
 def main():
     # 1. Inicjalizacja aplikacji
     app = QApplication(sys.argv)
-    asyncio.run(bootstrap(app))
+    
+    # ZMIANA: Odbieramy instancję bazy danych z bootstrap
+    # Nazwa klasy w 'db.py' to SyncDatabase i AsyncDatabase
+    # Zwrócony typ to AsyncDatabase
+    db_instance = asyncio.run(bootstrap(app)) 
     
     # 2. Utworzenie i ustawienie pętli zdarzeń QEventLoop
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
     # 3. Utworzenie instancji okna
-    # ZAKŁADAMY, że MainWindow jest importowane poprawnie z main_window
-    window = MainWindow() 
+    # ZMIANA: Przekazujemy instancję db_instance do MainWindow
+    window = MainWindow(db_instance)
+    
+    # 4. Uruchomienie głównej korutyny
+    with loop:
+        try:
+            loop.run_until_complete(main_coro(app, window))
+        except Exception as e:
+            # Poprawna obsługa błędu, zamiast poprzedniego wywołania print
+            print(f"Krytyczny błąd podczas uruchamiania aplikacji: {e}")
 
-    # 4. Użycie qasync.run()
-    try:
-        # Przekazujemy app i window do main_coro
-        sys.exit(run(main_coro(app, window)))
-    except KeyboardInterrupt:
-        pass
-    except Exception as e:
-        print(f"Wystąpił błąd podczas uruchamiania: {e}")
-        
+
 if __name__ == "__main__":
     main()
