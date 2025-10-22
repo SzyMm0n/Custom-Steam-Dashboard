@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional, Set
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QListWidget, QListWidgetItem, QFrame,
     QHBoxLayout, QCheckBox, QGroupBox, QSizePolicy,
-    QSlider, QPushButton, QLineEdit, QDialog
+    QSlider, QPushButton, QLineEdit, QDialog, QScrollArea
 )
 from PySide6.QtCore import QTimer, Qt, QLocale, QRegularExpression
 from PySide6.QtGui import QFont, QRegularExpressionValidator
@@ -189,7 +189,8 @@ class HomeView(QWidget):
         self.tags_list_widget = QListWidget()
         self.tags_list_widget.setSelectionMode(QListWidget.NoSelection)
         self.tags_list_widget.setAlternatingRowColors(False)
-        self.tags_list_widget.setMinimumHeight(350)
+        # Reduce minimum height so the panel can adapt; scrolling will be handled by the panel scroll area
+        self.tags_list_widget.setMinimumHeight(200)
         self.tags_list_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.tags_list_widget.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.tags_list_widget.setFocusPolicy(Qt.StrongFocus)
@@ -200,6 +201,8 @@ class HomeView(QWidget):
         # Buttons
         buttons_h_layout = QHBoxLayout()
         self.clear_button = QPushButton("Wyczyść Filtry")
+        # mark clear button so we can style it differently (red)
+        self.clear_button.setObjectName("clearButton")
         self.clear_button.clicked.connect(self._on_clear_filters)
         self.apply_button = QPushButton("Zastosuj Filtry")
         self.apply_button.clicked.connect(self._on_apply_filters)
@@ -209,13 +212,80 @@ class HomeView(QWidget):
         right_column_layout.addStretch(1)
 
         self.main_h_layout.addLayout(left_column, 1)
-        self.main_h_layout.addWidget(right_panel_widget, 0)
+        # Wrap the right panel in a scroll area so that on small windows the user can scroll to see all categories
+        right_scroll = QScrollArea()
+        right_scroll.setWidgetResizable(True)
+        right_scroll.setWidget(right_panel_widget)
+        self.main_h_layout.addWidget(right_scroll, 0)
 
-        # Sections below
+        # --- Styling: kolorystyka (czarny, biały, zielony, czerwony) ---
+        STYLE = """
+QWidget {
+  background-color: #0b0b0b;
+  color: #FFFFFF;
+  font-family: Sans-Serif;
+}
+
+QGroupBox {
+  background-color: #15331f; /* dark green card */
+  color: #FFFFFF;
+  border: 1px solid #114d2b;
+  border-radius: 8px;
+  margin-top: 6px;
+  padding: 6px;
+}
+
+QLabel[role=section] {
+  color: #86efac; /* light green */
+  font-weight: bold;
+  font-size: 16px;
+}
+
+QListWidget {
+  background-color: #111111;
+  color: #FFFFFF;
+  border: 1px solid #2a2a2a;
+}
+
+QListWidget::item:selected {
+  background: #16a34a; /* green accent */
+  color: #fff;
+}
+
+QPushButton {
+  background-color: #16a34a; /* green */
+  color: #FFFFFF;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+QPushButton#clearButton {
+  background-color: #e11d48; /* red */
+}
+
+QLineEdit {
+  background-color: #1b1b1b;
+  color: #fff;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 3px;
+}
+QSlider::groove:horizontal { height:8px; background:#2a2a2a; border-radius:4px;}
+QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; border-radius:8px;}
+"""
+        # apply stylesheet to this widget (will affect children)
+        self.setStyleSheet(STYLE)
+
+        # mark section labels so stylesheet rules apply
+        self.top_live_title.setProperty("role", "section")
+
+        # separator between main panel and lower sections
         self.separator_1 = QFrame()
         self.separator_1.setFrameShape(QFrame.Shape.HLine)
         self.separator_1.setFrameShadow(QFrame.Shadow.Sunken)
+
         self.trending_title = QLabel("Best Deals (Promocje)")
+        self.trending_title.setProperty("role", "section")
         self.trending_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-top: 10px;")
         self.trending_list = QListWidget()
         # Nieco mniejsze, żeby suwaki nie były przysłonięte
@@ -226,6 +296,7 @@ class HomeView(QWidget):
         self.separator_2.setFrameShape(QFrame.Shape.HLine)
         self.separator_2.setFrameShadow(QFrame.Shadow.Sunken)
         self.upcoming_title = QLabel("Best Upcoming Releases")
+        self.upcoming_title.setProperty("role", "section")
         self.upcoming_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-top: 10px;")
         self.upcoming_list = QListWidget()
         # Nieco mniejsze, żeby suwaki nie były przysłonięte
