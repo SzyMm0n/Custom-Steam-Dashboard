@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from abc import ABC, abstractmethod
 from os import getenv
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
@@ -113,6 +113,9 @@ class ISteamStore(ABC):
 
     @abstractmethod
     async def get_most_played(self, limit: int = 150) -> List[TopGame]: ...
+
+    @abstractmethod
+    async def get_player_history(self, appid: int, *, source: str = "steamcharts") -> List[Tuple[int, int]]: ...
 
 
 class ISteamWebApi(ABC):
@@ -275,6 +278,32 @@ class SteamStoreClient(BaseAsyncService, ISteamStore):
 
         return results
 
+
+    async def get_player_history(self, appid: int, *, source: str = "steamcharts") -> List[Tuple[int, int]]:
+        """Fetch historical player samples for an app.
+
+        Uses steamcharts graph-data.json only.
+
+        Returns list of tuples (ts_unix, players) ordered ascending by timestamp.
+        """
+        samples: List[Tuple[int, int]] = []
+        if source not in ("steamcharts", "auto"):
+            return samples
+        url = f"https://steamcharts.com/app/{appid}/graph-data.json"
+        try:
+            data = await self._get_json(url)
+            if data:
+                for node in data:
+                    try:
+                        ts_ms = int(node[0])
+                        players = int(node[1])
+                        samples.append((ts_ms // 1000, players))
+                    except Exception:
+                        continue
+                samples.sort(key=lambda x: x[0])
+        except Exception:
+            pass
+        return samples
 
 
 class SteamWebApiClient(BaseAsyncService, ISteamWebApi):

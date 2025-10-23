@@ -7,7 +7,9 @@ from PySide6.QtWidgets import (
     QSlider, QPushButton, QLineEdit, QDialog, QScrollArea
 )
 from PySide6.QtCore import QTimer, Qt, QLocale, QRegularExpression
-from PySide6.QtGui import QFont, QRegularExpressionValidator
+from PySide6.QtGui import QFont, QRegularExpressionValidator, QPixmap
+
+import httpx
 
 from app.core.services.steam_api import SteamStoreClient
 from app.core.data.db import AsyncDatabase as Database
@@ -35,11 +37,17 @@ class GameDetailDialog(QDialog):
         self.setMinimumWidth(420)
         layout = QVBoxLayout(self)
 
-        # Title
+        # Title and basic fields
         if isinstance(game_data, dict):
             title = game_data.get("name", "Nieznana gra")
+            self._appid = game_data.get("appid")
+            self._players = game_data.get("players")
+            self._tags = game_data.get("tags") or set()
         else:
             title = str(game_data)
+            self._appid = None
+            self._players = None
+            self._tags = set()
 
         title_lbl = QLabel(title)
         title_font = QFont()
@@ -48,27 +56,30 @@ class GameDetailDialog(QDialog):
         title_lbl.setFont(title_font)
         layout.addWidget(title_lbl)
 
-        # Details grid
+        # Image + description area
+        self.header_image_lbl = QLabel()
+        self.header_image_lbl.setFixedHeight(120)
+        self.header_image_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.header_image_lbl)
+
+        self.desc_lbl = QLabel("Ładowanie opisu...")
+        self.desc_lbl.setWordWrap(True)
+        layout.addWidget(self.desc_lbl)
+
+        # Details grid (additional metadata)
         details_layout = QVBoxLayout()
 
-        if isinstance(game_data, dict):
-            appid = game_data.get("appid")
-            players = game_data.get("players")
-            tags = game_data.get("tags") or set()
-
-            if appid is not None:
-                details_layout.addWidget(QLabel(f"AppID: {appid}"))
-
-            if players is not None:
+        if self._appid is not None:
+            if self._players is not None:
                 # format with thousands separator using Polish locale if possible
                 try:
-                    players_str = QLocale(QLocale.Language.Polish, QLocale.Country.Poland).toString(float(players), 'f', 0)
+                    players_str = QLocale(QLocale.Language.Polish, QLocale.Country.Poland).toString(float(self._players), 'f', 0)
                 except Exception:
-                    players_str = str(players)
+                    players_str = str(self._players)
                 details_layout.addWidget(QLabel(f"Obecni gracze: {players_str}"))
 
-            if tags:
-                tags_text = ", ".join(sorted(list(tags))) if isinstance(tags, (set, list, tuple)) else str(tags)
+            if self._tags:
+                tags_text = ", ".join(sorted(list(self._tags))) if isinstance(self._tags, (set, list, tuple)) else str(self._tags)
                 tags_lbl = QLabel(f"Tagi: {tags_text}")
                 tags_lbl.setWordWrap(True)
                 details_layout.addWidget(tags_lbl)
@@ -81,10 +92,101 @@ class GameDetailDialog(QDialog):
         # Close button
         btn_h = QHBoxLayout()
         btn_h.addStretch(1)
+
         close_btn = QPushButton("Zamknij")
         close_btn.clicked.connect(self.accept)
         btn_h.addWidget(close_btn)
         layout.addLayout(btn_h)
+
+        # Start background load of extra info (store API + local DB)
+        if self._appid is not None:
+            try:
+                asyncio.create_task(self._load_store_and_activity(self._appid))
+            except Exception:
+                # best-effort background task
+                pass
+
+    async def _load_store_and_activity(self, appid: int):
+        # Fetch store details (header image, short description)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://store.steampowered.com/api/appdetails",
+                    params={"appids": appid, "cc": "pl", "l": "pl"},
+                )
+                data = resp.json()
+                node = data.get(str(appid)) if isinstance(data, dict) else None
+                if node and node.get("success"):
+                    d = node.get("data", {}) or {}
+                    header_image = (
+                        d.get("header_image")
+                        or d.get("capsule_image")
+                        or d.get("capsule_image_full")
+                    )
+                    short_desc = d.get("short_description") or d.get("about_the_game") or ""
+                    if short_desc:
+                        # update description on main thread
+                        self.desc_lbl.setText(short_desc)
+                    if header_image:
+                        try:
+                            img_resp = await client.get(header_image, timeout=10.0)
+                            if img_resp.status_code == 200:
+                                pix = QPixmap()
+                                pix.loadFromData(img_resp.content)
+                                # scale preserving aspect
+                                scaled = pix.scaledToHeight(
+                                    120, Qt.TransformationMode.SmoothTransformation
+                                )
+                                self.header_image_lbl.setPixmap(scaled)
+                        except Exception:
+                            pass
+        except Exception:
+            # ignore network errors, leave placeholders
+            pass
+
+        # Load activity from local DB (daily rollups or raw samples) and draw plot
+        try:
+            parent = self.parent()
+            db = None
+            if parent is not None and hasattr(parent, "_db"):
+                db = parent._db
+            elif hasattr(self, "_db"):
+                db = getattr(self, "_db")
+
+            if db is not None:
+                # try to read daily rollups first
+                def query_daily():
+                    try:
+                        sync = getattr(db, "_sync_db", None)
+                        if sync is None:
+                            return []
+                        conn = getattr(sync, "_conn", None)
+                        if conn is None:
+                            return []
+                        cur = conn.execute(
+                            "SELECT date_ymd, avg_players, max_players FROM player_counts_daily WHERE appid=? ORDER BY date_ymd DESC LIMIT 7",
+                            (appid,),
+                        )
+                        return cur.fetchall()
+                    except Exception:
+                        return []
+
+                rows = await asyncio.to_thread(query_daily)
+                if rows:
+                    # format textual activity from daily rollups
+                    lines = []
+                    for date_ymd, avg_players, max_players in rows:
+                        try:
+                            avg_str = QLocale(
+                                QLocale.Language.Polish, QLocale.Country.Poland
+                            ).toString(float(avg_players), "f", 0)
+                        except Exception:
+                            avg_str = str(avg_players)
+                        lines.append(f"{date_ymd}: średnio {avg_str}, max {max_players}")
+                    # activity_text = "\n".join(lines)
+        except Exception:
+            # ignore DB errors
+            pass
 
 
 class HomeView(QWidget):
@@ -118,7 +220,7 @@ class HomeView(QWidget):
     def _init_ui(self):
         # Left column
         left_column = QVBoxLayout()
-        self.top_live_title = QLabel("Live Games Count (Watchlista)")
+        self.top_live_title = QLabel("Live Games Count")
         self.top_live_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 5px;")
         self.top_live_list = QListWidget()
         self.top_live_list.setMinimumWidth(500)
@@ -284,7 +386,7 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
         self.separator_1.setFrameShape(QFrame.Shape.HLine)
         self.separator_1.setFrameShadow(QFrame.Shadow.Sunken)
 
-        self.trending_title = QLabel("Best Deals (Promocje)")
+        self.trending_title = QLabel("Best Deals")
         self.trending_title.setProperty("role", "section")
         self.trending_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-top: 10px;")
         self.trending_list = QListWidget()
@@ -483,7 +585,7 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
             filtered_results.append(item)
         filtered_results.sort(key=lambda x: x["players"], reverse=True)
         if not filtered_results:
-            self.top_live_list.addItem("Brak gier pasujących do filtrów.")
+            self.top_live_list.addItem("Brak gier pasujących do filtrowania.")
         else:
             for item in filtered_results:
                 players_formatted = self._format_players(item["players"])
@@ -492,19 +594,19 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
                 self.top_live_list.addItem(lw_item)
 
     async def refresh_data(self):
-        self.top_live_title.setText("Live Games Count (Ładowanie...)")
-        self.trending_title.setText("Best Deals (Ładowanie...)")
-        self.upcoming_title.setText("Best Upcoming Releases (Ładowanie...)")
+        self.top_live_title.setText("Live Games Count — Ładowanie...")
+        self.trending_title.setText("Best Deals — Ładowanie...")
+        self.upcoming_title.setText("Best Upcoming Releases — Ładowanie...")
         self.trending_list.clear()
         self.upcoming_list.clear()
         appids = await self._db.get_watchlist_appids()
         all_game_tags = await self._db.get_all_game_tags()
         if not appids:
-            self.top_live_title.setText("Live Games Count (Watchlista - pusta)")
+            self.top_live_title.setText("Live Games Count")
             if self.tags_list_widget.count() == 0:
                 await self._populate_tag_checkboxes()
             # Jeśli nie ma appidów, zresetuj tytuły sekcji promocji/nadchodzących
-            self.trending_title.setText("Best Deals (Promocje)")
+            self.trending_title.setText("Best Deals")
             self.upcoming_title.setText("Best Upcoming Releases")
             return
         async with SteamStoreClient() as client:
@@ -544,7 +646,7 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
         if self.tags_list_widget.count() == 0:
             await self._populate_tag_checkboxes()
         self._update_list_view()
-        self.top_live_title.setText(f"Live Games Count (Watchlista - {len(results)} gier)")
+        self.top_live_title.setText("Live Games Count")
         deals = []
         if DealsApiClient is not None:
             try:
@@ -587,8 +689,8 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
                     display += f" (-{discount}%)"
                 self.upcoming_list.addItem(display)
 
-        # Ustaw tytuły końcowe (reset po zakończeniu ładowania obu sekcji)
-        self.trending_title.setText("Best Deals (Promocje)")
+        # Ustaw tituły końcowe (reset po zakończeniu ładowania obu sekcji)
+        self.trending_title.setText("Best Deals")
         self.upcoming_title.setText("Best Upcoming Releases")
 
     def _on_live_item_clicked(self, item: 'QListWidgetItem'):
