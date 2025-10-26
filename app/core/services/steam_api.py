@@ -100,16 +100,16 @@ class ISteamStore(ABC):
     async def get_recent_news(self, appid: int, count: int = 5, updates_only: bool = True) -> List[NewsItem]: ...
 
     @abstractmethod
-    async def get_app_details(self, appid: int, cc: str = "us", lang: str = "en") -> Optional[AppDetails]: ...
+    async def get_app_details(self, appid: int, cc: str = "pln", lang: str = "en") -> Optional[AppDetails]: ...
 
     @abstractmethod
-    async def get_coming_soon(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]: ...
+    async def get_coming_soon(self, cc: str = "pln", lang: str = "en", limit: int = 30) -> List[FeaturedItem]: ...
 
     @abstractmethod
-    async def get_new_releases(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]: ...
+    async def get_new_releases(self, cc: str = "pln", lang: str = "en", limit: int = 30) -> List[FeaturedItem]: ...
 
     @abstractmethod
-    async def get_top_sellers(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]: ...
+    async def get_top_sellers(self, cc: str = "pln", lang: str = "en", limit: int = 30) -> List[FeaturedItem]: ...
 
     @abstractmethod
     async def get_most_played(self, limit: int = 150) -> List[TopGame]: ...
@@ -171,7 +171,7 @@ class SteamStoreClient(BaseAsyncService, ISteamStore):
             )
         return items
 
-    async def get_app_details(self, appid: int, cc: str = "us", lang: str = "en") -> Optional[AppDetails]:
+    async def get_app_details(self, appid: int, cc: str = "pln", lang: str = "en") -> Optional[AppDetails]:
         url = "https://store.steampowered.com/api/appdetails"
         data = await self._get_json(url, params={"appids": appid, "cc": cc, "l": lang})
         node = data.get(str(appid)) if isinstance(data, dict) else None
@@ -229,13 +229,13 @@ class SteamStoreClient(BaseAsyncService, ISteamStore):
             )
         return items
 
-    async def get_coming_soon(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]:
+    async def get_coming_soon(self, cc: str = "pln", lang: str = "en", limit: int = 30) -> List[FeaturedItem]:
         return await self._get_featured_category_items("coming_soon", cc=cc, lang=lang, limit=limit)
 
-    async def get_new_releases(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]:
+    async def get_new_releases(self, cc: str = "pln", lang: str = "en", limit: int = 30) -> List[FeaturedItem]:
         return await self._get_featured_category_items("new_releases", cc=cc, lang=lang, limit=limit)
 
-    async def get_top_sellers(self, cc: str = "us", lang: str = "en", limit: int = 30) -> List[FeaturedItem]:
+    async def get_top_sellers(self, cc: str = "pln", lang: str = "en", limit: int = 30) -> List[FeaturedItem]:
         return await self._get_featured_category_items("top_sellers", cc=cc, lang=lang, limit=limit)
 
     async def get_most_played(self, limit: int = 150) -> List[TopGame]:
