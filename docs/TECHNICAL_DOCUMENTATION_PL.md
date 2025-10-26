@@ -174,14 +174,14 @@ Metody publiczne:
   - Dlaczego: Możliwe rozszerzenie UI o changelogi/patche.
   - Argumenty: `appid`, `count`, `updates_only`.
 
-- `async get_app_details(appid: int, cc: str = "us", lang: str = "en") -> AppDetails | None`
+- `async get_app_details(appid: int, cc: str = "pln", lang: str = "en") -> AppDetails | None`
   - Co: Szczegóły gry (nazwa, gatunki, kategorie, cena, itp.).
   - Dlaczego: Uzupełnianie metadanych (np. nazwy w Live Games, tagi w watchliście).
   - Argumenty: `appid`, `cc` — kraj (ceny), `lang` — język opisów.
 
-- `async get_coming_soon(cc="us", lang="en", limit=30) -> list[FeaturedItem]`
-- `async get_new_releases(cc="us", lang="en", limit=30) -> list[FeaturedItem]`
-- `async get_top_sellers(cc="us", lang="en", limit=30) -> list[FeaturedItem]`
+- `async get_coming_soon(cc="pln", lang="en", limit=30) -> list[FeaturedItem]`
+- `async get_new_releases(cc="pln", lang="en", limit=30) -> list[FeaturedItem]`
+- `async get_top_sellers(cc="pln", lang="en", limit=30) -> list[FeaturedItem]`
   - Co: Wybrane kategorie „featured” ze sklepu.
   - Dlaczego: Sekcje „Best Upcoming Releases” i potencjalne inne listy.
   - Argumenty: `cc`, `lang`, `limit`.
