@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 from typing import List, Dict, Any, Optional, Set
 
 from PySide6.QtWidgets import (
@@ -13,7 +13,7 @@ import httpx
 
 from app.core.services.steam_api import SteamStoreClient
 from app.core.data.db import AsyncDatabase as Database
-from app.ui.user_info_dialog import SteamUserInfoDialog  # UPDATED import (unused now but kept if needed)
+from app.ui.user_info_dialog import SteamUserInfoDialog  # UPDATED import
 
 # DealsApiClient optional
 try:
@@ -234,6 +234,11 @@ class HomeView(QWidget):
         right_panel_widget.setMinimumWidth(280)
         right_column_layout = QVBoxLayout(right_panel_widget)
 
+        # Login button at top
+        self.login_button = QPushButton("Zaloguj się")
+        self.login_button.clicked.connect(self._open_login_dialog)
+        right_column_layout.addWidget(self.login_button)
+
         players_group = QGroupBox("Gracze online (Min. / Max.)")
         players_v_layout = QVBoxLayout(players_group)
         validator = NumberValidator(self)
@@ -415,8 +420,11 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
         self.layout.addWidget(self.upcoming_list)
 
     def _open_login_dialog(self):
-        dlg = SteamUserInfoDialog(self)
-        dlg.exec()
+        try:
+            dlg = SteamUserInfoDialog(self)
+            dlg.exec()
+        except Exception as e:
+            print(f"Nie udało się otworzyć okna logowania: {e}")
 
     # Slider/input handlers
     def _on_min_slider_moved(self, value: int):

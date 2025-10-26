@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import asyncio
 import re
@@ -6,7 +6,6 @@ import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from os import getenv
 from typing import List, Optional, Tuple
-from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
@@ -330,52 +329,14 @@ class SteamWebApiClient(BaseAsyncService, ISteamWebApi):
     def _parse_hours_to_minutes(self, s: Optional[str]) -> int:
         if not s:
             return 0
-        # Keep digits and separators, drop spaces/letters
-        raw = re.sub(r"[^0-9,\.]", "", s)
-        if not raw:
-            return 0
-        # If both separators present, treat the last one as decimal, others as thousands
-        if "," in raw and "." in raw:
-            last_sep_pos = max(raw.rfind(","), raw.rfind("."))
-            dec_sep = raw[last_sep_pos]
-            # remove all separators, then reinsert decimal point
-            digits_only = re.sub(r"[,.]", "", raw)
-            if last_sep_pos >= 0 and last_sep_pos < len(raw) - 1:
-                # number of digits after decimal
-                frac_len = len(raw) - last_sep_pos - 1
-                if frac_len > 0:
-                    int_part = digits_only[:-frac_len] if frac_len < len(digits_only) else "0"
-                    frac_part = digits_only[-frac_len:]
-                    num_str = f"{int_part}.{frac_part}"
-                else:
-                    num_str = digits_only
-            else:
-                num_str = digits_only
-        else:
-            # Only one (or none) type of separator present
-            if "," in raw:
-                # If single comma and less than or equal to 2 digits after -> decimal, else thousands
-                parts = raw.split(",")
-                if len(parts) == 2 and len(parts[1]) <= 2:
-                    num_str = parts[0] + "." + parts[1]
-                else:
-                    num_str = "".join(parts)
-            elif "." in raw:
-                parts = raw.split(".")
-                if len(parts) == 2 and len(parts[1]) <= 2:
-                    num_str = parts[0] + "." + parts[1]
-                else:
-                    num_str = "".join(parts)
-            else:
-                num_str = raw
+        # keep digits, comma and dot
+        cleaned = re.sub(r"[^0-9,\.]", "", s)
+        # normalize comma to dot
+        cleaned = cleaned.replace(",", ".")
         try:
-            hours = float(num_str)
+            hours = float(cleaned)
         except Exception:
-            try:
-                hours = float(re.sub(r"[^0-9]", "", raw))
-            except Exception:
-                hours = 0.0
-        # Convert to minutes
+            return 0
         return int(round(hours * 60))
 
     async def _get_owned_games_public(self, steamid: str) -> List[SteamGame]:
@@ -420,54 +381,6 @@ class SteamWebApiClient(BaseAsyncService, ISteamWebApi):
             avatarfull = root.findtext("avatarFull") or None
             profileurl = f"https://steamcommunity.com/profiles/{steamid}/"
             return PlayerSummary(steamid=steamid, personaname=persona, avatarfull=avatarfull, profileurl=profileurl)
-
-    async def resolve_steamid(self, input_str: str) -> Optional[str]:
-        """Resolve SteamID64 from numeric id, vanity id or profile URL (public, no API key required)."""
-        s = (input_str or "").strip()
-        if not s:
-            return None
-        # numeric SteamID64
-        if s.isdigit() and 16 <= len(s) <= 20:
-            return s
-        # URL cases
-        if s.startswith("http://") or s.startswith("https://"):
-            try:
-                u = urlparse(s)
-                path = u.path.strip("/")
-                parts = path.split("/") if path else []
-                if len(parts) >= 2 and parts[0] in ("profiles", "id"):
-                    kind, value = parts[0], parts[1]
-                    if kind == "profiles" and value.isdigit():
-                        return value
-                    if kind == "id" and value:
-                        # vanity -> query XML to resolve steamID64
-                        xml_url = f"https://steamcommunity.com/id/{value}?xml=1&l=polish"
-                        async with httpx.AsyncClient(timeout=10.0) as client:
-                            r = await client.get(xml_url)
-                            if r.status_code == 200:
-                                try:
-                                    root = ET.fromstring(r.text)
-                                    sid = root.findtext("steamID64")
-                                    if sid and sid.isdigit():
-                                        return sid
-                                except Exception:
-                                    pass
-            except Exception:
-                pass
-        # plain vanity name
-        value = s
-        xml_url = f"https://steamcommunity.com/id/{value}?xml=1&l=polish"
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                r = await client.get(xml_url)
-                if r.status_code == 200:
-                    root = ET.fromstring(r.text)
-                    sid = root.findtext("steamID64")
-                    if sid and sid.isdigit():
-                        return sid
-        except Exception:
-            return None
-        return None
 
     def _require_key(self) -> str:
         if not self._api_key:

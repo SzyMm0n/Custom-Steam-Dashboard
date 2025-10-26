@@ -1,4 +1,4 @@
-import asyncio
+﻿import asyncio
 from typing import List, Dict, Any, Optional, Set
 
 from PySide6.QtWidgets import (
@@ -13,7 +13,6 @@ import httpx
 
 from app.core.services.steam_api import SteamStoreClient
 from app.core.data.db import AsyncDatabase as Database
-from app.ui.user_info_dialog import SteamUserInfoDialog  # UPDATED import (unused now but kept if needed)
 
 # DealsApiClient optional
 try:
@@ -414,10 +413,6 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
         self.layout.addWidget(self.upcoming_title)
         self.layout.addWidget(self.upcoming_list)
 
-    def _open_login_dialog(self):
-        dlg = SteamUserInfoDialog(self)
-        dlg.exec()
-
     # Slider/input handlers
     def _on_min_slider_moved(self, value: int):
         if value > self._max_players:
@@ -632,8 +627,8 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
                 details_result = game_details_map[appid]
                 if not isinstance(details_result, Exception) and details_result is not None:
                     name = details_result.name
-                    new_genres = [g for g in (details_result.genres or [])]
-                    new_categories = [c for c in (details_result.categories or [])]
+                    new_genres = [g.description for g in details_result.genres or []]
+                    new_categories = [c.description for c in details_result.categories or []]
                     await self._db.upsert_watchlist_tags(appid, genres=new_genres, categories=new_categories, replace=True)
                     await self._db.add_to_watchlist(appid, name)
                     current_game_tags = set(new_genres + new_categories)

@@ -1,0 +1,118 @@
+﻿from __future__ import annotations
+
+import asyncio
+from typing import Optional
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+)
+
+from app.core.services.steam_api import SteamWebApiClient
+
+
+class LibraryView(QWidget):
+    """Zakładka 'Biblioteka gier' – wbudowana wersja poprzedniego dialogu.
+
+    Akceptuje SteamID64, vanity lub URL profilu. API Key jest opcjonalny.
+    Wyświetla tabelę: Nazwa gry | Łączna liczba godzin | Ostatnie 2 tygodnie (h)
+    """
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self._init_ui()
+
+    def _init_ui(self) -> None:
+        layout = QVBoxLayout(self)
+
+        title = QLabel("Biblioteka gier")
+        f = title.font(); f.setPointSize(f.pointSize() + 2); f.setBold(True)
+        title.setFont(f)
+        layout.addWidget(title)
+
+        # Inputs row
+        row = QHBoxLayout()
+        row.addWidget(QLabel("SteamID / URL / vanity:"))
+        self.id_input = QLineEdit()
+        self.id_input.setPlaceholderText("np. 7656119..., lub https://steamcommunity.com/id/TwojaNazwa")
+        row.addWidget(self.id_input, 1)
+        row.addWidget(QLabel("API Key (opcjonalnie):"))
+        self.key_input = QLineEdit(); self.key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.key_input.setPlaceholderText("Jeśli puste, użyte zostaną publiczne dane profilu")
+        row.addWidget(self.key_input)
+        self.fetch_btn = QPushButton("Pobierz")
+        self.fetch_btn.clicked.connect(lambda: asyncio.create_task(self._on_fetch()))
+        row.addWidget(self.fetch_btn)
+        layout.addLayout(row)
+
+        self.status = QLabel(""); layout.addWidget(self.status)
+
+        # Table
+        self.table = QTableWidget(0, 3)
+        self.table.setHorizontalHeaderLabels(["Nazwa gry", "Łączna liczba godzin", "Ostatnie 2 tygodnie (h)"])
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self.table.setAlternatingRowColors(True)
+        layout.addWidget(self.table, 1)
+
+    async def _on_fetch(self) -> None:
+        raw = self.id_input.text().strip()
+        key = self.key_input.text().strip() or None
+        if not raw:
+            self.status.setText("Podaj identyfikator użytkownika.")
+            return
+        self.fetch_btn.setEnabled(False)
+        self.status.setText("Rozwiązywanie profilu...")
+        self.table.setRowCount(0)
+
+        try:
+            async with SteamWebApiClient(api_key=key) as api:
+                steamid = await api.resolve_steamid(raw)
+                if not steamid:
+                    self.status.setText("Nie udało się odczytać SteamID64 z wejścia.")
+                    self.fetch_btn.setEnabled(True)
+                    return
+                self.status.setText("Pobieranie biblioteki...")
+                summary = await api.get_player_summary(steamid)
+                owned = await api.get_owned_games(steamid)
+                recent = await api.get_recently_played(steamid)
+        except Exception as e:
+            self.status.setText(f"Błąd: {e}")
+            self.fetch_btn.setEnabled(True)
+            return
+
+        recent_map = {g.appid: (g.playtime_2weeks or 0) for g in recent}
+        owned_sorted = sorted(owned, key=lambda g: (g.playtime_forever or 0), reverse=True)
+
+        # Fill table
+        self.table.setRowCount(len(owned_sorted))
+        for row, g in enumerate(owned_sorted):
+            name_item = QTableWidgetItem(g.name or f"AppID {g.appid}")
+            total_min = g.playtime_forever or 0
+            last2w_min = recent_map.get(g.appid, g.playtime_2weeks or 0) or 0
+            if total_min < last2w_min:
+                total_min = last2w_min
+            total_h = total_min / 60.0
+            last2w_h = (last2w_min or 0) / 60.0
+            total_item = QTableWidgetItem(f"{total_h:.1f}")
+            last_item = QTableWidgetItem(f"{last2w_h:.1f}")
+            total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            last_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.table.setItem(row, 0, name_item)
+            self.table.setItem(row, 1, total_item)
+            self.table.setItem(row, 2, last_item)
+
+        self.status.setText(f"Załadowano gier: {len(owned_sorted)}")
+        self.fetch_btn.setEnabled(True)

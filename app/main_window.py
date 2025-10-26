@@ -4,6 +4,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtCore import QSize
 from .core.data.db import AsyncDatabase as Database # Import typu
 from .ui.home_view import HomeView
+from .ui.library_view import LibraryView  # NEW: library tab
 
 class MainWindow(QMainWindow):
     """Główne okno aplikacji z paskiem narzędzi i widokami."""
@@ -23,9 +24,13 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         layout.addWidget(self.stack)
 
-        # ZMIANA 2: Tworząc HomeView, przekazujemy instancję self._db
+        # Widoki
         self.home_view = HomeView(self._db)
         self.stack.addWidget(self.home_view)
+
+        # NEW: LibraryView as separate tab/page
+        self.library_view = LibraryView()  # does not require DB
+        self.stack.addWidget(self.library_view)
 
         self._init_toolbar()
 
@@ -38,9 +43,17 @@ class MainWindow(QMainWindow):
         home_action.triggered.connect(lambda: self.stack.setCurrentWidget(self.home_view))
         toolbar.addAction(home_action)
 
+        # NEW: action to open Library tab
+        lib_action = QAction("Biblioteka gier", self)
+        lib_action.triggered.connect(self.navigate_to_library)
+        toolbar.addAction(lib_action)
+
         refresh_action = QAction("Odśwież", self)
         refresh_action.triggered.connect(self.refresh_current_view)
         toolbar.addAction(refresh_action)
+
+    def navigate_to_library(self):
+        self.stack.setCurrentWidget(self.library_view)
 
     def refresh_current_view(self):
         current_widget = self.stack.currentWidget()

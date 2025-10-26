@@ -1,12 +1,8 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
-import asyncio
-import re
-import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from os import getenv
 from typing import List, Optional, Tuple
-from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
@@ -190,7 +186,7 @@ class SteamStoreClient(BaseAsyncService, ISteamStore):
     async def get_app_details(self, appid: int, cc: str = "pln", lang: str = "en") -> Optional[AppDetails]:
         url = "https://store.steampowered.com/api/appdetails"
         data = await self._get_json(url, params={"appids": appid, "cc": cc, "l": lang})
-        node = data.get(str(appid)) if isinstance(data, dict) else None
+        node = data.get(str(appid)) if isinstance(data, dict) : None
         if not node or not node.get("success"):
             return None
         d = node.get("data", {})
@@ -327,181 +323,32 @@ class SteamWebApiClient(BaseAsyncService, ISteamWebApi):
         super().__init__(timeout=timeout) if timeout is not None else super().__init__()
         self._api_key = api_key or getenv("STEAM_API_KEY")
 
-    def _parse_hours_to_minutes(self, s: Optional[str]) -> int:
-        if not s:
-            return 0
-        # Keep digits and separators, drop spaces/letters
-        raw = re.sub(r"[^0-9,\.]", "", s)
-        if not raw:
-            return 0
-        # If both separators present, treat the last one as decimal, others as thousands
-        if "," in raw and "." in raw:
-            last_sep_pos = max(raw.rfind(","), raw.rfind("."))
-            dec_sep = raw[last_sep_pos]
-            # remove all separators, then reinsert decimal point
-            digits_only = re.sub(r"[,.]", "", raw)
-            if last_sep_pos >= 0 and last_sep_pos < len(raw) - 1:
-                # number of digits after decimal
-                frac_len = len(raw) - last_sep_pos - 1
-                if frac_len > 0:
-                    int_part = digits_only[:-frac_len] if frac_len < len(digits_only) else "0"
-                    frac_part = digits_only[-frac_len:]
-                    num_str = f"{int_part}.{frac_part}"
-                else:
-                    num_str = digits_only
-            else:
-                num_str = digits_only
-        else:
-            # Only one (or none) type of separator present
-            if "," in raw:
-                # If single comma and less than or equal to 2 digits after -> decimal, else thousands
-                parts = raw.split(",")
-                if len(parts) == 2 and len(parts[1]) <= 2:
-                    num_str = parts[0] + "." + parts[1]
-                else:
-                    num_str = "".join(parts)
-            elif "." in raw:
-                parts = raw.split(".")
-                if len(parts) == 2 and len(parts[1]) <= 2:
-                    num_str = parts[0] + "." + parts[1]
-                else:
-                    num_str = "".join(parts)
-            else:
-                num_str = raw
-        try:
-            hours = float(num_str)
-        except Exception:
-            try:
-                hours = float(re.sub(r"[^0-9]", "", raw))
-            except Exception:
-                hours = 0.0
-        # Convert to minutes
-        return int(round(hours * 60))
-
-    async def _get_owned_games_public(self, steamid: str) -> List[SteamGame]:
-        url = f"https://steamcommunity.com/profiles/{steamid}/games?tab=all&l=polish&xml=1"
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(url)
-            resp.raise_for_status()
-            root = ET.fromstring(resp.text)
-            games_node = root.find("games")
-            if games_node is None:
-                return []
-            games: List[SteamGame] = []
-            for g in games_node.findall("game"):
-                try:
-                    appid = int((g.findtext("appID") or "0").strip())
-                except Exception:
-                    continue
-                name = g.findtext("name") or f"AppID {appid}"
-                hours_total = g.findtext("hoursOnRecord")
-                hours_2w = g.findtext("hoursLast2Weeks")
-                games.append(
-                    SteamGame(
-                        appid=appid,
-                        name=name,
-                        playtime_forever=self._parse_hours_to_minutes(hours_total),
-                        playtime_2weeks=self._parse_hours_to_minutes(hours_2w),
-                    )
-                )
-            return games
-
-    async def _get_player_summary_public(self, steamid: str) -> Optional[PlayerSummary]:
-        url = f"https://steamcommunity.com/profiles/{steamid}?xml=1&l=polish"
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(url)
-            if resp.status_code != 200:
-                return None
-            try:
-                root = ET.fromstring(resp.text)
-            except Exception:
-                return None
-            persona = root.findtext("steamID") or None
-            avatarfull = root.findtext("avatarFull") or None
-            profileurl = f"https://steamcommunity.com/profiles/{steamid}/"
-            return PlayerSummary(steamid=steamid, personaname=persona, avatarfull=avatarfull, profileurl=profileurl)
-
-    async def resolve_steamid(self, input_str: str) -> Optional[str]:
-        """Resolve SteamID64 from numeric id, vanity id or profile URL (public, no API key required)."""
-        s = (input_str or "").strip()
-        if not s:
-            return None
-        # numeric SteamID64
-        if s.isdigit() and 16 <= len(s) <= 20:
-            return s
-        # URL cases
-        if s.startswith("http://") or s.startswith("https://"):
-            try:
-                u = urlparse(s)
-                path = u.path.strip("/")
-                parts = path.split("/") if path else []
-                if len(parts) >= 2 and parts[0] in ("profiles", "id"):
-                    kind, value = parts[0], parts[1]
-                    if kind == "profiles" and value.isdigit():
-                        return value
-                    if kind == "id" and value:
-                        # vanity -> query XML to resolve steamID64
-                        xml_url = f"https://steamcommunity.com/id/{value}?xml=1&l=polish"
-                        async with httpx.AsyncClient(timeout=10.0) as client:
-                            r = await client.get(xml_url)
-                            if r.status_code == 200:
-                                try:
-                                    root = ET.fromstring(r.text)
-                                    sid = root.findtext("steamID64")
-                                    if sid and sid.isdigit():
-                                        return sid
-                                except Exception:
-                                    pass
-            except Exception:
-                pass
-        # plain vanity name
-        value = s
-        xml_url = f"https://steamcommunity.com/id/{value}?xml=1&l=polish"
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                r = await client.get(xml_url)
-                if r.status_code == 200:
-                    root = ET.fromstring(r.text)
-                    sid = root.findtext("steamID64")
-                    if sid and sid.isdigit():
-                        return sid
-        except Exception:
-            return None
-        return None
-
     def _require_key(self) -> str:
         if not self._api_key:
             raise RuntimeError("STEAM_API_KEY is required. Pass api_key=... or set env STEAM_API_KEY.")
         return self._api_key
 
     async def get_owned_games(self, steamid: str) -> List[SteamGame]:
-        if self._api_key:
-            key = self._require_key()
-            url = "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/"
-            params = {
-                "key": key,
-                "steamid": steamid,
-                "include_appinfo": True,
-                "include_played_free_games": True,
-                "format": "json",
-            }
-            data = await self._get_json(url, params=params)
-            games = (data or {}).get("response", {}).get("games", [])
-            return [SteamGame.model_validate(g) for g in games]
-        # Fallback without key
-        return await self._get_owned_games_public(steamid)
+        key = self._require_key()
+        url = "https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/"
+        params = {
+            "key": key,
+            "steamid": steamid,
+            "include_appinfo": True,
+            "include_played_free_games": True,
+            "format": "json",
+        }
+        data = await self._get_json(url, params=params)
+        games = (data or {}).get("response", {}).get("games", [])
+        return [SteamGame.model_validate(g) for g in games]
 
     async def get_recently_played(self, steamid: str) -> List[SteamGame]:
-        if self._api_key:
-            key = self._require_key()
-            url = "https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/"
-            params = {"key": key, "steamid": steamid, "format": "json"}
-            data = await self._get_json(url, params=params)
-            games = (data or {}).get("response", {}).get("games", [])
-            return [SteamGame.model_validate(g) for g in games]
-        # Fallback: derive from owned with non-zero last2weeks
-        owned = await self._get_owned_games_public(steamid)
-        return [g for g in owned if (g.playtime_2weeks or 0) > 0]
+        key = self._require_key()
+        url = "https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/"
+        params = {"key": key, "steamid": steamid, "format": "json"}
+        data = await self._get_json(url, params=params)
+        games = (data or {}).get("response", {}).get("games", [])
+        return [SteamGame.model_validate(g) for g in games]
 
     async def get_badges(self, steamid: str) -> dict:
         key = self._require_key()
@@ -511,17 +358,14 @@ class SteamWebApiClient(BaseAsyncService, ISteamWebApi):
         return (data or {}).get("response", {})
 
     async def get_player_summary(self, steamid: str) -> Optional[PlayerSummary]:
-        if self._api_key:
-            key = self._require_key()
-            url = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/"
-            params = {"key": key, "steamids": steamid, "format": "json"}
-            data = await self._get_json(url, params=params)
-            players = (data or {}).get("response", {}).get("players", [])
-            if not players:
-                return None
-            return PlayerSummary.model_validate(players[0])
-        # Fallback: public profile XML
-        return await self._get_player_summary_public(steamid)
+        key = self._require_key()
+        url = "https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/"
+        params = {"key": key, "steamids": steamid, "format": "json"}
+        data = await self._get_json(url, params=params)
+        players = (data or {}).get("response", {}).get("players", [])
+        if not players:
+            return None
+        return PlayerSummary.model_validate(players[0])
 
 # --- helpers ---
 
@@ -554,12 +398,18 @@ if __name__ == "__main__":
 
     async def demo() -> None:
         steamid = getenv("STEAM_ID")
+        if not getenv("STEAM_API_KEY") or not steamid:
+            print("Skipping demo: set STEAM_API_KEY and STEAM_ID in your environment to run.")
+            return
         async with SteamWebApiClient() as api:
             owned = await api.get_owned_games(steamid)
             print(f"Owned games: {len(owned)} (showing up to 10):", [g.name for g in owned[:10]])
 
             recent = await api.get_recently_played(steamid)
             print(f"Recently played: {len(recent)} (showing up to 10):", [g.name for g in recent[:10]])
+
+            badges = await api.get_badges(steamid)
+            print("Badges keys:", list(badges.keys())[1:])
 
             summary = await api.get_player_summary(steamid)
             print("Player:", summary.personaname if summary else None)
