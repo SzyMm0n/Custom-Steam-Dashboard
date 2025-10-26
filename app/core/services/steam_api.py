@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from abc import ABC, abstractmethod
 from os import getenv
 from typing import List, Optional, Tuple
@@ -8,7 +7,7 @@ from typing import List, Optional, Tuple
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.core.services._base_http import BaseAsyncService
+from common._base_http import BaseAsyncService
 
 # === Pydantic models ===
 
