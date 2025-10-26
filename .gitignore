@@ -92,6 +92,7 @@ ehthumbs.db
 # IDE / EDITOR settings
 .vscode/
 .idea/
+.vs/
 *.sublime-project
 *.sublime-workspace
 
