@@ -6,10 +6,11 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QCheckBox, QGroupBox, QSizePolicy,
     QSlider, QPushButton, QLineEdit, QDialog, QScrollArea
 )
-from PySide6.QtCore import QTimer, Qt, QLocale, QRegularExpression
-from PySide6.QtGui import QFont, QRegularExpressionValidator, QPixmap
+from PySide6.QtCore import QTimer, Qt, QLocale, QRegularExpression, QUrl
+from PySide6.QtGui import QFont, QRegularExpressionValidator, QPixmap, QDesktopServices
 
 import httpx
+import urllib.parse
 
 from app.core.services.steam_api import SteamStoreClient
 from app.core.data.db import AsyncDatabase as Database
@@ -31,7 +32,7 @@ class NumberValidator(QRegularExpressionValidator):
 class GameDetailDialog(QDialog):
     def __init__(self, game_data: Any, parent: Optional[QWidget] = None):
         """Show expanded details for a game.
-        game_data can be a string title or a dict with keys: name, appid, players, tags
+        game_data can be a string title or a dict with keys: name, appid, players, tags, deal_url, deal_id, store_id, store_name
         """
         super().__init__(parent)
         self.setWindowTitle("Szczegóły gry")
@@ -44,11 +45,21 @@ class GameDetailDialog(QDialog):
             self._appid = game_data.get("appid")
             self._players = game_data.get("players")
             self._tags = game_data.get("tags") or set()
+            self._deal_url = game_data.get("deal_url")
+            self._deal_id = game_data.get("deal_id")
+            self._store_id = game_data.get("store_id")
+            self._store_name = game_data.get("store_name")
         else:
             title = str(game_data)
             self._appid = None
             self._players = None
             self._tags = set()
+            self._deal_url = None
+            self._deal_id = None
+            self._store_id = None
+            self._store_name = None
+
+        self._title = title
 
         title_lbl = QLabel(title)
         title_font = QFont()
@@ -90,8 +101,15 @@ class GameDetailDialog(QDialog):
 
         layout.addLayout(details_layout)
 
-        # Close button
+        # Close button + Go to store button
         btn_h = QHBoxLayout()
+        
+        self.store_btn = QPushButton("Przejdź do sklepu")
+        # Aktywuj, jeżeli mamy appid, bezpośredni link do oferty lub przynajmniej tytuł (otworzymy stronę CheapShark)
+        self.store_btn.setEnabled((self._appid is not None) or (self._deal_url is not None) or bool(self._title))
+        self.store_btn.clicked.connect(self._open_store_page)
+        btn_h.addWidget(self.store_btn)
+
         btn_h.addStretch(1)
 
         close_btn = QPushButton("Zamknij")
@@ -100,12 +118,82 @@ class GameDetailDialog(QDialog):
         layout.addLayout(btn_h)
 
         # Start background load of extra info (store API + local DB)
-        if self._appid is not None:
-            try:
+        try:
+            if self._appid is not None:
                 asyncio.create_task(self._load_store_and_activity(self._appid))
-            except Exception:
-                # best-effort background task
-                pass
+            else:
+                # Fallback: resolve appid by searching Steam store by title
+                if self._title and self._title != "Nieznana gra":
+                    asyncio.create_task(self._resolve_and_load_by_name(self._title))
+        except Exception:
+            # best-effort background task
+            pass
+
+    def _make_cheapshark_search_url(self) -> Optional[QUrl]:
+        try:
+            if not self._title:
+                return None
+            q = urllib.parse.quote_plus(self._title)
+            base = f"https://www.cheapshark.com/search#q={q}"
+            # jeśli znamy store_id, dodaj jako filtr
+            if self._store_id is not None:
+                try:
+                    sid = int(self._store_id)
+                    base += f"&storeID={sid}"
+                except Exception:
+                    pass
+            return QUrl(base)
+        except Exception:
+            return None
+
+    def _open_store_page(self):
+        try:
+            # 1) Prefer Steam app page when appid is known
+            if self._appid:
+                url = QUrl(f"https://store.steampowered.com/app/{int(self._appid)}/")
+                QDesktopServices.openUrl(url)
+                return
+            # 2) If we have any direct deal/store URL (including CheapShark redirect), open it
+            if isinstance(self._deal_url, str) and self._deal_url.strip():
+                QDesktopServices.openUrl(QUrl(self._deal_url))
+                return
+            # 3) If we only have a deal id, construct CheapShark redirect to the store
+            if self._deal_id:
+                redir = QUrl(f"https://www.cheapshark.com/redirect?dealID={urllib.parse.quote_plus(str(self._deal_id))}")
+                QDesktopServices.openUrl(redir)
+                return
+            # 4) Fallback: Open CheapShark search page for this title (optionally with store filter)
+            cs_url = self._make_cheapshark_search_url()
+            if cs_url is not None:
+                QDesktopServices.openUrl(cs_url)
+                return
+        except Exception:
+            pass
+
+    async def _resolve_and_load_by_name(self, title: str):
+        """Resolve Steam appid by game title, then load details if found."""
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://store.steampowered.com/api/storesearch",
+                    params={"term": title, "cc": "pl", "l": "pl"},
+                )
+                data = resp.json() if resp.status_code == 200 else {}
+                items = data.get("items") if isinstance(data, dict) else None
+                if items and isinstance(items, list):
+                    first = items[0] if items else None
+                    if isinstance(first, dict):
+                        appid = first.get("id") or first.get("appid")
+                        if appid:
+                            try:
+                                self._appid = int(appid)
+                                # enable store button now that we have id
+                                self.store_btn.setEnabled(True)
+                                await self._load_store_and_activity(self._appid)
+                            except Exception:
+                                pass
+        except Exception:
+            pass
 
     async def _load_store_and_activity(self, appid: int):
         # Fetch store details (header image, short description)
@@ -394,6 +482,8 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
         # Nieco mniejsze, żeby suwaki nie były przysłonięte
         self.trending_list.setMinimumHeight(120)
         self.trending_list.setMaximumHeight(240)
+        # NEW: open details when clicking deals items
+        self.trending_list.itemClicked.connect(self._on_deal_item_clicked)
 
         self.separator_2 = QFrame()
         self.separator_2.setFrameShape(QFrame.Shape.HLine)
@@ -405,6 +495,8 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
         # Nieco mniejsze, żeby suwaki nie były przysłonięte
         self.upcoming_list.setMinimumHeight(120)
         self.upcoming_list.setMaximumHeight(240)
+        # NEW: open details when clicking upcoming items
+        self.upcoming_list.itemClicked.connect(self._on_upcoming_item_clicked)
 
         self.layout.addLayout(self.main_h_layout)
         self.layout.addWidget(self.separator_1)
@@ -544,6 +636,35 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
     def _format_players(self, value: int) -> str:
         return self._locale.toString(float(value), 'f', 0)
 
+    # NEW: helpers to format deal prices using deals_api data (USD)
+    def _format_deal_price(self, value: Optional[float]) -> Optional[str]:
+        if value is None:
+            return None
+        try:
+            v = float(value)
+        except Exception:
+            return None
+        # format with 2 decimals, US style
+        return f"${v:,.2f}"
+
+    def _format_deal_line(self, title: str, sale: Optional[float], normal: Optional[float]) -> str:
+        sale_str = self._format_deal_price(sale)
+        normal_str = self._format_deal_price(normal)
+        if sale_str and normal_str and (normal or 0) > 0:
+            try:
+                disc = int(round(100 - (float(sale) / float(normal)) * 100))
+                if disc < 0:
+                    disc = 0
+            except Exception:
+                disc = None
+            if disc is not None and disc > 0:
+                return f"{title} — {sale_str} (z {normal_str}, -{disc}%)"
+            else:
+                return f"{title} — {sale_str} (z {normal_str})"
+        if sale_str:
+            return f"{title} — {sale_str}"
+        return title
+
     async def _populate_tag_checkboxes(self):
         """Pobiera wszystkie unikalne tagi i tworzy dla nich pola wyboru."""
         if self._tag_checkboxes:
@@ -666,10 +787,69 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
         else:
             for d in deals:
                 try:
-                    sale = getattr(d, 'salePrice', None)
-                    normal = getattr(d, 'normalPrice', None)
-                    title = getattr(d, 'title', str(d))
-                    self.trending_list.addItem(f"{title} — {sale} (z {normal})")
+                    # Support both object attributes and dict keys, snake_case and camelCase
+                    sale = None
+                    normal = None
+                    title = None
+                    appid = None
+                    deal_url = None
+                    deal_id = None
+                    store_id = None
+                    store_name = None
+
+                    if isinstance(d, dict):
+                        sale = d.get('salePrice') or d.get('sale_price') or d.get('sale')
+                        normal = d.get('normalPrice') or d.get('normal_price') or d.get('retailPrice') or d.get('retail_price')
+                        title = d.get('title') or d.get('name') or d.get('gameName')
+                        appid = d.get('steamAppID') or d.get('steam_app_id') or d.get('appID') or d.get('appid')
+                        deal_id = d.get('dealID') or d.get('dealId') or d.get('deal_id')
+                        store_id = d.get('storeID') or d.get('storeId') or d.get('store_id')
+                        store_name = d.get('storeName') or d.get('store_name') or d.get('store')
+                        # try to capture any useful url (deal page or steam link)
+                        deal_url = (
+                            d.get('steamLink') or d.get('steam_url') or d.get('steamUrl') or
+                            d.get('storeURL') or d.get('storeUrl') or d.get('store_link') or
+                            d.get('dealURL') or d.get('dealUrl') or d.get('url') or d.get('link') or d.get('store_url')
+                        )
+                    else:
+                        sale = getattr(d, 'salePrice', None) or getattr(d, 'sale_price', None) or getattr(d, 'sale', None)
+                        normal = getattr(d, 'normalPrice', None) or getattr(d, 'normal_price', None) or getattr(d, 'retailPrice', None) or getattr(d, 'retail_price', None)
+                        title = getattr(d, 'title', None) or getattr(d, 'name', None) or getattr(d, 'gameName', None)
+                        appid = getattr(d, 'steamAppID', None) or getattr(d, 'steam_app_id', None) or getattr(d, 'appID', None) or getattr(d, 'appid', None)
+                        deal_id = getattr(d, 'dealID', None) or getattr(d, 'dealId', None) or getattr(d, 'deal_id', None)
+                        store_id = getattr(d, 'storeID', None) or getattr(d, 'storeId', None) or getattr(d, 'store_id', None)
+                        store_name = getattr(d, 'storeName', None) or getattr(d, 'store_name', None) or getattr(d, 'store', None)
+                        deal_url = (
+                            getattr(d, 'steamLink', None) or getattr(d, 'steam_url', None) or getattr(d, 'steamUrl', None) or
+                            getattr(d, 'storeURL', None) or getattr(d, 'storeUrl', None) or getattr(d, 'store_link', None) or
+                            getattr(d, 'dealURL', None) or getattr(d, 'dealUrl', None) or getattr(d, 'url', None) or getattr(d, 'link', None) or getattr(d, 'store_url', None)
+                        )
+
+                    # If it's not Steam and no direct URL was given but we have a deal id, use CheapShark redirect
+                    if not deal_url and deal_id:
+                        deal_url = f"https://www.cheapshark.com/redirect?dealID={urllib.parse.quote_plus(str(deal_id))}"
+
+                    if title is None:
+                        title = str(d)
+
+                    try:
+                        appid_int = int(appid) if appid is not None else None
+                        if appid_int is not None and appid_int <= 0:
+                            appid_int = None
+                    except Exception:
+                        appid_int = None
+
+                    text = self._format_deal_line(title, sale, normal)
+                    item = QListWidgetItem(text)
+                    item.setData(Qt.UserRole, {
+                        "name": title,
+                        "appid": appid_int,
+                        "deal_url": deal_url,
+                        "deal_id": deal_id,
+                        "store_id": store_id,
+                        "store_name": store_name,
+                    })
+                    self.trending_list.addItem(item)
                 except Exception:
                     self.trending_list.addItem(str(d))
         try:
@@ -678,21 +858,67 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
         except Exception as e:
             print(f"Błąd pobierania nadchodzących: {e}")
             upcoming = []
+
+        # Pobierz szczegóły dla WSZYSTKICH pozycji 'upcoming' i użyj release_date.date z appdetails
+        details_by_appid: Dict[int, Any] = {}
+        if upcoming:
+            try:
+                async with SteamStoreClient() as client3:
+                    tasks = []
+                    appid_list: List[int] = []
+                    for it in upcoming:
+                        try:
+                            aid = int(getattr(it, 'id', 0) or 0)
+                            if aid > 0:
+                                appid_list.append(aid)
+                                tasks.append(client3.get_app_details(aid, cc="pl", lang="pl"))
+                        except Exception:
+                            continue
+                    if tasks:
+                        res = await asyncio.gather(*tasks, return_exceptions=True)
+                        for aid, r in zip(appid_list, res):
+                            if r and not isinstance(r, Exception):
+                                details_by_appid[aid] = r
+            except Exception:
+                pass
+
         self.upcoming_list.clear()
         if not upcoming:
             self.upcoming_list.addItem("Brak nadchodzących premier.")
         else:
             for item in upcoming:
                 name = getattr(item, 'name', 'Unknown')
-                release = getattr(item, 'release_date', None) or getattr(item, 'releaseDate', None) or ''
+                appid = getattr(item, 'id', None)
+                try:
+                    appid_int = int(appid) if appid is not None else None
+                    if appid_int is not None and appid_int <= 0:
+                        appid_int = None
+                except Exception:
+                    appid_int = None
+
+                # Prefer date from appdetails
+                release_text = ''
+                if appid_int is not None:
+                    d = details_by_appid.get(appid_int)
+                    if d is not None:
+                        rd = getattr(d, 'release_date', None)
+                        release_text = getattr(rd, 'date', '') if rd else ''
+                # Fallback to featured response string
+                if not release_text:
+                    release_text = getattr(item, 'release_date', None) or getattr(item, 'releaseDate', None) or ''
+
                 price = getattr(item, 'final_price', None) or getattr(item, 'finalPrice', None) or ''
                 discount = getattr(item, 'discount_percent', None) or getattr(item, 'discountPercent', None) or ''
-                display = f"{name} — premiera: {release}"
+                display = f"{name}"
+                if release_text:
+                    display += f" — premiera: {release_text}"
                 if price:
                     display += f" — cena: {price}"
                 if discount:
                     display += f" (-{discount}%)"
-                self.upcoming_list.addItem(display)
+                lw = QListWidgetItem(display)
+                lw.setData(Qt.UserRole, {"name": name, "appid": appid_int})
+                self.upcoming_list.addItem(lw)
 
         # Ustaw tituły końcowe (reset po zakończeniu ładowania obu sekcji)
         self.trending_title.setText("Best Deals")
@@ -713,3 +939,30 @@ QSlider::handle:horizontal { background:#16a34a; width:16px; margin:-4px 0; bord
 
     def _on_live_clicked(self, item: 'QListWidgetItem'):
         return self._on_live_item_clicked(item)
+
+    # NEW: Handlers for Deals and Upcoming lists
+    def _on_deal_item_clicked(self, item: 'QListWidgetItem'):
+        if not item:
+            return
+        data = None
+        try:
+            data = item.data(Qt.UserRole)
+        except Exception:
+            pass
+        if isinstance(data, dict):
+            GameDetailDialog(data, self).exec()
+        else:
+            GameDetailDialog(item.text(), self).exec()
+
+    def _on_upcoming_item_clicked(self, item: 'QListWidgetItem'):
+        if not item:
+            return
+        data = None
+        try:
+            data = item.data(Qt.UserRole)
+        except Exception:
+            pass
+        if isinstance(data, dict):
+            GameDetailDialog(data, self).exec()
+        else:
+            GameDetailDialog(item.text(), self).exec()
