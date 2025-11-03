@@ -12,7 +12,6 @@ if str(project_root) not in sys.path:
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.events import EVENT_JOB_EXECUTED
 
 from database.database import DatabaseManager, DatabaseRollupManager
 from services.steam_service import SteamClient
