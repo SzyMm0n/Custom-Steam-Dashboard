@@ -34,7 +34,7 @@ class PlayerCountCollector:
         """
         self.db = db
         self.steam_client = steam_client
-        self.semaphore = asyncio.Semaphore(1)
+        self.semaphore = asyncio.Semaphore(10)
 
     async def collect_player_counts(self) -> None:
         """
@@ -341,7 +341,7 @@ class SchedulerManager:
 
         self.scheduler.add_job(
             func=self.game_data_filler.fill_game_data,
-            trigger=IntervalTrigger(hours=1, minutes=5),
+            trigger=IntervalTrigger(hours=1),
             next_run_time=datetime.now()+timedelta(minutes=2),  # Start shortly after watchlist refresh
             id='game_data_fill',
             name='Fill game data for watchlist games',
