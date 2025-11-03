@@ -6,6 +6,11 @@ qasync>=0.26
 httpx[http2]>=0.27
 tenacity>=9.0
 
+# === API SERVER ===
+fastapi>=0.115
+uvicorn[standard]>=0.32
+APScheduler>=3.10
+
 # === MODELE / UTYLITY ===
 pydantic>=2.7
 rapidfuzz>=3.6
@@ -17,9 +22,9 @@ loguru>=0.7
 # matplotlib>=3.8
 # pyqtgraph>=0.13
 
-# === DANE / SQLITE (opcjonalnie async) ===
-# aiosqlite>=0.20
-# pandas>=2.2
+# === DANE / POSTGRESQL ===
+asyncpg>=0.29
+
 
 # === BUILD ===
 pyinstaller>=6.9
