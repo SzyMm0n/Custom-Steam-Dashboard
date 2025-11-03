@@ -203,6 +203,5 @@ async def get_coming_soon_games():
 
 if __name__ == "__main__":
     import uvicorn
-    load_dotenv(dotenv_path="../../.env")
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
