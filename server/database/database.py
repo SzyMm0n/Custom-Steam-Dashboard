@@ -584,36 +584,21 @@ class DatabaseRollupManager:
 db: Optional[DatabaseManager] = None
 
 
-async def init_db(
-    host: str = os.getenv('PGHOST', 'localhost'),
-    port: int = os.getenv('PGPORT', 5432),
-    user: str = os.getenv('PGUSER', 'postgres'),
-    password: str = os.getenv('PGPASSWORD', ''),
-    database: str = os.getenv('PGDATABASE', 'postgres'),
-    schema: str = "custom-steam-dashboard",
-) -> DatabaseManager:
+async def init_db() -> DatabaseManager:
     """
     Initialize the global database instance.
-    
-    Args:
-        host: PostgreSQL host
-        port: PostgreSQL port
-        user: Database user
-        password: Database password
-        database: Database name
-        schema: Schema name to use/create
-        
+
     Returns:
         Initialized DatabaseManager instance
     """
     global db
     db = DatabaseManager(
-        host=host,
-        port=port,
-        user=user,
-        password=password,
-        database=database,
-        schema=schema,
+        host=os.getenv("PGHOST") or "localhost",
+        port=os.getenv("PGPORT") or 5432,
+        user=os.getenv("PGUSER") or "postgres",
+        password=os.getenv("PGPASSWORD") or "",
+        database=os.getenv("PGDATABASE") or "postgres",
+        schema="custom_steam_dashboard",
     )
     await db.initialize()
     return db
