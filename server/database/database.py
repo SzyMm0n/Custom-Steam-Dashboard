@@ -62,6 +62,9 @@ class DatabaseManager:
         """
         try:
             # Create connection pool
+            async def init_connection(conn):
+                await conn.execute(f'SET search_path TO "{self.schema}", public')
+
             self.pool = await asyncpg.create_pool(
                 host=self.host,
                 port=self.port,
@@ -70,6 +73,7 @@ class DatabaseManager:
                 database=self.database,
                 min_size=self.min_pool_size,
                 max_size=self.max_pool_size,
+                init=init_connection  # <-- Dodaj to
             )
             logger.info(f"Database connection pool created successfully")
 
@@ -504,14 +508,14 @@ class DatabaseRollupManager:
                 INSERT INTO player_counts_hourly (appid, hour_unix, avg_players, min_players, max_players, p95_players)
                 SELECT
                     appid,
-                    date_trunc('hour', to_timestamp(time_stamp))::int AS hour_unix,
-                    AVG(count) AS avg_players,
+                    EXTRACT(EPOCH FROM date_trunc('hour', to_timestamp(time_stamp)))::int AS hour_unix,
+                    AVG(count)::int AS avg_players,
                     MIN(count) AS min_players,
                     MAX(count) AS max_players,
-                    PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY count) AS p95_players
-                FROM players_raw_count
-                GROUP BY appid, hour_unix
-                ON CONFLICT (appid, hour_unix) DO NOTHING 
+                    PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY count)::int AS p95_players
+            FROM players_raw_count
+            GROUP BY appid, hour_unix
+            ON CONFLICT (appid, hour_unix) DO NOTHING
             """)
             logger.info("Hourly rollup completed")
 
