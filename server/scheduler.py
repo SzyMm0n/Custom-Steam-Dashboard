@@ -296,7 +296,7 @@ class SchedulerManager:
     Manages scheduled tasks for the application.
     """
 
-    def __init__(self, db: DatabaseManager | DatabaseRollupManager, steam_client: SteamClient):
+    def __init__(self, db: DatabaseManager, steam_client: SteamClient):
         """
         Initialize the scheduler manager.
 
@@ -307,11 +307,16 @@ class SchedulerManager:
         self.db = db
         self.steam_client = steam_client
         self.scheduler = AsyncIOScheduler()
+
+        # Create DatabaseRollupManager for data rollup and cleanup operations
+        self.rollup_manager = DatabaseRollupManager(db)
+
+        # Initialize job handlers
         self.player_count_collector = PlayerCountCollector(db, steam_client)
         self.watchlist_refresher = WatchlistRefresher(db, steam_client)
         self.game_data_filler = GameDataFiller(db, steam_client)
-        self.data_cleaner = DataCleaner(db)
-        self.data_deleter = DataDeleteOld(db)
+        self.data_cleaner = DataCleaner(self.rollup_manager)
+        self.data_deleter = DataDeleteOld(self.rollup_manager)
 
     def start(self) -> None:
         """
@@ -352,6 +357,7 @@ class SchedulerManager:
         self.scheduler.add_job(
             func=self.data_cleaner.rollup_hourly_data,
             trigger=IntervalTrigger(hours=1),
+            next_run_time=datetime.now(),
             id='hourly_data_rollup',
             name='Rollup hourly player count data',
             replace_existing=True,
