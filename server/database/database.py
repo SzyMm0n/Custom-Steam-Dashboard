@@ -402,6 +402,35 @@ class DatabaseManager:
                 """)
             return [dict(row) for row in rows]
 
+
+    async def get_game_tags(self, appid: int) -> Dict[str, Any]:
+        """
+        Retrieve genres and categories for a specific game.
+
+        Args:
+            appid: Steam app ID
+        Returns:
+            Dictionary containing genres and categories
+        """
+        async with self.acquire() as conn:
+            genres_rows = await conn.fetch("""
+                SELECT genre FROM game_genres WHERE appid = $1
+            """, appid)
+            categories_rows = await conn.fetch("""
+                SELECT category FROM game_categories WHERE appid = $1
+            """, appid)
+
+            genres = [row['genre'] for row in genres_rows]
+            categories = [row['category'] for row in categories_rows]
+
+            return {
+                "appid": appid,
+                "genres": genres,
+                "categories": categories,
+                "tags": genres + categories
+            }
+
+
     async def get_games_filtered_by_genre(self, genre: str) -> List[Dict[str, Any]]:
         """
         Retrieve games filtered by a specific genre.
@@ -449,6 +478,32 @@ class DatabaseManager:
                 GROUP BY g.appid
             """, category)
             return [dict(row) for row in rows]
+    async def get_all_genres(self) -> List[str]:
+        """
+        Retrieve all unique genres from the database.
+
+        Returns:
+            List of genre names
+        """
+        async with self.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT DISTINCT genre FROM game_genres ORDER BY genre
+            """)
+            return [row['genre'] for row in rows]
+
+    async def get_all_categories(self) -> List[str]:
+        """
+        Retrieve all unique categories from the database.
+
+        Returns:
+            List of category names
+        """
+        async with self.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT DISTINCT category FROM game_categories ORDER BY category
+            """)
+            return [row['category'] for row in rows]
+
 
     # Player count operations
     async def insert_player_count(self, appid: int, timestamp: int, count: int) -> None:

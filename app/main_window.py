@@ -1,63 +1,95 @@
+"""
+Main window module for Custom Steam Dashboard.
+Contains the primary application window with navigation and view management.
+"""
 import asyncio
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QToolBar
 from PySide6.QtGui import QAction
 from PySide6.QtCore import QSize
-from .core.data.db import AsyncDatabase as Database # Import typu
-from .ui.home_view import HomeView
-from .ui.library_view import LibraryView  # NEW: library tab
+from .ui.home_view_server import HomeView
+from .ui.library_view_server import LibraryView
+
 
 class MainWindow(QMainWindow):
-    """Główne okno aplikacji z paskiem narzędzi i widokami."""
-    
-    # ZMIANA 1: Konstruktor musi teraz przyjmować 'db'
-    def __init__(self, db: Database): 
+    """
+    Main application window with toolbar navigation and multiple views.
+
+    Features:
+    - Home view: Live game statistics and deals (from server)
+    - Library view: User game library browser
+    - Toolbar navigation between views
+    - Refresh functionality
+    """
+
+    def __init__(self, server_url: str = "http://localhost:8000"):
+        """
+        Initialize the main window.
+
+        Args:
+            server_url: URL of the backend server
+        """
         super().__init__()
         self.setWindowTitle("Steam Dashboard")
         self.setMinimumSize(1000, 800)
         
-        self._db = db # Zapisujemy instancję bazy danych
+        self._server_url = server_url
 
+        # Setup central widget and layout
         central_widget = QWidget()
         layout = QVBoxLayout(central_widget)
         self.setCentralWidget(central_widget)
 
+        # Create stacked widget for view management
         self.stack = QStackedWidget()
         layout.addWidget(self.stack)
 
-        # Widoki
-        self.home_view = HomeView(self._db)
+        # Initialize views
+        self.home_view = HomeView(server_url=self._server_url)
         self.stack.addWidget(self.home_view)
 
-        # NEW: LibraryView as separate tab/page
-        self.library_view = LibraryView()  # does not require DB
+        self.library_view = LibraryView(server_url=self._server_url)
         self.stack.addWidget(self.library_view)
 
+        # Initialize toolbar
         self._init_toolbar()
 
+    # ===== UI Initialization =====
+
     def _init_toolbar(self):
+        """
+        Initialize the navigation toolbar.
+        Creates actions for navigating between views and refreshing data.
+        """
         toolbar = QToolBar("Menu")
         toolbar.setIconSize(QSize(24, 24))
         self.addToolBar(toolbar)
 
+        # Home view action
         home_action = QAction("Home", self)
         home_action.triggered.connect(lambda: self.stack.setCurrentWidget(self.home_view))
         toolbar.addAction(home_action)
 
-        # NEW: action to open Library tab
+        # Library view action
         lib_action = QAction("Biblioteka gier", self)
         lib_action.triggered.connect(self.navigate_to_library)
         toolbar.addAction(lib_action)
 
+        # Refresh action
         refresh_action = QAction("Odśwież", self)
         refresh_action.triggered.connect(self.refresh_current_view)
         toolbar.addAction(refresh_action)
 
+    # ===== Navigation Methods =====
+
     def navigate_to_library(self):
+        """Navigate to the library view."""
         self.stack.setCurrentWidget(self.library_view)
 
     def refresh_current_view(self):
+        """
+        Refresh the currently displayed view.
+        Calls refresh_data() method if available on the current widget.
+        """
         current_widget = self.stack.currentWidget()
-        # Wymuś odświeżenie danych w aktywnym widoku (np. HomeView)
         if hasattr(current_widget, "refresh_data"):
-            # Uruchomienie asynchronicznego zadania odświeżania
             asyncio.create_task(current_widget.refresh_data())

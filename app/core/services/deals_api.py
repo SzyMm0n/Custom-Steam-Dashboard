@@ -43,7 +43,7 @@ class DealsApiClient(BaseAsyncService, IDealsApi):
         params = {
             "onSale": 1,
             "pageSize": max(1, min(500, int(limit))),
-            "sortBy": "Savings",
+            # "sortBy": "Savings",
         }
         data = await self._get_json(url, params=params)
         deals: List[Deal] = []

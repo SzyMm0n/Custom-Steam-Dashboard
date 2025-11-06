@@ -48,6 +48,8 @@ class ISteamService(ABC):
     @abstractmethod
     async def get_player_summary(self, steam_id: str) -> dict: ...
 
+    @abstractmethod
+    async def resolve_vanity_url(self, vanity_url: str) -> str | None: ...
 
 class SteamClient(BaseAsyncService, ISteamService):
 
@@ -325,6 +327,70 @@ class SteamClient(BaseAsyncService, ISteamService):
 
         logger.warning(f"Failed to retrieve player summary data for steam_id: {steam_id}")
         return {}
+
+    async def resolve_vanity_url(self, vanity_url: str) -> str | None:
+        """
+        Resolve a Steam vanity URL (custom URL) to a Steam ID64.
+
+        Args:
+            vanity_url (str): The vanity URL or custom name (e.g., 'gaben' or 'my_custom_name')
+
+        Returns:
+            str | None: The Steam ID64 if found, None otherwise
+        """
+        logger.info(f"Resolving vanity URL: {vanity_url}")
+
+        # Extract vanity name from full URL if provided
+        vanity_name = vanity_url
+        if '/' in vanity_url:
+            # Handle formats like:
+            # - https://steamcommunity.com/id/gaben
+            # - steamcommunity.com/id/customname
+            # - /id/username
+            parts = vanity_url.rstrip('/').split('/')
+            if 'id' in parts:
+                idx = parts.index('id')
+                if idx + 1 < len(parts):
+                    vanity_name = parts[idx + 1]
+            else:
+                # Take last non-empty part
+                vanity_name = parts[-1] if parts[-1] else vanity_url
+
+        vanity_name = vanity_name.strip()
+
+        if not vanity_name:
+            logger.warning("Empty vanity name provided")
+            return None
+
+        # Check if it's already a Steam ID64 (17-digit number)
+        if vanity_name.isdigit() and len(vanity_name) == 17:
+            logger.debug(f"Input is already a Steam ID64: {vanity_name}")
+            return vanity_name
+
+        # Use Steam API to resolve vanity URL
+        resolve_endpoint = "https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/"
+        params = {
+            "key": self.api_key,
+            "vanityurl": vanity_name,
+        }
+
+        data = await self._get_json(resolve_endpoint, params=params)
+
+        if data and 'response' in data:
+            response = data.get('response', {})
+            success = response.get('success')
+
+            # success == 1 means the vanity URL was resolved successfully
+            if success == 1:
+                steam_id = response.get('steamid')
+                logger.info(f"Successfully resolved vanity URL '{vanity_name}' to Steam ID: {steam_id}")
+                return steam_id
+            else:
+                logger.warning(f"Failed to resolve vanity URL '{vanity_name}': {response.get('message', 'Unknown error')}")
+                return None
+
+        logger.warning(f"No response from Steam API for vanity URL: {vanity_name}")
+        return None
 
 if __name__ == "__main__":
     import asyncio

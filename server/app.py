@@ -8,6 +8,8 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
 
+from dotenv import load_dotenv
+
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
@@ -42,7 +44,7 @@ async def lifespan(app: FastAPI):
 
     # Startup
     logger.info("Starting Custom Steam Dashboard Server...")
-
+    load_dotenv('../.env')
     try:
         # Initialize database
         db = await init_db()
@@ -191,6 +193,32 @@ async def get_player_summary(steamid: str):
         logger.error(f"Error fetching player summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/api/resolve-vanity/{vanity_url:path}")
+async def resolve_vanity_url(vanity_url: str):
+    """
+    Resolve a Steam vanity URL or custom name to a Steam ID64.
+
+    Args:
+        vanity_url: Vanity name, custom URL, or full profile URL
+
+    Examples:
+        - /api/resolve-vanity/gaben
+        - /api/resolve-vanity/my_custom_name
+        - /api/resolve-vanity/https://steamcommunity.com/id/gaben
+    """
+    try:
+        steam_id = await steam_client.resolve_vanity_url(vanity_url)
+        if steam_id:
+            return {"success": True, "steamid": steam_id, "vanity_url": vanity_url}
+        else:
+            raise HTTPException(status_code=404, detail=f"Could not resolve vanity URL: {vanity_url}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resolving vanity URL: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ===== UI Endpoints =====
 
 @app.get("/api/current-players")
@@ -206,6 +234,38 @@ async def get_current_players_for_ui():
         logger.error(f"Error fetching current players for UI: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/api/genres")
+async def get_all_genres():
+    """Get all unique genres from games"""
+    try:
+        genres = await db.get_all_genres()
+        return {"genres": genres}
+    except Exception as e:
+        logger.error(f"Error fetching genres: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/categories")
+async def get_all_categories():
+    """Get all unique categories from games"""
+    try:
+        categories = await db.get_all_categories()
+        return {"categories": categories}
+    except Exception as e:
+        logger.error(f"Error fetching categories: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/games/{appid}/tags")
+async def get_game_tags(appid: int):
+    """Get genres and categories for a specific game"""
+    try:
+        tags = await db.get_game_tags(appid)
+        return tags
+    except Exception as e:
+        logger.error(f"Error fetching game tags: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":

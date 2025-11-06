@@ -12,4 +12,6 @@ async def parse_html_tags(html_string):
     """
     clean = re.sub(r"<[^>]+>", "", html_string)
     clean = html.unescape(clean)
+    clean = re.sub(r"[\r\n\t]+", " ", clean)
+    clean = re.sub(r"\s+", " ", clean)
     return clean.strip()
