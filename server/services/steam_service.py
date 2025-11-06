@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import os
 import sys
@@ -17,8 +16,8 @@ if str(project_root) not in sys.path:
 from server.services.models import SteamGameDetails, PlayerCountResponse, SteamPlayerGameOverview
 import httpx
 
-from common._base_http import BaseAsyncService
-from common.parse_html import parse_html_tags
+from server.services._base_http import BaseAsyncService
+from server.services.parse_html import parse_html_tags
 
 logger = logging.getLogger(__name__)
 
