@@ -8,8 +8,6 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from dotenv import load_dotenv
-
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
@@ -122,19 +120,6 @@ async def health_check():
     }
 
 
-# ===== Watchlist Endpoints =====
-
-@app.get("/api/watchlist")
-async def get_watchlist():
-    """Get all games in the watchlist"""
-    try:
-        watchlist = await db.get_watchlist()
-        return {"watchlist": watchlist}
-    except Exception as e:
-        logger.error(f"Error fetching watchlist: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # ===== Game Endpoints =====
 
 @app.get("/api/games")
@@ -163,34 +148,29 @@ async def get_game(appid: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/games/{appid}/current-players")
-async def get_current_players(appid: int):
-    """Get current player count for a game from Steam API"""
-    try:
-        player_count = await steam_client.get_player_count(appid)
-        return {
-            "appid": appid,
-            "player_count": player_count.player_count
-        }
-    except Exception as e:
-        logger.error(f"Error fetching current player count: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # ===== Steam API Endpoints =====
 
-@app.get("/api/steam/most-played")
-async def get_most_played_games():
-    """Get most played games from Steam"""
+@app.get("/api/owned-games/{steamid}")
+async def get_most_played_games(steamid: str):
+    """Get player owned games from Steam library"""
     try:
-        games = await steam_client.get_most_played_games()
+        games = await steam_client.get_player_owned_games(steamid)
         return {"games": [game.model_dump() for game in games]}
     except Exception as e:
         logger.error(f"Error fetching most played games: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/recently-played/{steamid}")
+async def get_recently_played_games(steamid: str):
+    """Get player recently played games from Steam library"""
+    try:
+        games = await steam_client.get_recently_played_games(steamid)
+        return {"games": [game.model_dump() for game in games]}
+    except Exception as e:
+        logger.error(f"Error fetching recently played games: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/steam/coming-soon")
+@app.get("/api/coming-soon")
 async def get_coming_soon_games():
     """Get coming soon games from Steam"""
     try:
@@ -199,6 +179,33 @@ async def get_coming_soon_games():
     except Exception as e:
         logger.error(f"Error fetching coming soon games: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/player-summary/{steamid}")
+async def get_player_summary(steamid: str):
+    """Get Steam player summary"""
+    try:
+        summary = await steam_client.get_player_summary(steamid)
+        return summary
+    except Exception as e:
+        logger.error(f"Error fetching player summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ===== UI Endpoints =====
+
+@app.get("/api/current-players")
+async def get_current_players_for_ui():
+
+    """Get current player counts for watchlist games for UI"""
+
+    try:
+        # Watchlist holds last fetched player counts for each game
+        watchlist = await db.get_watchlist()
+        return {"games": watchlist}
+    except Exception as e:
+        logger.error(f"Error fetching current players for UI: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 if __name__ == "__main__":
