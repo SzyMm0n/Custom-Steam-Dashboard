@@ -528,7 +528,7 @@ class DatabaseRollupManager:
                 INSERT INTO player_counts_daily (appid, date_dmy, avg_players, min_players, max_players, p95_players)
                 SELECT
                     appid,
-                    to_char(to_timestamp(time_stamp), 'YYYY-MM-DD') AS date_dmy,
+                    to_char(to_timestamp(time_stamp), 'DD-MM-YYYY') AS date_dmy,
                     AVG(count) AS avg_players,
                     MIN(count) AS min_players,
                     MAX(count) AS max_players,
@@ -565,7 +565,7 @@ class DatabaseRollupManager:
         async with self.db.acquire() as conn:
             await conn.execute("""
                 DELETE FROM player_counts_daily
-                WHERE to_date(date_dmy, 'YYYY-MM-DD') < to_timestamp($1)
+                WHERE to_date(date_dmy, 'DD-MM-YYYY') < to_timestamp($1)
             """, cutoff_date)
             logger.info(f"Old daily data older than {days} days deleted")
 
