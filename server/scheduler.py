@@ -34,7 +34,7 @@ class PlayerCountCollector:
         """
         self.db = db
         self.steam_client = steam_client
-        self.semaphore = asyncio.Semaphore(10)
+        self.semaphore = asyncio.Semaphore(1)
 
     async def collect_player_counts(self) -> None:
         """
@@ -339,7 +339,7 @@ class SchedulerManager:
             trigger=IntervalTrigger(hours=1),
             next_run_time=datetime.now(),  # Start immediately
             id='watchlist_refresh',
-            name='Refresh watchlist genres and categories',
+            name='Refresh watchlist',
             replace_existing=True,
             max_instances=1,  # Ensure only one instance runs at a time
         ),
