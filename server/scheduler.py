@@ -34,66 +34,112 @@ class PlayerCountCollector:
         """
         self.db = db
         self.steam_client = steam_client
-        self.semaphore = asyncio.Semaphore(1)
+        self.semaphore = asyncio.Semaphore(10)
 
     async def collect_player_counts(self) -> None:
         """
         Collect player counts for all games in the watchlist.
         This method is called by the scheduler every 5 minutes.
         """
+        start_time = datetime.now()
         try:
             logger.info("Starting player count collection...")
             
-            # Get all games from watchlist
-            watchlist = await self.db.get_watchlist()
-            
+            # Get all games from watchlist with timeout
+            try:
+                watchlist = await asyncio.wait_for(
+                    self.db.get_watchlist(),
+                    timeout=30.0
+                )
+            except asyncio.TimeoutError:
+                logger.error("Timeout getting watchlist from database")
+                return
+
             if not watchlist:
                 logger.info("Watchlist is empty, skipping player count collection")
                 return
 
             logger.info(f"Collecting player counts for {len(watchlist)} games")
             
+            success_count = 0
+            error_count = 0
+
             # Collect player counts concurrently with rate limiting
-            async def fetch_and_store_count(game: dict) -> None:
+            async def fetch_and_store_count(game: dict) -> bool:
                 async with self.semaphore:
                     try:
                         appid = game.get('appid')
-                        player_count_data = await self.steam_client.get_player_count(appid)
-                        
+
+                        # Fetch player count with timeout
+                        player_count_data = await asyncio.wait_for(
+                            self.steam_client.get_player_count(appid),
+                            timeout=10.0
+                        )
+
                         # Get current timestamp
                         timestamp = int(datetime.now().timestamp())
                         
-                        # Store in database
-                        await self.db.insert_player_count(
-                            appid=appid,
-                            timestamp=timestamp,
-                            count=player_count_data.player_count
+                        # Store in database with timeout
+                        await asyncio.wait_for(
+                            self.db.insert_player_count(
+                                appid=appid,
+                                timestamp=timestamp,
+                                count=player_count_data.player_count
+                            ),
+                            timeout=5.0
                         )
                         
-                        # Update last_count in watchlist
-                        await self.db.upsert_watchlist(
-                            appid=appid,
-                            name=game.get('name'),
-                            last_count=player_count_data.player_count
+                        # Update last_count in watchlist with timeout
+                        await asyncio.wait_for(
+                            self.db.upsert_watchlist(
+                                appid=appid,
+                                name=game.get('name'),
+                                last_count=player_count_data.player_count
+                            ),
+                            timeout=5.0
                         )
                         
                         logger.debug(
                             f"Collected player count for {game.get('name')} (appid={appid}): "
                             f"{player_count_data.player_count} players"
                         )
+                        return True
+                    except asyncio.TimeoutError:
+                        logger.warning(
+                            f"Timeout collecting player count for {game.get('name')} (appid={game.get('appid')})"
+                        )
+                        return False
                     except Exception as e:
                         logger.error(
                             f"Error collecting player count for {game.get('name')} (appid={game.get('appid')}): {e}"
                         )
+                        return False
 
-            # Execute all tasks concurrently
+            # Execute all tasks concurrently with overall timeout
             tasks = [fetch_and_store_count(game) for game in watchlist]
-            await asyncio.gather(*tasks, return_exceptions=True)
-            
-            logger.info(f"Player count collection completed for {len(watchlist)} games")
-            
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=240.0  # 4 minutes max for entire collection
+                )
+                success_count = sum(1 for r in results if r is True)
+                error_count = len(results) - success_count
+            except asyncio.TimeoutError:
+                logger.error("Overall timeout reached for player count collection")
+                return
+
+            elapsed_time = (datetime.now() - start_time).total_seconds()
+            logger.info(
+                f"Player count collection completed in {elapsed_time:.1f}s: "
+                f"{success_count} successful, {error_count} failed"
+            )
+
         except Exception as e:
-            logger.error(f"Error in player count collection job: {e}", exc_info=True)
+            elapsed_time = (datetime.now() - start_time).total_seconds()
+            logger.error(
+                f"Error in player count collection job after {elapsed_time:.1f}s: {e}",
+                exc_info=True
+            )
 
 class WatchlistRefresher:
     """
@@ -110,45 +156,91 @@ class WatchlistRefresher:
         """
         self.db = db
         self.steam_client = steam_client
+        self.semaphore = asyncio.Semaphore(10)
 
     async def refresh_watchlist(self) -> None:
         """
         Refresh genres and categories for all games in the watchlist.
         This method can be scheduled to run periodically.
         """
+        start_time = datetime.now()
         try:
             logger.info("Starting watchlist refresh...")
 
-            # Get current most played games
-            most_played_games = await self.steam_client.get_most_played_games()
+            # Get current most played games with timeout
+            try:
+                most_played_games = await asyncio.wait_for(
+                    self.steam_client.get_most_played_games(),
+                    timeout=30.0
+                )
+            except asyncio.TimeoutError:
+                logger.error("Timeout getting most played games")
+                return
 
             if not most_played_games:
                 logger.info("No new games available, skipping watchlist refresh")
                 return
 
-            logger.info(f"Refreshing games in the watchlist")
+            logger.info(f"Refreshing {len(most_played_games)} games in the watchlist")
 
-            for game in most_played_games:
-                try:
-                    appid = game.appid
-                    player_count = await self.steam_client.get_player_count(appid)
+            success_count = 0
+            error_count = 0
 
-                    await self.db.upsert_watchlist(
-                        appid=appid,
-                        name=game.name,
-                        last_count=player_count.player_count
-                    )
-                    logger.debug(f"Refreshed or inserted for {game.name} (appid={appid})")
+            async def refresh_game(game) -> bool:
+                async with self.semaphore:
+                    try:
+                        appid = game.appid
 
-                except Exception as e:
-                    logger.error(
-                        f"Error refreshing for {game.name} (appid={game.appid}): {e}"
-                    )
+                        # Get player count with timeout
+                        player_count = await asyncio.wait_for(
+                            self.steam_client.get_player_count(appid),
+                            timeout=10.0
+                        )
 
-            logger.info(f"Watchlist refresh completed for {len(most_played_games)} games")
+                        # Update watchlist with timeout
+                        await asyncio.wait_for(
+                            self.db.upsert_watchlist(
+                                appid=appid,
+                                name=game.name,
+                                last_count=player_count.player_count
+                            ),
+                            timeout=5.0
+                        )
+                        logger.debug(f"Refreshed or inserted for {game.name} (appid={appid})")
+                        return True
+
+                    except asyncio.TimeoutError:
+                        logger.warning(f"Timeout refreshing {game.name} (appid={game.appid})")
+                        return False
+                    except Exception as e:
+                        logger.error(f"Error refreshing for {game.name} (appid={game.appid}): {e}")
+                        return False
+
+            # Execute all tasks concurrently with overall timeout
+            tasks = [refresh_game(game) for game in most_played_games]
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=300.0  # 5 minutes max
+                )
+                success_count = sum(1 for r in results if r is True)
+                error_count = len(results) - success_count
+            except asyncio.TimeoutError:
+                logger.error("Overall timeout reached for watchlist refresh")
+                return
+
+            elapsed_time = (datetime.now() - start_time).total_seconds()
+            logger.info(
+                f"Watchlist refresh completed in {elapsed_time:.1f}s: "
+                f"{success_count} successful, {error_count} failed"
+            )
 
         except Exception as e:
-            logger.error(f"Error in watchlist tags refresh job: {e}", exc_info=True)
+            elapsed_time = (datetime.now() - start_time).total_seconds()
+            logger.error(
+                f"Error in watchlist tags refresh job after {elapsed_time:.1f}s: {e}",
+                exc_info=True
+            )
 
 class GameDataFiller:
     """
@@ -357,7 +449,6 @@ class SchedulerManager:
         self.scheduler.add_job(
             func=self.data_cleaner.rollup_hourly_data,
             trigger=IntervalTrigger(hours=1),
-            next_run_time=datetime.now(),
             id='hourly_data_rollup',
             name='Rollup hourly player count data',
             replace_existing=True,

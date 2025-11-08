@@ -29,9 +29,10 @@ class DatabaseManager:
         user: str = os.getenv("PGUSER") or "postgres",
         password: str = os.getenv("PGPASSWORD") or "password",
         database: str = os.getenv("PGDATABASE") or "postgres",
-        schema: str = "custom-steam-dashboard",
+        schema: str = "custom_steam_dashboard",
         min_pool_size: int = 10,
-        max_pool_size: int = 20,
+        max_pool_size: int = 30,  # Increased from 20 to handle concurrent scheduler jobs
+        command_timeout: float = 60.0,  # Command timeout in seconds
     ):
         """
         Initialize the database manager.
@@ -45,6 +46,7 @@ class DatabaseManager:
             schema: Schema name to use/create
             min_pool_size: Minimum connection pool size
             max_pool_size: Maximum connection pool size
+            command_timeout: Timeout for database commands
         """
         self.host = host
         self.port = port
@@ -54,6 +56,7 @@ class DatabaseManager:
         self.schema = schema
         self.min_pool_size = min_pool_size
         self.max_pool_size = max_pool_size
+        self.command_timeout = command_timeout
         self.pool: Optional[asyncpg.Pool] = None
 
     async def initialize(self):
@@ -62,9 +65,8 @@ class DatabaseManager:
         """
         try:
             # Create connection pool
-            async def init_connection(conn):
-                await conn.execute(f'SET search_path TO "{self.schema}", public')
-
+            # Note: We handle search_path in the acquire() method instead of here
+            # because asyncpg's setup/init hooks are inconsistent with concurrent access
             self.pool = await asyncpg.create_pool(
                 host=self.host,
                 port=self.port,
@@ -73,9 +75,31 @@ class DatabaseManager:
                 database=self.database,
                 min_size=self.min_pool_size,
                 max_size=self.max_pool_size,
-                init=init_connection  # <-- Dodaj to
+                command_timeout=self.command_timeout,
+                max_queries=50000,  # Maximum number of queries before connection is replaced
+                max_inactive_connection_lifetime=300.0,  # Close connections idle for 5 minutes
             )
-            logger.info(f"Database connection pool created successfully")
+            logger.info(
+                f"Database connection pool created successfully "
+                f"(min={self.min_pool_size}, max={self.max_pool_size}, schema={self.schema})"
+            )
+
+            # Set default search_path for the role if possible
+            try:
+                async with self.pool.acquire() as conn:
+                    # Try to set default search_path for the database role
+                    # This makes search_path persistent for all connections
+                    await conn.execute(
+                        f'ALTER ROLE {self.user} IN DATABASE {self.database} '
+                        f'SET search_path TO "{self.schema}", public'
+                    )
+                    logger.info(f"Set default search_path for role {self.user}")
+            except Exception as e:
+                # If we can't ALTER ROLE (insufficient permissions), that's ok
+                # We'll set search_path in acquire() method
+                logger.warning(
+                    f"Could not set default search_path for role (will set per-connection): {e}"
+                )
 
             # Create schema and tables
             await self._create_schema()
@@ -93,6 +117,18 @@ class DatabaseManager:
         if self.pool:
             await self.pool.close()
             logger.info("Database connection pool closed")
+
+    def _table(self, table_name: str) -> str:
+        """
+        Get fully qualified table name including schema.
+
+        Args:
+            table_name: Name of the table
+
+        Returns:
+            Fully qualified table name (e.g., "custom_steam_dashboard".watchlist)
+        """
+        return f'"{self.schema}".{table_name}'
 
     async def _create_schema(self):
         """
@@ -254,13 +290,23 @@ class DatabaseManager:
         """
         Context manager for acquiring a database connection from the pool.
         
+        IMPORTANT: Sets search_path on every checkout to ensure
+        queries can find tables in the correct schema.
+
         Usage:
             async with db.acquire() as conn:
                 await conn.execute(...)
         """
-        async with self.pool.acquire() as connection:
+        connection = None
+        try:
+            connection = await self.pool.acquire()
+            # CRITICAL: Set search_path for this connection
+            # We do this synchronously to ensure it completes before yielding
             await connection.execute(f'SET search_path TO "{self.schema}", public')
             yield connection
+        finally:
+            if connection is not None:
+                await self.pool.release(connection)
 
     # Watchlist operations
     async def upsert_watchlist(self, appid: int, name: str, last_count: int = 0) -> None:
@@ -270,14 +316,14 @@ class DatabaseManager:
         Args:
             appid: Steam app ID
             name: Game name
-            last_count: Last recorded player count
+            last_count: Last recorded player count (default 0)
         """
         async with self.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO watchlist (appid, name, last_count)
+            await conn.execute(f"""
+                INSERT INTO {self._table('watchlist')} (appid, name, last_count)
                 VALUES ($1, $2, $3)
-                ON CONFLICT (appid) DO UPDATE 
-                SET last_count = EXCLUDED.last_count
+                ON CONFLICT (appid) DO UPDATE
+                SET name = EXCLUDED.name, last_count = EXCLUDED.last_count
             """, appid, name, last_count)
 
     async def remove_from_watchlist(self, appid: int) -> None:
@@ -288,17 +334,17 @@ class DatabaseManager:
             appid: Steam app ID
         """
         async with self.acquire() as conn:
-            await conn.execute(" DELETE FROM watchlist WHERE appid = $1", appid)
+            await conn.execute(f" DELETE FROM {self._table('watchlist')} WHERE appid = $1", appid)
 
     async def get_watchlist(self) -> List[Dict[str, Any]]:
         """
-        Retrieve the entire watchlist.
+        Retrieve all games from the watchlist.
 
         Returns:
-            List of dictionaries containing watchlist entries
+            List of watchlist entries as dictionaries
         """
         async with self.acquire() as conn:
-            rows = await conn.fetch("SELECT * FROM watchlist ORDER BY last_count DESC")
+            rows = await conn.fetch(f"SELECT * FROM {self._table('watchlist')} ORDER BY last_count DESC")
             return [dict(row) for row in rows]
 
     # Game operations
@@ -311,8 +357,8 @@ class DatabaseManager:
             genres: List of genres
         """
         async with self.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO game_genres (appid, genre) VALUES ($1, UNNEST($2::VARCHAR[]))
+            await conn.execute(f"""
+                INSERT INTO {self._table('game_genres')} (appid, genre) VALUES ($1, UNNEST($2::VARCHAR[]))
                 ON CONFLICT (appid, genre) DO NOTHING 
             """, appid, genres)
     async def upsert_game_categories(self, appid: int, categories: List[str]) -> None:
@@ -324,8 +370,8 @@ class DatabaseManager:
             categories: List of categories
         """
         async with self.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO game_categories (appid, category) VALUES ($1, UNNEST($2::VARCHAR[]))
+            await conn.execute(f"""
+                INSERT INTO {self._table('game_categories')} (appid, category) VALUES ($1, UNNEST($2::VARCHAR[]))
                 ON CONFLICT (appid, category) DO NOTHING 
             """, appid, categories)
 
@@ -337,8 +383,8 @@ class DatabaseManager:
             game_data: Dictionary containing game information
         """
         async with self.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO games (
+            await conn.execute(f"""
+                INSERT INTO {self._table('games')} (
                     appid, name, detailed_description, header_image,
                     background_image, release_date, price, is_free
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -369,13 +415,13 @@ class DatabaseManager:
         """
         async with self.acquire() as conn:
             row = await conn.fetchrow(
-                """SELECT
+                f"""SELECT
                      g.*,
                      ARRAY_AGG(DISTINCT gg.genre) AS genres,
                      ARRAY_AGG(DISTINCT gc.category) AS categories
-                   FROM games g
-                   LEFT JOIN game_genres gg ON g.appid = gg.appid
-                   LEFT JOIN game_categories gc ON g.appid = gc.appid
+                   FROM {self._table('games')} g
+                   LEFT JOIN {self._table('game_genres')} gg ON g.appid = gg.appid
+                   LEFT JOIN {self._table('game_categories')} gc ON g.appid = gc.appid
                    WHERE g.appid = $1
                    GROUP BY g.appid
                 """,
@@ -391,13 +437,13 @@ class DatabaseManager:
             List of dictionaries containing game information
         """
         async with self.acquire() as conn:
-            rows = await conn.fetch("""SELECT
+            rows = await conn.fetch(f"""SELECT
                      g.*,
                      ARRAY_AGG(DISTINCT gg.genre) AS genres,
                      ARRAY_AGG(DISTINCT gc.category) AS categories
-                   FROM games g
-                   LEFT JOIN game_genres gg ON g.appid = gg.appid
-                   LEFT JOIN game_categories gc ON g.appid = gc.appid
+                   FROM {self._table('games')} g
+                   LEFT JOIN {self._table('game_genres')} gg ON g.appid = gg.appid
+                   LEFT JOIN {self._table('game_categories')} gc ON g.appid = gc.appid
                    GROUP BY g.appid
                 """)
             return [dict(row) for row in rows]
@@ -419,13 +465,13 @@ class DatabaseManager:
 
         async with self.acquire() as conn:
             # Fetch all genres for given appids
-            genres_rows = await conn.fetch("""
-                SELECT appid, genre FROM game_genres WHERE appid = ANY($1)
+            genres_rows = await conn.fetch(f"""
+                SELECT appid, genre FROM {self._table('game_genres')} WHERE appid = ANY($1)
             """, appids)
 
             # Fetch all categories for given appids
-            categories_rows = await conn.fetch("""
-                SELECT appid, category FROM game_categories WHERE appid = ANY($1)
+            categories_rows = await conn.fetch(f"""
+                SELECT appid, category FROM {self._table('game_categories')} WHERE appid = ANY($1)
             """, appids)
 
             # Initialize result dict with empty lists for all requested appids
@@ -455,14 +501,14 @@ class DatabaseManager:
             List of dictionaries containing game information
         """
         async with self.acquire() as conn:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(f"""
                 SELECT
                     g.*,
                     ARRAY_AGG(DISTINCT gg.genre) AS genres,
                     ARRAY_AGG(DISTINCT gc.category) AS categories
-                FROM games g
-                JOIN game_genres gg ON g.appid = gg.appid
-                LEFT JOIN game_categories gc ON g.appid = gc.appid
+                FROM {self._table('games')} g
+                JOIN {self._table('game_genres')} gg ON g.appid = gg.appid
+                LEFT JOIN {self._table('game_categories')} gc ON g.appid = gc.appid
                 WHERE gg.genre = $1
                 GROUP BY g.appid
             """, genre)
@@ -479,14 +525,14 @@ class DatabaseManager:
             List of dictionaries containing game information
         """
         async with self.acquire() as conn:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(f"""
                 SELECT
                     g.*,
                     ARRAY_AGG(DISTINCT gg.genre) AS genres,
                     ARRAY_AGG(DISTINCT gc.category) AS categories
-                FROM games g
-                JOIN game_categories gc ON g.appid = gc.appid
-                LEFT JOIN game_genres gg ON g.appid = gg.appid
+                FROM {self._table('games')} g
+                JOIN {self._table('game_categories')} gc ON g.appid = gc.appid
+                LEFT JOIN {self._table('game_genres')} gg ON g.appid = gg.appid
                 WHERE gc.category = $1
                 GROUP BY g.appid
             """, category)
@@ -499,8 +545,8 @@ class DatabaseManager:
             List of genre names
         """
         async with self.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT DISTINCT genre FROM game_genres ORDER BY genre
+            rows = await conn.fetch(f"""
+                SELECT DISTINCT genre FROM {self._table('game_genres')} ORDER BY genre
             """)
             return [row['genre'] for row in rows]
 
@@ -512,8 +558,8 @@ class DatabaseManager:
             List of category names
         """
         async with self.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT DISTINCT category FROM game_categories ORDER BY category
+            rows = await conn.fetch(f"""
+                SELECT DISTINCT category FROM {self._table('game_categories')} ORDER BY category
             """)
             return [row['category'] for row in rows]
 
@@ -529,8 +575,8 @@ class DatabaseManager:
             count: Player count
         """
         async with self.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO players_raw_count (appid, time_stamp, count)
+            await conn.execute(f"""
+                INSERT INTO {self._table('players_raw_count')} (appid, time_stamp, count)
                 VALUES ($1, $2, $3)
             """, appid, timestamp, count)
 
@@ -546,8 +592,8 @@ class DatabaseManager:
             List of dictionaries containing player count records
         """
         async with self.acquire() as conn:
-            rows = await conn.fetch("""
-                SELECT * FROM players_raw_count
+            rows = await conn.fetch(f"""
+                SELECT * FROM {self._table('players_raw_count')}
                 WHERE appid = $1
                 ORDER BY time_stamp DESC
                 LIMIT $2
@@ -572,8 +618,8 @@ class DatabaseRollupManager:
         Perform hourly rollup of player count data.
         """
         async with self.db.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO player_counts_hourly (appid, hour_unix, avg_players, min_players, max_players, p95_players)
+            await conn.execute(f"""
+                INSERT INTO {self.db._table('player_counts_hourly')} (appid, hour_unix, avg_players, min_players, max_players, p95_players)
                 SELECT
                     appid,
                     EXTRACT(EPOCH FROM date_trunc('hour', to_timestamp(time_stamp)))::int AS hour_unix,
@@ -581,7 +627,7 @@ class DatabaseRollupManager:
                     MIN(count) AS min_players,
                     MAX(count) AS max_players,
                     PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY count)::int AS p95_players
-            FROM players_raw_count
+            FROM {self.db._table('players_raw_count')}
             GROUP BY appid, hour_unix
             ON CONFLICT (appid, hour_unix) DO NOTHING
             """)
@@ -592,8 +638,8 @@ class DatabaseRollupManager:
         Perform daily rollup of player count data.
         """
         async with self.db.acquire() as conn:
-            await conn.execute("""
-                INSERT INTO player_counts_daily (appid, date_dmy, avg_players, min_players, max_players, p95_players)
+            await conn.execute(f"""
+                INSERT INTO {self.db._table('player_counts_daily')} (appid, date_dmy, avg_players, min_players, max_players, p95_players)
                 SELECT
                     appid,
                     to_char(to_timestamp(time_stamp), 'DD-MM-YYYY') AS date_dmy,
@@ -601,7 +647,7 @@ class DatabaseRollupManager:
                     MIN(count) AS min_players,
                     MAX(count) AS max_players,
                     PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY count) AS p95_players
-                FROM players_raw_count
+                FROM {self.db._table('players_raw_count')}
                 GROUP BY appid, date_dmy
                 ON CONFLICT (appid, date_dmy) DO NOTHING
             """)
@@ -616,8 +662,8 @@ class DatabaseRollupManager:
         """
         cutoff_timestamp = int((asyncio.get_event_loop().time() - days * 86400))
         async with self.db.acquire() as conn:
-            await conn.execute("""
-                DELETE FROM players_raw_count
+            await conn.execute(f"""
+                DELETE FROM {self.db._table('players_raw_count')}
                 WHERE time_stamp < $1
             """, cutoff_timestamp)
             logger.info(f"Old raw data older than {days} days deleted")
@@ -631,8 +677,8 @@ class DatabaseRollupManager:
         """
         cutoff_date = (asyncio.get_event_loop().time() - days * 86400)
         async with self.db.acquire() as conn:
-            await conn.execute("""
-                DELETE FROM player_counts_daily
+            await conn.execute(f"""
+                DELETE FROM {self.db._table('player_counts_daily')}
                 WHERE to_date(date_dmy, 'DD-MM-YYYY') < to_timestamp($1)
             """, cutoff_date)
             logger.info(f"Old daily data older than {days} days deleted")
@@ -646,8 +692,8 @@ class DatabaseRollupManager:
         """
         cutoff_timestamp = int((asyncio.get_event_loop().time() - days * 86400))
         async with self.db.acquire() as conn:
-            await conn.execute("""
-                DELETE FROM player_counts_hourly
+            await conn.execute(f"""
+                DELETE FROM {self.db._table('player_counts_hourly')}
                 WHERE hour_unix < $1
             """, cutoff_timestamp)
             logger.info(f"Old hourly data older than {days} days deleted")
