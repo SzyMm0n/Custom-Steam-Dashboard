@@ -52,31 +52,6 @@ class ServerClient:
             logger.error(f"Unexpected error fetching current players: {e}")
             return []
     
-    async def get_game_details(self, appid: int) -> Optional[Dict[str, Any]]:
-        """
-        Get detailed information about a specific game.
-        
-        Args:
-            appid: Steam application ID
-            
-        Returns:
-            Game details dict or None if not found
-        """
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/games/{appid}")
-                response.raise_for_status()
-                return response.json()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(f"Game {appid} not found")
-                return None
-            logger.error(f"Error fetching game details: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error fetching game details: {e}")
-            return None
-    
     async def get_all_games(self) -> List[Dict[str, Any]]:
         """
         Get all games from the database.
@@ -282,7 +257,7 @@ class ServerClient:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(
                     f"{self.base_url}/api/games/tags/batch",
-                    json=appids
+                    json={"appids": appids}
                 )
                 response.raise_for_status()
                 data = response.json()
