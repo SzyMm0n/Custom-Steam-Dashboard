@@ -519,7 +519,7 @@ class HomeView(QWidget):
 
         # Fetch tags for ALL games in ONE batch request
         try:
-            tags_batch = await self._server_client.get_game_tags_batch(appids_to_fetch)
+            tags_batch = await self._server_client.get_game_tags_batch(appids_to_fetch[:100]) # Nie więcej niż 100 na raz, inaczej serwer zwróci błąd
         except Exception as e:
             logger.error(f"Error fetching tags batch: {e}")
             tags_batch = {}

@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
-from typing import Optional, List
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -15,12 +15,23 @@ project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from pydantic import ValidationError
 
 from database.database import DatabaseManager, init_db, close_db
 from services.steam_service import SteamClient
 from scheduler import SchedulerManager
+from validation import (
+    SteamIDValidator,
+    AppIDValidator,
+    AppIDListValidator,
+    VanityURLValidator
+)
 
 # Configure logging
 logging.basicConfig(
@@ -28,6 +39,9 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 # Global instances
 db: Optional[DatabaseManager] = None
@@ -90,12 +104,33 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Register rate limiter state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add custom error handlers
+@app.exception_handler(ValidationError)
+async def validation_exception_handler(request: Request, exc: ValidationError):
+    """Handle Pydantic validation errors"""
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors(), "body": str(exc)}
+    )
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    """Handle value errors"""
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)}
+    )
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, specify actual origins
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -103,7 +138,8 @@ app.add_middleware(
 # ===== API Endpoints =====
 
 @app.get("/")
-async def root():
+@limiter.limit("60/minute")
+async def root(request: Request):
     """Root endpoint"""
     return {
         "message": "Custom Steam Dashboard API",
@@ -113,7 +149,8 @@ async def root():
 
 
 @app.get("/health")
-async def health_check():
+@limiter.limit("120/minute")
+async def health_check(request: Request):
     """Health check endpoint"""
     return {
         "status": "healthy",
@@ -125,7 +162,8 @@ async def health_check():
 # ===== Game Endpoints =====
 
 @app.get("/api/games")
-async def get_all_games():
+@limiter.limit("30/minute")
+async def get_all_games(request: Request):
     """Get all games"""
     try:
         games = await db.get_all_games()
@@ -136,13 +174,20 @@ async def get_all_games():
 
 
 @app.get("/api/games/{appid}")
-async def get_game(appid: int):
+@limiter.limit("60/minute")
+async def get_game(appid: int, request: Request):
     """Get game details by appid"""
     try:
-        game = await db.get_game(appid)
+        # Validate appid
+        validator = AppIDValidator(appid=appid)
+        validated_appid = validator.appid
+
+        game = await db.get_game(validated_appid)
         if not game:
-            raise HTTPException(status_code=404, detail=f"Game with appid {appid} not found")
+            raise HTTPException(status_code=404, detail=f"Game with appid {validated_appid} not found")
         return game
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors())
     except HTTPException:
         raise
     except Exception as e:
@@ -151,19 +196,22 @@ async def get_game(appid: int):
 
 
 @app.post("/api/games/tags/batch")
-async def get_games_tags_batch(appids: List[int]):
+@limiter.limit("20/minute")
+async def get_games_tags_batch(data: AppIDListValidator, request: Request):
     """
     Get genres and categories for multiple games in one request.
 
     Args:
-        appids: List of Steam application IDs
+        data: AppIDListValidator with list of Steam application IDs
 
     Returns:
         Dictionary mapping appid to tags data
     """
     try:
-        tags_batch = await db.get_game_tags(appids)
+        tags_batch = await db.get_game_tags(data.appids)
         return {"tags": tags_batch}
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors())
     except Exception as e:
         logger.error(f"Error fetching games tags batch: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -172,27 +220,42 @@ async def get_games_tags_batch(appids: List[int]):
 # ===== Steam API Endpoints =====
 
 @app.get("/api/owned-games/{steamid}")
-async def get_most_played_games(steamid: str):
+@limiter.limit("20/minute")
+async def get_most_played_games(steamid: str, request: Request):
     """Get player owned games from Steam library"""
     try:
-        games = await steam_client.get_player_owned_games(steamid)
+        # Validate steamid
+        validator = SteamIDValidator(steamid=steamid)
+        validated_steamid = validator.steamid
+
+        games = await steam_client.get_player_owned_games(validated_steamid)
         return {"games": [game.model_dump() for game in games]}
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors())
     except Exception as e:
         logger.error(f"Error fetching most played games: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/recently-played/{steamid}")
-async def get_recently_played_games(steamid: str):
+@limiter.limit("20/minute")
+async def get_recently_played_games(steamid: str, request: Request):
     """Get player recently played games from Steam library"""
     try:
-        games = await steam_client.get_recently_played_games(steamid)
+        # Validate steamid
+        validator = SteamIDValidator(steamid=steamid)
+        validated_steamid = validator.steamid
+
+        games = await steam_client.get_recently_played_games(validated_steamid)
         return {"games": [game.model_dump() for game in games]}
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors())
     except Exception as e:
         logger.error(f"Error fetching recently played games: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/coming-soon")
-async def get_coming_soon_games():
+@limiter.limit("30/minute")
+async def get_coming_soon_games(request: Request):
     """Get coming soon games from Steam"""
     try:
         games = await steam_client.get_coming_soon_games()
@@ -203,18 +266,26 @@ async def get_coming_soon_games():
 
 
 @app.get("/api/player-summary/{steamid}")
-async def get_player_summary(steamid: str):
+@limiter.limit("30/minute")
+async def get_player_summary(steamid: str, request: Request):
     """Get Steam player summary"""
     try:
-        summary = await steam_client.get_player_summary(steamid)
+        # Validate steamid
+        validator = SteamIDValidator(steamid=steamid)
+        validated_steamid = validator.steamid
+
+        summary = await steam_client.get_player_summary(validated_steamid)
         return summary
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors())
     except Exception as e:
         logger.error(f"Error fetching player summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/resolve-vanity/{vanity_url:path}")
-async def resolve_vanity_url(vanity_url: str):
+@limiter.limit("20/minute")
+async def resolve_vanity_url(vanity_url: str, request: Request):
     """
     Resolve a Steam vanity URL or custom name to a Steam ID64.
 
@@ -227,11 +298,17 @@ async def resolve_vanity_url(vanity_url: str):
         - /api/resolve-vanity/https://steamcommunity.com/id/gaben
     """
     try:
-        steam_id = await steam_client.resolve_vanity_url(vanity_url)
+        # Validate vanity URL
+        validator = VanityURLValidator(vanity_url=vanity_url)
+        validated_url = validator.vanity_url
+
+        steam_id = await steam_client.resolve_vanity_url(validated_url)
         if steam_id:
-            return {"success": True, "steamid": steam_id, "vanity_url": vanity_url}
+            return {"success": True, "steamid": steam_id, "vanity_url": validated_url}
         else:
-            raise HTTPException(status_code=404, detail=f"Could not resolve vanity URL: {vanity_url}")
+            raise HTTPException(status_code=404, detail=f"Could not resolve vanity URL: {validated_url}")
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors())
     except HTTPException:
         raise
     except Exception as e:
@@ -241,10 +318,9 @@ async def resolve_vanity_url(vanity_url: str):
 # ===== UI Endpoints =====
 
 @app.get("/api/current-players")
-async def get_current_players_for_ui():
-
+@limiter.limit("30/minute")
+async def get_current_players_for_ui(request: Request):
     """Get current player counts for watchlist games for UI"""
-
     try:
         # Watchlist holds last fetched player counts for each game
         watchlist = await db.get_watchlist()
@@ -255,7 +331,8 @@ async def get_current_players_for_ui():
 
 
 @app.get("/api/genres")
-async def get_all_genres():
+@limiter.limit("30/minute")
+async def get_all_genres(request: Request):
     """Get all unique genres from games"""
     try:
         genres = await db.get_all_genres()
@@ -266,7 +343,8 @@ async def get_all_genres():
 
 
 @app.get("/api/categories")
-async def get_all_categories():
+@limiter.limit("30/minute")
+async def get_all_categories(request: Request):
     """Get all unique categories from games"""
     try:
         categories = await db.get_all_categories()
