@@ -498,8 +498,10 @@ class HomeView(QWidget):
             self.top_live_list.addItem("Brak danych z serwera. Upewnij się, że serwer działa.")
             return
         
-        # Process games and fetch tags
-        results = []
+        # Filter games with valid player counts and collect appids
+        valid_games = []
+        appids_to_fetch = []
+
         for game in games:
             appid = game.get('appid')
             name = game.get('name', f"AppID {appid}")
@@ -508,17 +510,30 @@ class HomeView(QWidget):
             if last_count <= 0:
                 continue
             
-            # Fetch tags for this game from server
-            try:
-                tags_data = await self._server_client.get_game_tags(appid)
-                tags = set(tags_data.get('tags', []))
-            except Exception as e:
-                logger.error(f"Error fetching tags for {appid}: {e}")
-                tags = set()
-            
-            results.append({
+            valid_games.append({
                 "name": name,
                 "players": last_count,
+                "appid": appid,
+            })
+            appids_to_fetch.append(appid)
+
+        # Fetch tags for ALL games in ONE batch request
+        try:
+            tags_batch = await self._server_client.get_game_tags_batch(appids_to_fetch)
+        except Exception as e:
+            logger.error(f"Error fetching tags batch: {e}")
+            tags_batch = {}
+
+        # Combine game data with tags
+        results = []
+        for game in valid_games:
+            appid = game['appid']
+            tags_data = tags_batch.get(appid, {})
+            tags = set(tags_data.get('tags', []))
+
+            results.append({
+                "name": game['name'],
+                "players": game['players'],
                 "appid": appid,
                 "tags": tags,
             })

@@ -6,7 +6,7 @@ import logging
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, List
 
 from dotenv import load_dotenv
 
@@ -150,6 +150,25 @@ async def get_game(appid: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/games/tags/batch")
+async def get_games_tags_batch(appids: List[int]):
+    """
+    Get genres and categories for multiple games in one request.
+
+    Args:
+        appids: List of Steam application IDs
+
+    Returns:
+        Dictionary mapping appid to tags data
+    """
+    try:
+        tags_batch = await db.get_game_tags(appids)
+        return {"tags": tags_batch}
+    except Exception as e:
+        logger.error(f"Error fetching games tags batch: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ===== Steam API Endpoints =====
 
 @app.get("/api/owned-games/{steamid}")
@@ -254,17 +273,6 @@ async def get_all_categories():
         return {"categories": categories}
     except Exception as e:
         logger.error(f"Error fetching categories: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/games/{appid}/tags")
-async def get_game_tags(appid: int):
-    """Get genres and categories for a specific game"""
-    try:
-        tags = await db.get_game_tags(appid)
-        return tags
-    except Exception as e:
-        logger.error(f"Error fetching game tags: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

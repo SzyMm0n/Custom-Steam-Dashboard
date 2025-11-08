@@ -264,27 +264,63 @@ class ServerClient:
             logger.error(f"Unexpected error fetching categories: {e}")
             return []
 
+    async def get_game_tags_batch(self, appids: List[int]) -> Dict[int, Dict[str, Any]]:
+        """
+        Get genres and categories for multiple games in one batch request.
+
+        Args:
+            appids: List of Steam application IDs
+
+        Returns:
+            Dict mapping appid to dict with genres, categories, and combined tags
+            Example: {123: {"genres": ["Action"], "categories": ["Multiplayer"], "tags": ["Action", "Multiplayer"]}}
+        """
+        if not appids:
+            return {}
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    f"{self.base_url}/api/games/tags/batch",
+                    json=appids
+                )
+                response.raise_for_status()
+                data = response.json()
+                tags_batch_raw = data.get("tags", {})
+
+                # Convert string keys back to int and add combined "tags" field
+                tags_batch = {}
+                for appid_str, tags_data in tags_batch_raw.items():
+                    appid = int(appid_str)
+                    genres = tags_data.get("genres", [])
+                    categories = tags_data.get("categories", [])
+                    tags_batch[appid] = {
+                        "genres": genres,
+                        "categories": categories,
+                        "tags": list(set(genres + categories))
+                    }
+
+                return tags_batch
+        except httpx.HTTPError as e:
+            logger.error(f"Error fetching game tags batch: {e}")
+            return {appid: {"genres": [], "categories": [], "tags": []} for appid in appids}
+        except Exception as e:
+            logger.error(f"Unexpected error fetching game tags batch: {e}")
+            return {appid: {"genres": [], "categories": [], "tags": []} for appid in appids}
+
     async def get_game_tags(self, appid: int) -> Dict[str, Any]:
         """
-        Get genres and categories for a specific game.
+        Get genres and categories for a single game (convenience method).
 
         Args:
             appid: Steam application ID
 
         Returns:
             Dict with genres, categories, and combined tags
+            Example: {"genres": ["Action"], "categories": ["Multiplayer"], "tags": ["Action", "Multiplayer"]}
         """
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/games/{appid}/tags")
-                response.raise_for_status()
-                return response.json()
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching game tags: {e}")
-            return {"appid": appid, "genres": [], "categories": [], "tags": []}
-        except Exception as e:
-            logger.error(f"Unexpected error fetching game tags: {e}")
-            return {"appid": appid, "genres": [], "categories": [], "tags": []}
+        batch_result = await self.get_game_tags_batch([appid])
+        return batch_result.get(appid, {"genres": [], "categories": [], "tags": []})
 
     async def get_game_details(self, appid: int) -> Optional[Dict[str, Any]]:
         """

@@ -403,32 +403,45 @@ class DatabaseManager:
             return [dict(row) for row in rows]
 
 
-    async def get_game_tags(self, appid: int) -> Dict[str, Any]:
+    async def get_game_tags(self, appids: List[int]) -> Dict[int, Dict[str, List[str]]]:
         """
-        Retrieve genres and categories for a specific game.
+        Retrieve genres and categories for multiple games in batch.
 
         Args:
-            appid: Steam app ID
+            appids: List of Steam app IDs
+
         Returns:
-            Dictionary containing genres and categories
+            Dictionary mapping appid to dict with 'genres' and 'categories' lists
+            Example: {123: {"genres": ["Action"], "categories": ["Multiplayer"]}}
         """
+        if not appids:
+            return {}
+
         async with self.acquire() as conn:
+            # Fetch all genres for given appids
             genres_rows = await conn.fetch("""
-                SELECT genre FROM game_genres WHERE appid = $1
-            """, appid)
+                SELECT appid, genre FROM game_genres WHERE appid = ANY($1)
+            """, appids)
+
+            # Fetch all categories for given appids
             categories_rows = await conn.fetch("""
-                SELECT category FROM game_categories WHERE appid = $1
-            """, appid)
+                SELECT appid, category FROM game_categories WHERE appid = ANY($1)
+            """, appids)
 
-            genres = [row['genre'] for row in genres_rows]
-            categories = [row['category'] for row in categories_rows]
+            # Initialize result dict with empty lists for all requested appids
+            result = {}
+            for appid in appids:
+                result[appid] = {"genres": [], "categories": []}
 
-            return {
-                "appid": appid,
-                "genres": genres,
-                "categories": categories,
-                "tags": genres + categories
-            }
+            # Populate genres
+            for row in genres_rows:
+                result[row['appid']]['genres'].append(row['genre'])
+
+            # Populate categories
+            for row in categories_rows:
+                result[row['appid']]['categories'].append(row['category'])
+
+            return result
 
 
     async def get_games_filtered_by_genre(self, genre: str) -> List[Dict[str, Any]]:
@@ -680,6 +693,10 @@ if __name__ == '__main__':
     async def main():
         database = await init_db()
         print('Database initialized successfully.')
+        list = await database.get_watchlist()
+        id_list = [item['appid'] for item in list]
+        games = await database.get_game_tags(id_list)
+        print(games)
 
         await close_db()
 
