@@ -18,15 +18,15 @@ pip-wheel-metadata/
 # Compiled binaries / builds
 build/
 dist/
-*.spec
 *.manifest
 *.so
 *.dll
 *.dylib
 *.pyd
-*.exe
-*.app
 *.bin
+
+# PyInstaller spec file (keep our spec, ignore auto-generated ones)
+!steam_dashboard.spec
 
 # =========================
 #  APPLICATION FILES
