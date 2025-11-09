@@ -1,152 +1,681 @@
-# Custom-Steam-Dashboard
+<div align="center">
 
-Interaktywny desktopowy dashboard (PySide6 + asyncio) do przeglądania aktywności gier Steam, nadchodzących premier i promocji, z filtrowaniem po tagach i zakresie liczby graczy.
+# 🎮 Custom Steam Dashboard
 
-- Szczegółowa dokumentacja techniczna (PL): `docs/TECHNICAL_DOCUMENTATION_PL.md`
-- Dokumentacja warstwy UI (PL): `docs/UI_DOCUMENTATION_PL.md`
-- Licencja: MIT (plik `LICENSE`)
+### Nowoczesny, interaktywny dashboard do monitorowania gier Steam
 
-## Spis treści
-- Wprowadzenie i główny use-case
-- Docelowy użytkownik
-- Architektura (obecnie) i struktura repozytorium
-- Biblioteki i wymagania
-- Instalacja i uruchomienie (Linux/Windows/macOS)
-- Konfiguracja i przechowywanie danych
-- Jak korzystać (skrót)
-- Plan rozwoju (client–server, AWS EC2 + RDS, wykresy i heatmapa)
-- Bezpieczeństwo i prywatność
-- Troubleshooting (częste problemy)
-- Pakowanie aplikacji (opcjonalnie)
-- Contributing (dev setup)
-- Licencja
+[![Python](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
+[![PySide6](https://img.shields.io/badge/PySide6-6.7%2B-green.svg)](https://pypi.org/project/PySide6/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Wprowadzenie i główny use-case
-Aplikacja prezentuje w jednym miejscu:
-- Live liczby graczy dla gier z Twojej watchlisty (z bazy lokalnej),
-- Promocje („Best Deals”),
-- Nadchodzące premiery („Best Upcoming Releases”),
-- Podgląd biblioteki i czasu gry użytkownika (zakładka „Biblioteka gier”).
+[Funkcjonalności](#-funkcjonalności) • [Architektura](#-architektura) • [Instalacja](#-instalacja) • [Dokumentacja](#-dokumentacja)
 
-Główny use-case: szybki wgląd w to, „w co teraz grają” oraz co warto obserwować lub kupić — z możliwością filtrowania po tagach (gatunki/kategorie) i zakresie liczby graczy.
+![Dashboard Preview](https://img.shields.io/badge/Status-Active-success)
 
-## Docelowy użytkownik
-- Gracze PC korzystający ze Steama, chcący monitorować popularność i aktywność gier,
-- Osoby śledzące promocje i premiery,
-- Użytkownicy chcący przejrzeć własną bibliotekę i ostatnią aktywność bez otwierania klienta Steam.
+</div>
 
-## Architektura (obecnie) i struktura repozytorium
-Obecny model to aplikacja desktopowa z lokalną bazą SQLite i asynchroniczną komunikacją HTTP do serwisów zewnętrznych.
+---
 
-Najważniejsze elementy:
-- UI: PySide6 + qasync (most Qt ↔ asyncio),
-- Dane lokalne: SQLite (przez warstwę `SyncDatabase`/`AsyncDatabase`),
-- Serwisy HTTP: Steam Store API, Steam Web API (publiczne fallbacki gdy brak klucza), CheapShark (deale),
-- Zadania wsadowe (retencja/seed): skrypty w `app/core/data/` i folderze `backend/` (z myślą o migracji do client–server).
+## 📋 Spis Treści
 
-Struktura (skrócona):
+- [O Projekcie](#-o-projekcie)
+- [Funkcjonalności](#-funkcjonalności)
+- [Architektura](#-architektura)
+- [Struktura Projektu](#-struktura-projektu)
+- [Instalacja](#-instalacja)
+  - [Aplikacja GUI](#aplikacja-gui-desktopowa)
+  - [Serwer Backend](#serwer-backend)
+- [Uruchamianie](#-uruchamianie)
+  - [Uruchomienie Serwera](#1-uruchomienie-serwera-backend)
+  - [Uruchomienie GUI](#2-uruchomienie-aplikacji-gui)
+- [Konfiguracja](#-konfiguracja)
+- [Użytkowanie](#-użytkowanie)
+- [Tworzenie Pakietu Wykonywalnego](#-tworzenie-pakietu-wykonywalnego)
+- [Dokumentacja](#-dokumentacja)
+- [Stack Technologiczny](#-stack-technologiczny)
+- [Bezpieczeństwo](#-bezpieczeństwo)
+- [Rozwój](#-rozwój)
+- [Troubleshooting](#-troubleshooting)
+- [Licencja](#-licencja)
+
+---
+
+## 🎯 O Projekcie
+
+**Custom Steam Dashboard** to zaawansowana aplikacja desktopowa z backendem serwerowym, która umożliwia monitorowanie aktywności gier na platformie Steam w czasie rzeczywistym. Projekt składa się z dwóch głównych komponentów:
+
+### 🖥️ **Aplikacja GUI** (Desktopowa)
+Nowoczesny interfejs użytkownika zbudowany w **PySide6** z asynchronicznym wsparciem (`qasync`), który komunikuje się z backendem i wyświetla:
+- 📊 **Statystyki graczy na żywo** - liczba aktywnych graczy w wybranych grach
+- 💰 **Najlepsze promocje** - aktualne okazje cenowe
+- 🚀 **Nadchodzące premiery** - kalendarz najciekawszych wydań
+- 📚 **Przeglądarka biblioteki** - Twoja kolekcja gier ze statystykami
+
+### ⚙️ **Serwer Backend**
+Wydajny serwer **FastAPI** z PostgreSQL, który:
+- 🔄 Automatycznie zbiera dane ze Steam API
+- 💾 Zarządza bazą danych z historią aktywności graczy
+- 📅 Wykonuje zadania cykliczne (scheduler)
+- 🛡️ Implementuje rate limiting i walidację
+- 🌐 Udostępnia REST API dla aplikacji klienckiej
+
+---
+
+## ✨ Funkcjonalności
+
+### Dla Użytkowników
+
+- ✅ **Monitorowanie popularności gier** - śledź liczbę graczy online w czasie rzeczywistym
+- ✅ **Filtrowanie po tagach** - znajdź gry według gatunków i kategorii
+- ✅ **Zakres liczby graczy** - filtruj po min/max liczbie aktywnych graczy
+- ✅ **Promocje i okazje** - najlepsze ceny z różnych platform
+- ✅ **Kalendarz premier** - nie przegap nadchodzących wydań
+- ✅ **Analiza biblioteki** - przegląd Twojej kolekcji Steam z czasem gry
+- ✅ **Responsywny interfejs** - płynne działanie dzięki asyncio
+
+### Dla Deweloperów
+
+- ✅ **Architektura klient-serwer** - rozdzielenie logiki UI od backendu
+- ✅ **Asynchroniczne operacje** - httpx, asyncpg, asyncio
+- ✅ **Walidacja danych** - Pydantic modele z pełną typizacją
+- ✅ **Rate limiting** - ochrona przed nadmiernym obciążeniem API
+- ✅ **Retry logic** - automatyczne ponowne próby przy błędach
+- ✅ **PostgreSQL** - wydajna baza danych z historią
+- ✅ **Scheduler** - automatyczne zadania cykliczne (APScheduler)
+- ✅ **Testowalne** - struktura gotowa pod unit testy
+
+---
+
+## 🏗️ Architektura
+
+Aplikacja wykorzystuje **architekturę klient-serwer** z wyraźnym podziałem odpowiedzialności:
+
 ```
-app/
-  main.py             # bootstrap i uruchomienie GUI
-  main_window.py      # główne okno + nawigacja (HomeView / LibraryView)
-  ui/
-    home_view.py      # lista „Live Games Count”, filtry, deale, premiery
-    library_view.py   # zakładka „Biblioteka gier” (SteamID/vanity/URL)
-    user_info_dialog.py # alternatywny dialog z danymi profilu
-  core/
-    services/
-      steam_api.py    # klienci Steam Store/Web API (httpx, pydantic)
-      deals_api.py    # klient CheapShark (promocje)
-    data/
-      db.py           # SQLite: schema + Sync/Async wrapper
-      retention_job.py# seed watchlist, retencja próbek (cli)
-backend/
-  ...                 # kod zadań (np. player_count) pod przyszły serwer
-common/
-  _base_http.py       # bazowy klient HTTP (timeouty, retry itp.)
-docs/
-  TECHNICAL_DOCUMENTATION_PL.md
-  UI_DOCUMENTATION_PL.md
+┌─────────────────────────────────────────────────────────────┐
+│                    APLIKACJA GUI (PySide6)                  │
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │  Home View   │  │ Library View │  │   Dialogs    │       │
+│  │              │  │              │  │              │       │
+│  │ • Live Stats │  │ • User Games │  │ • User Info  │       │
+│  │ • Deals      │  │ • Playtime   │  │ • Filters    │       │
+│  │ • Upcoming   │  │ • Stats      │  │              │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+│                                                             │
+│              ▲                                              │
+│              │  HTTP REST API (httpx)                       │
+│              │                                              │
+└──────────────┼──────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   SERWER BACKEND (FastAPI)                  │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │              REST API Endpoints                      │   │
+│  │  /health  /games  /library  /deals  /upcoming        │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                         │                                   │
+│  ┌───────────────┐  ┌───┴────────────┐  ┌──────────────┐    │
+│  │   Scheduler   │  │  Steam Service │  │  Validation  │    │
+│  │               │  │                │  │              │    │
+│  │ • Cron Jobs   │  │ • API Client   │  │ • Input      │    │
+│  │ • Data Sync   │  │ • Parser       │  │ • Rate Limit │    │
+│  └───────┬───────┘  └───────┬────────┘  └──────────────┘    │
+│          │                  │                               │
+│          ▼                  ▼                               │
+│  ┌─────────────────────────────────────┐                    │
+│  │      PostgreSQL Database            │                    │
+│  │  • game_apps                        │                    │
+│  │  • player_counts (historical)       │                    │
+│  │  • watchlist                        │                    │
+│  └─────────────────────────────────────┘                    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────────────────────────────┐
+│               ZEWNĘTRZNE API                                │
+│  • Steam Store API  • Steam Web API  • CheapShark API       │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Biblioteki i wymagania
-- Język i wersja: Python >= 3.11, < 3.13 (rekomendowane 3.12)
-- Kluczowe zależności (patrz `requirements.txt` / `pyproject.toml`):
-  - PySide6 (UI), qasync (integracja z asyncio),
-  - httpx[http2] (HTTP), tenacity (retry/backoff),
-  - pydantic (modele danych), rapidfuzz (dopasowania tytułów),
-  - python-dotenv (wczytywanie .env), platformdirs (ścieżki użytkownika), loguru (logi).
-- Opcjonalne (wizualizacje – planowane):
-  - matplotlib lub pyqtgraph,
-- Opcjonalne (dane/analityka): aiosqlite, pandas.
+### Przepływ Danych
 
-## Instalacja i uruchomienie (Linux/Windows/macOS)
-1) Utwórz i aktywuj wirtualne środowisko:
+1. **Aplikacja GUI** → wysyła żądanie HTTP do serwera backend
+2. **Serwer Backend** → waliduje żądanie, sprawdza rate limiting
+3. **Steam Service** → pobiera dane z zewnętrznych API (z retry logic)
+4. **Database** → zapisuje/odczytuje dane historyczne
+5. **Serwer** → zwraca sformatowane dane do GUI
+6. **GUI** → renderuje dane w responsywnym interfejsie
+
+---
+
+## 📁 Struktura Projektu
+
+```
+Custom-Steam-Dashboard/
+│
+├── 🖥️ app/                          # APLIKACJA GUI
+│   ├── main_server.py               # Punkt wejścia aplikacji
+│   ├── main_window.py               # Główne okno Qt
+│   │
+│   ├── ui/                          # Komponenty interfejsu
+│   │   ├── home_view_server.py      # Widok główny (statystyki)
+│   │   ├── library_view_server.py   # Widok biblioteki
+│   │   ├── components_server.py     # Reużywalne komponenty
+│   │   ├── user_info_dialog_server.py # Dialog użytkownika
+│   │   └── styles.py                # Style Qt
+│   │
+│   └── core/                        # Logika biznesowa GUI
+│       └── services/
+│           ├── server_client.py     # Klient HTTP do backendu
+│           └── deals_api.py         # Integracja z CheapShark
+│
+├── ⚙️ server/                       # SERWER BACKEND
+│   ├── app.py                       # Główna aplikacja FastAPI
+│   ├── scheduler.py                 # Zarządzanie zadaniami
+│   ├── validation.py                # Walidatory Pydantic
+│   │
+│   ├── database/                    # Warstwa danych
+│   │   └── database.py              # Manager PostgreSQL
+│   │
+│   └── services/                    # Logika biznesowa
+│       ├── steam_service.py         # Klient Steam API
+│       ├── models.py                # Modele Pydantic
+│       ├── parse_html.py            # Parser HTML
+│       └── _base_http.py            # Bazowy klient HTTP
+│
+├── 📚 docs/                         # DOKUMENTACJA
+│   ├── SERVER_DOCUMENTATION_PL.md
+│   └── UI_DOCUMENTATION_PL.md
+│
+├── 🔧 build/                        # Pliki buildu (PyInstaller)
+├── requirements.txt                 # Zależności Pythona
+├── steam_dashboard.spec             # Specyfikacja PyInstaller
+├── build_executable.sh              # Skrypt budowania (Linux/Mac)
+├── build_executable.bat             # Skrypt budowania (Windows)
+├── check_build_deps.py              # Weryfikacja zależności
+└── LICENSE                          # Licencja MIT
+```
+
+---
+
+## 🚀 Instalacja
+
+### Wymagania Systemowe
+
+- **Python**: 3.11 lub nowszy (zalecane 3.12)
+- **PostgreSQL**: 13+ (dla serwera backend)
+- **System**: Linux, macOS, Windows
+- **RAM**: minimum 2GB
+- **Miejsce na dysku**: ~500MB (z zależnościami)
+
+### Klonowanie Repozytorium
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+git clone https://github.com/SzyMm0n/Custom-Steam-Dashboard.git
+cd Custom-Steam-Dashboard
 ```
-2) Zainstaluj zależności:
+
+---
+
+## 📦 Instalacja Zależności
+
+### Aplikacja GUI (Desktopowa)
+
+Aplikacja GUI wymaga następujących zależności:
+
 ```bash
+# Utwórz wirtualne środowisko (opcjonalnie, ale zalecane)
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# lub
+venv\Scripts\activate     # Windows
+
+# Zainstaluj zależności
 pip install -r requirements.txt
 ```
-3) Uruchom aplikację GUI:
+
+**Kluczowe zależności GUI:**
+- `PySide6>=6.7` - Framework Qt dla Pythona
+- `qasync>=0.26` - Mostek Qt ↔ asyncio
+- `httpx[http2]>=0.27` - Klient HTTP do komunikacji z serwerem
+- `tenacity>=9.0` - Retry logic
+- `pydantic>=2.7` - Walidacja danych
+
+---
+
+### Serwer Backend
+
+Serwer wymaga PostgreSQL oraz dodatkowych zależności:
+
 ```bash
-python -m app.main
+# Instalacja zależności serwera (jeśli nie zainstalowane)
+pip install -r requirements.txt
 ```
-4) (Opcjonalnie) Narzędzia/CLI do seed/retencji:
+
+**Kluczowe zależności serwera:**
+- `fastapi>=0.115` - Framework REST API
+- `uvicorn[standard]>=0.32` - Serwer ASGI
+- `asyncpg>=0.29` - Driver PostgreSQL
+- `APScheduler>=3.10` - Scheduler zadań
+- `slowapi>=0.1.9` - Rate limiting
+
+---
+
+## 🔧 Konfiguracja
+
+### 1. Konfiguracja PostgreSQL (Serwer)
+
+#### Opcja A: Lokalna instalacja PostgreSQL
+
 ```bash
-python -m app.core.data.retention_job --help
+# Zainstaluj PostgreSQL (przykład dla Ubuntu/Debian)
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+
+# Utwórz bazę danych
+sudo -u postgres psql
+CREATE DATABASE steam_dashboard;
+CREATE USER steam_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE steam_dashboard TO steam_user;
+\q
 ```
 
-## Konfiguracja i przechowywanie danych
-- Klucz Steam Web API jest opcjonalny. Jeśli go podasz (zmienna środowiskowa `STEAM_API_KEY` lub plik `.env`), część zapytań użyje oficjalnego API. W przeciwnym razie wykorzystywane są publiczne fallbacki (HTML/XML) – zakres danych może być węższy.
-- Identyfikator użytkownika Steam do przykładowych skryptów można ustawić przez `STEAM_ID` (również wspierane przez `.env`).
-- Baza lokalna: SQLite w katalogu użytkownika (platformdirs). Domyślna ścieżka (Linux):
-  - `~/.local/share/Custom-Steam-Dashboard/dashboard.sqlite`
-- Watchlista, tagi (gatunki/kategorie) i próbki aktywności są wersjonowane w tej bazie.
+#### Opcja B: PostgreSQL w chmurze (Neon.tech, AWS RDS, itp.)
 
-## Jak korzystać (skrót)
-- Zakładka „Home” (HomeView):
-  - Lista „Live Games Count” dla gier z watchlisty,
-  - Filtry: suwaki/pola dla zakresu liczby graczy oraz lista tagów (gatunki/kategorie),
-  - Dolne sekcje: „Best Deals” i „Best Upcoming Releases”.
-- Zakładka „Biblioteka gier” (LibraryView):
-  - Wpisz SteamID64, vanity lub URL profilu i kliknij „Pobierz”,
-  - Zobaczysz tabelę z łączną liczbą godzin i aktywnością z ostatnich 2 tygodni; nagłówek pokazuje avatar i nazwę profilu.
-- Przycisk „Odśwież” w pasku narzędzi odświeża bieżący widok (asynchronicznie, bez blokowania UI). Dane na Home odświeżają się automatycznie co 5 min.
+Utwórz bazę danych w wybranym serwisie i skopiuj dane dostępowe.
 
-## Plan rozwoju
-Najbliższe kroki skupiają się na bezpieczeństwie i skalowalności — przejście na architekturę klient–serwer i rozszerzenia wizualne.
+### 2. Zmienne Środowiskowe
 
-1) Architektura klient–serwer (w toku):
-- Uruchomiona jednostka AWS EC2, która będzie wykonywać:
-  - player_count_job (zbieranie próbek liczby graczy),
-  - retencję/rollupy danych.
-- Dane przechowywane w AWS RDS, dostępne wyłącznie z EC2 (RDS nie jest bezpośrednio dostępne z Internetu).
-- Aplikacja kliencka (ten dashboard) będzie pobierać zagregowane dane przez endpointy na EC2.
-- Korzyści: lepsze bezpieczeństwo (brak bezpośrednich połączeń DB z klienta), mniejszy ruch do API Steama z urządzeń końcowych, łatwiejsze aktualizacje.
+Utwórz plik `.env` w katalogu głównym projektu:
 
-2) Wizualizacje i analityka klienta:
-- Wykresy aktywności graczy (np. dzienne/godzinowe) dla poszczególnych gier,
-- Heatmapa własnej aktywności w grach (np. siatka dzień/godzina),
-- Technicznie: rozważamy `pyqtgraph` (lekki i szybki) lub `matplotlib` (bogatszy, szerszy ekosystem).
+```bash
+# PostgreSQL Configuration (SERWER)
+PGHOST=localhost              # lub adres zdalnej bazy
+PGPORT=5432
+PGUSER=steam_user
+PGPASSWORD=your_password
+PGDATABASE=steam_dashboard
 
-3) Dalsze usprawnienia:
-- Ustawienia aplikacji (reguły odświeżania, przechowywanie klucza API, preferencje lokalizacji),
-- Zarządzanie watchlistą z UI,
-- Lepsze cache’owanie wyników HTTP i odporność na błędy sieciowe,
-- Pakiety instalacyjne dla systemów desktopowych (PyInstaller),
-- Telemetria: domyślnie wyłączona, opt-in.
+# Steam API Configuration (OPCJONALNE)
+STEAM_API_KEY=your_steam_api_key    # Zdobądź na: https://steamcommunity.com/dev/apikey
+STEAM_ID=your_steam_id              # Twój Steam ID (dla testów biblioteki)
+
+# Server Configuration
+SERVER_HOST=0.0.0.0
+SERVER_PORT=8000
+```
+
+### 3. Inicjalizacja Bazy Danych
+
+Przy pierwszym uruchomieniu serwer automatycznie utworzy wymagane tabele:
+- `game_apps` - informacje o grach
+- `player_counts` - historyczne dane o liczbie graczy
+- `watchlist` - lista obserwowanych gier
+
+---
+
+## ▶️ Uruchamianie
+
+### 1. Uruchomienie Serwera Backend
+
+```bash
+# Z katalogu głównego projektu
+cd server
+python app.py
+```
+
+**Alternatywnie z uvicorn:**
+```bash
+uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Serwer będzie dostępny pod adresem: **`http://localhost:8000`**
+
+#### Weryfikacja działania serwera:
+```bash
+curl http://localhost:8000/health
+# Odpowiedź: {"status":"healthy"}
+```
+
+#### Dostęp do interaktywnej dokumentacji API:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+---
+
+### 2. Uruchomienie Aplikacji GUI
+
+**W nowym terminalu** (przy działającym serwerze):
+
+```bash
+# Z katalogu głównego projektu
+python -m app.main_server
+```
+
+#### Możliwe parametry (opcjonalnie):
+```bash
+# Niestandardowy adres serwera
+python -m app.main_server --server-url http://192.168.1.100:8000
+```
+
+Aplikacja GUI automatycznie połączy się z serwerem i wyświetli główne okno.
+
+---
+
+## 🎮 Użytkowanie
+
+### Nawigacja w Aplikacji GUI
+
+#### 🏠 **Widok Główny (Home)**
+1. **Live Games Count** - Statystyki graczy online
+   - Domyślna lista popularnych gier
+   - Odświeżanie co 5 minut przez scheduler
+   
+2. **Best Deals** - Najlepsze promocje
+   - Źródło: CheapShark API
+   - Kliknij grę aby zobaczyć szczegóły
+   
+3. **Best Upcoming Releases** - Nadchodzące premiery
+   - Kalendarz premier z Steam
+   - Data wydania i informacje o grze
+
+#### 📚 **Widok Biblioteki (Library)**
+- Wymaga skonfigurowania `STEAM_ID` w `.env`
+- Wyświetla Twoją kolekcję gier
+- Pokazuje czas gry i ostatnią aktywność
+
+#### 🔄 **Odświeżanie Danych**
+- Przycisk **Refresh** w toolbar
+- Automatyczne odświeżanie co 5 minut (scheduler)
+
+#### ⚙️ **Filtrowanie**
+- **Tagi**: filtruj gry po gatunkach (Action, RPG, Strategy, itp.)
+- **Liczba graczy**: ustaw zakres min/max aktywnych graczy
+
+---
+
+## 📦 Tworzenie Pakietu Wykonywalnego
+
+Możesz zbudować standalone aplikację bez wymagania instalacji Pythona:
+
+### Linux / macOS
+```bash
+chmod +x build_executable.sh
+./build_executable.sh
+```
+
+### Windows
+```cmd
+build_executable.bat
+```
+
+Plik wykonywalny znajdziesz w katalogu `dist/`:
+- Linux/Mac: `dist/SteamDashboard`
+- Windows: `dist/SteamDashboard.exe`
+
+**Wymagania przed budowaniem:**
+```bash
+pip install pyinstaller>=6.9
+python check_build_deps.py  # Weryfikacja zależności
+```
+
+---
+
+## 📖 Dokumentacja
+
+Szczegółowa dokumentacja dostępna w katalogu `docs/`:
+
+| Dokument | Opis |
+|----------|------|
+| 🌐 [SERVER_DOCUMENTATION_PL.md](docs/SERVER_DOCUMENTATION_PL.md) | Dokumentacja serwera FastAPI |
+| 🎨 [UI_DOCUMENTATION_PL.md](docs/UI_DOCUMENTATION_PL.md) | Dokumentacja interfejsu GUI |
+
+---
+
+## 🛠️ Stack Technologiczny
+
+### Frontend (GUI)
+| Technologia | Wersja | Zastosowanie |
+|-------------|--------|--------------|
+| **PySide6** | 6.7+ | Framework Qt dla GUI |
+| **qasync** | 0.26+ | Integracja Qt z asyncio |
+| **httpx** | 0.27+ | Klient HTTP/2 |
+| **Pydantic** | 2.7+ | Walidacja modeli danych |
+
+### Backend (Serwer)
+| Technologia | Wersja | Zastosowanie |
+|-------------|--------|--------------|
+| **FastAPI** | 0.115+ | REST API framework |
+| **Uvicorn** | 0.32+ | Serwer ASGI |
+| **PostgreSQL** | 13+ | Baza danych |
+| **asyncpg** | 0.29+ | Async driver PostgreSQL |
+| **APScheduler** | 3.10+ | Scheduler zadań |
+| **slowapi** | 0.1.9+ | Rate limiting |
+
+### Utilities
+| Technologia | Zastosowanie |
+|-------------|--------------|
+| **tenacity** | Retry logic z exponential backoff |
+| **python-dotenv** | Zarządzanie zmiennymi środowiskowymi |
+| **loguru** | Zaawansowane logowanie |
+| **platformdirs** | Ścieżki specyficzne dla OS |
+| **PyInstaller** | Budowanie plików wykonywalnych |
+
+---
+
+## 🔒 Bezpieczeństwo
+
+### Zaimplementowane Zabezpieczenia
+
+#### Serwer Backend
+- ✅ **Rate Limiting** - ograniczenie zapytań (100/minutę domyślnie)
+- ✅ **Input Validation** - walidacja wszystkich danych wejściowych (Pydantic)
+- ✅ **CORS** - konfiguracja dozwolonych origin
+- ✅ **SQL Injection Protection** - parametryzowane zapytania (asyncpg)
+- ✅ **Environment Variables** - wrażliwe dane w `.env`
+- ✅ **Error Handling** - generyczne komunikaty błędów
+- ✅ **Logging** - szczegółowe logi operacji
+
+#### Aplikacja GUI
+- ✅ **HTTPS Support** - możliwość połączenia przez TLS
+- ✅ **Timeout Handling** - limity czasu żądań HTTP
+- ✅ **Retry Logic** - automatyczne ponowne próby z backoff
+- ✅ **Data Sanitization** - oczyszczanie danych przed wyświetleniem
+
+### Zalecenia Produkcyjne
+
+Przed wdrożeniem w środowisku produkcyjnym:
+
+1. **Użyj HTTPS** - skonfiguruj certyfikat SSL/TLS
+2. **Zmień hasła domyślne** - w PostgreSQL i `.env`
+3. **Firewall** - ogranicz dostęp do portu 8000
+4. **Reverse Proxy** - użyj nginx/Apache przed FastAPI
+5. **Monitoring** - skonfiguruj Sentry lub podobne
+6. **Backupy** - regularne kopie zapasowe bazy danych
 
 
-## Troubleshooting (częste problemy)
-- „Qt platform plugin”/problemy z uruchomieniem PySide6:
-  - Zaktualizuj sterowniki/środowisko graficzne; na Linuksie spróbuj uruchomić na X11 zamiast Wayland (lub odwrotnie).
-- Problemy sieciowe/HTTP:
-  - Sprawdź połączenie i proxy; brak klucza `STEAM_API_KEY` ogranicza część danych Web API.
-- Brak danych na liście „Live Games Count”:
-  - Upewnij się, że watchlista została zasilona (uruchomienie aplikacji wykona seed top gier; ewentualnie CLI z `retention_job.py`).
+---
 
-## Licencja
-MIT — zob. `LICENSE`.
+## 🔮 Rozwój
+
+### Planowane Funkcjonalności
+
+- [ ] **Wykresy i wizualizacje** - interaktywne wykresy liczby graczy (matplotlib/pyqtgraph)
+- [ ] **Heatmapa aktywności** - wizualizacja godzin szczytu
+- [ ] **Notyfikacje** - alerty o promocjach i premierach
+- [ ] **Multi-user support** - obsługa wielu profili Steam
+- [ ] **Export danych** - CSV, JSON export statystyk
+- [ ] **Motywy** - ciemny/jasny motyw interfejsu
+- [ ] **Rozszerzone filtry** - więcej opcji filtrowania
+- [ ] **Integracja z Discord** - rich presence
+- [ ] **PWA/Web UI** - interfejs webowy obok GUI
+- [ ] **Docker** - konteneryzacja serwera
+
+### Architektura Docelowa
+
+Planowana migracja do pełnej chmury:
+- **AWS EC2** - hosting serwera FastAPI
+- **AWS RDS** - PostgreSQL w chmurze
+
+---
+
+## 🐛 Troubleshooting
+
+### Problemy z Serwerem
+
+#### ❌ Błąd: "Connection to PostgreSQL failed"
+```bash
+# Sprawdź czy PostgreSQL działa
+sudo systemctl status postgresql
+
+# Sprawdź połączenie
+psql -h localhost -U steam_user -d steam_dashboard
+
+# Zweryfikuj dane w .env
+cat .env | grep PG
+```
+
+#### ❌ Błąd: "Port 8000 already in use"
+```bash
+# Znajdź proces na porcie 8000
+lsof -i :8000  # Linux/Mac
+netstat -ano | findstr :8000  # Windows
+
+# Zatrzymaj proces lub użyj innego portu
+uvicorn server.app:app --port 8001
+```
+
+#### ❌ Błąd: "Steam API rate limit exceeded"
+- Steam API ma limit ~200 żądań na 5 minut
+- Scheduler automatycznie przestrzega limitów
+- Możesz zwiększyć interwał w `scheduler.py`
+
+---
+
+### Problemy z GUI
+
+#### ❌ Błąd: "Cannot connect to server"
+```bash
+# Sprawdź czy serwer działa
+curl http://localhost:8000/health
+
+# Sprawdź URL w GUI (domyślnie: http://localhost:8000)
+python -m app.main_server --server-url http://localhost:8000
+```
+
+#### ❌ Błąd: "Qt platform plugin not found"
+```bash
+# Linux - zainstaluj Qt dependencies
+sudo apt install libxcb-xinerama0 libxcb-cursor0
+
+# Reinstall PySide6
+pip uninstall PySide6
+pip install PySide6
+```
+
+#### ❌ Okno się nie wyświetla
+```bash
+# Sprawdź display (Linux)
+echo $DISPLAY
+
+# Możliwe konflikty z Wayland - użyj X11
+export QT_QPA_PLATFORM=xcb
+python -m app.main_server
+```
+
+---
+
+### Logi i Debugowanie
+
+#### Włączenie szczegółowych logów
+```python
+# W server/app.py
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+#### Lokalizacja logów
+- **Serwer**: stdout/stderr (lub plik konfigurowany w `app.py`)
+- **GUI**: stdout aplikacji
+- **PostgreSQL**: `/var/log/postgresql/` (Linux)
+
+---
+
+## 🤝 Contributing
+
+Zapraszamy do współpracy! Aby wnieść swój wkład:
+
+1. **Fork** repozytorium
+2. Utwórz branch dla swojej funkcjonalności (`git checkout -b feature/AmazingFeature`)
+3. Commit zmian (`git commit -m 'Add some AmazingFeature'`)
+4. Push do brancha (`git push origin feature/AmazingFeature`)
+5. Otwórz **Pull Request**
+
+### Development Setup
+
+```bash
+# Klonuj repo
+git clone https://github.com/your-username/Custom-Steam-Dashboard.git
+cd Custom-Steam-Dashboard
+
+# Zainstaluj zależności dev
+pip install -r requirements.txt
+pip install pytest pytest-qt ruff mypy
+
+# Uruchom testy (gdy dostępne)
+pytest
+
+# Formatowanie kodu
+ruff check . --fix
+```
+
+---
+
+## 📝 Licencja
+
+Projekt jest dostępny na licencji **MIT** - szczegóły w pliku [LICENSE](LICENSE).
+
+```
+MIT License
+
+Copyright (c) 2025 Custom Steam Dashboard
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files...
+```
+
+---
+
+## 🙏 Podziękowania
+
+- **Steam** - za publiczne API
+- **CheapShark** - za API promocji gier
+- **Qt/PySide6** - za framework GUI
+- **FastAPI** - za świetny framework REST API
+- **Społeczność Python** - za niesamowite biblioteki
+
+---
+
+## 📧 Kontakt
+
+Masz pytania lub sugestie? Skontaktuj się z nami!
+
+- 🐛 **Issues**: [GitHub Issues](https://github.com/SzyMm0n/Custom-Steam-Dashboard/issues)
+- 💬 **Dyskusje**: [GitHub Discussions](https://github.com/SzyMm0n/Custom-Steam-Dashboard/discussions)
+
+---
+
+<div align="center">
+
+**⭐ Jeśli projekt Ci się podoba, zostaw gwiazdkę! ⭐**
+
+Made with ❤️ using Python, Qt, and FastAPI
+
+[⬆ Powrót do góry](#-custom-steam-dashboard)
+
+</div>
+
