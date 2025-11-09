@@ -59,11 +59,13 @@ class HomeView(QWidget):
 
         # Data storage
         self._all_games_data: List[Dict[str, Any]] = []
+        self._filtered_games_data: List[Dict[str, Any]] = []  # For search filtering
         
         # Filter state
         self._selected_tags: Set[str] = set()
         self._min_players: int = 0
         self._max_players: int = self.MAX_PLAYERS_SLIDER
+        self._search_term: str = ""  # Current search term
 
         # UI components
         self.layout = QVBoxLayout(self)
@@ -96,10 +98,42 @@ class HomeView(QWidget):
         left_column = QVBoxLayout()
         self.top_live_title = QLabel("Live Games Count")
         self.top_live_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 5px;")
+        
+        # Search bar for filtering games
+        search_layout = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Szukaj gry po nazwie lub App ID...")
+        self.search_input.textChanged.connect(self._on_search_changed)
+        self.search_input.setMinimumHeight(35)
+        
+        self.clear_search_btn = QPushButton("×")
+        self.clear_search_btn.setMaximumWidth(35)
+        self.clear_search_btn.setMaximumHeight(35)
+        self.clear_search_btn.setToolTip("Wyczyść wyszukiwanie")
+        self.clear_search_btn.clicked.connect(self._on_clear_search)
+        self.clear_search_btn.setVisible(False)  # Hidden by default
+        
+        search_layout.addWidget(self.search_input)
+        search_layout.addWidget(self.clear_search_btn)
+        
+        # Search results info label
+        self.search_info_label = QLabel("")
+        self.search_info_label.setStyleSheet("""
+            padding: 8px;
+            background-color: #e3f2fd;
+            border-left: 4px solid #667eea;
+            border-radius: 3px;
+            color: #333;
+        """)
+        self.search_info_label.setVisible(False)
+        
         self.top_live_list = QListWidget()
         self.top_live_list.setMinimumWidth(500)
         self.top_live_list.itemClicked.connect(self._on_live_item_clicked)
+        
         left_column.addWidget(self.top_live_title)
+        left_column.addLayout(search_layout)
+        left_column.addWidget(self.search_info_label)
         left_column.addWidget(self.top_live_list)
 
         # Right column - Filters panel
@@ -373,6 +407,12 @@ class HomeView(QWidget):
                 it.setCheckState(Qt.CheckState.Unchecked)
 
         self._selected_tags.clear()
+        
+        # Clear search
+        self.search_input.clear()
+        self._search_term = ""
+        self.clear_search_btn.setVisible(False)
+        
         self._update_list_view()
 
     # ===== Formatting Utilities =====
@@ -442,7 +482,10 @@ class HomeView(QWidget):
 
     def _update_list_view(self):
         """Update the game list view based on current filters."""
+        """Update the game list view based on current filters and search."""
         self.top_live_list.clear()
+        
+        # First apply tag and player count filters
         filtered_results = []
         required_tags = self._selected_tags
         
@@ -450,22 +493,67 @@ class HomeView(QWidget):
             game_tags: Set[str] = item.get("tags", set())
             players: int = item.get("players", 0)
             
+            # Player count filters
             if players < self._min_players:
                 continue
             if players > self._max_players:
                 continue
+            
+            # Tag filters
             if required_tags and not required_tags.issubset(game_tags):
                 continue
+            
             filtered_results.append(item)
         
+        # Then apply search filter
+        if self._search_term:
+            search_filtered = []
+            for item in filtered_results:
+                name = item.get("name", "").lower()
+                appid = str(item.get("appid", ""))
+                
+                # Match by name or appid
+                if self._search_term in name or self._search_term in appid:
+                    search_filtered.append(item)
+            
+            # Update search info label
+            total_count = len(self._all_games_data)
+            found_count = len(search_filtered)
+            self.search_info_label.setText(
+                f"🔍 Znaleziono <b>{found_count}</b> gier pasujących do \"{self._search_term}\" "
+                f"(z {total_count} wszystkich)"
+            )
+            self.search_info_label.setVisible(True)
+            
+            filtered_results = search_filtered
+        else:
+            self.search_info_label.setVisible(False)
+        
+        # Sort by player count (descending)
         filtered_results.sort(key=lambda x: x["players"], reverse=True)
         
+        # Display results
         if not filtered_results:
-            self.top_live_list.addItem("Brak gier pasujących do filtrowania.")
+            if self._search_term:
+                self.top_live_list.addItem(
+                    f"Brak gier pasujących do wyszukiwania \"{self._search_term}\""
+                )
+            else:
+                self.top_live_list.addItem("Brak gier pasujących do filtrowania.")
         else:
             for item in filtered_results:
                 players_formatted = self._format_players(item["players"])
                 lw_item = QListWidgetItem(f"{players_formatted} - {item['name']}")
+                
+                # Highlight search term in name (simple bold)
+                name = item['name']
+                if self._search_term and self._search_term in name.lower():
+                    # Simple highlighting - you can make it more sophisticated
+                    display_name = name
+                else:
+                    display_name = name
+                
+                lw_item = QListWidgetItem(f"{players_formatted} - {display_name}")
                 lw_item.setData(Qt.ItemDataRole.UserRole, item)
                 self.top_live_list.addItem(lw_item)
 
@@ -716,4 +804,23 @@ class HomeView(QWidget):
             GameDetailDialog(data, server_url=self._server_url, parent=self).exec()
         else:
             GameDetailDialog(item.text(), server_url=self._server_url, parent=self).exec()
+
+    # ===== Event Handlers - Search Bar =====
+
+    def _on_search_changed(self, text: str):
+        """Handle search input change - filter games by name or App ID."""
+        self._search_term = text.strip().lower()
+        
+        # Show/hide clear button
+        self.clear_search_btn.setVisible(len(self._search_term) > 0)
+        
+        # Update the view
+        self._update_list_view()
+
+    def _on_clear_search(self):
+        """Clear the search box and reset filtering."""
+        self.search_input.clear()
+        self._search_term = ""
+        self.clear_search_btn.setVisible(False)
+        self._update_list_view()
 
