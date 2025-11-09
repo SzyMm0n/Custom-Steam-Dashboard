@@ -51,6 +51,17 @@ class LibraryView(QWidget):
         """
         super().__init__(parent)
         self._server_client = ServerClient(base_url=server_url)
+        
+        # Store games data for sorting
+        self._games_data = []
+        
+        # Track current sort order for each column
+        self._sort_orders = {
+            0: Qt.SortOrder.AscendingOrder,   # Name column
+            1: Qt.SortOrder.DescendingOrder,  # Total hours
+            2: Qt.SortOrder.DescendingOrder   # Last 2 weeks
+        }
+        
         self._init_ui()
 
     # ===== UI Initialization =====
@@ -110,6 +121,12 @@ class LibraryView(QWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        
+        # Enable sorting by clicking headers
+        self.table.setSortingEnabled(False)  # We'll handle sorting manually for better control
+        header.sectionClicked.connect(self._on_header_clicked)
+        header.setCursor(Qt.CursorShape.PointingHandCursor)  # Show clickable cursor
+        
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
@@ -120,6 +137,51 @@ class LibraryView(QWidget):
         title.setProperty("role", "title")
 
     # ===== Event Handlers =====
+
+    def _on_header_clicked(self, logical_index: int) -> None:
+        """
+        Handle header click to sort the table by that column.
+        
+        Args:
+            logical_index: Column index that was clicked
+                0 - Game name
+                1 - Total hours
+                2 - Last 2 weeks hours
+        """
+        if not self._games_data:
+            return
+        
+        # Toggle sort order for this column
+        current_order = self._sort_orders.get(logical_index, Qt.SortOrder.AscendingOrder)
+        new_order = Qt.SortOrder.DescendingOrder if current_order == Qt.SortOrder.AscendingOrder else Qt.SortOrder.AscendingOrder
+        self._sort_orders[logical_index] = new_order
+        
+        # Sort based on clicked column
+        if logical_index == 0:  # Name column
+            sorted_games = sorted(
+                self._games_data,
+                key=lambda g: g.get('name', '').lower(),
+                reverse=(new_order == Qt.SortOrder.DescendingOrder)
+            )
+        elif logical_index == 1:  # Total hours
+            sorted_games = sorted(
+                self._games_data,
+                key=lambda g: g.get('playtime_forever', 0),
+                reverse=(new_order == Qt.SortOrder.DescendingOrder)
+            )
+        else:  # logical_index == 2, Last 2 weeks
+            sorted_games = sorted(
+                self._games_data,
+                key=lambda g: g.get('playtime_2weeks', 0),
+                reverse=(new_order == Qt.SortOrder.DescendingOrder)
+            )
+        
+        # Update table with sorted data
+        self._populate_table(sorted_games)
+        
+        # Update header to show sort indicator
+        header = self.table.horizontalHeader()
+        header.setSortIndicator(logical_index, new_order)
 
     async def _on_fetch(self) -> None:
         """
@@ -188,6 +250,27 @@ class LibraryView(QWidget):
         # Sort games by total playtime
         owned_sorted = sorted(
             owned_games,
+        # Merge playtime data and store for sorting
+        self._games_data = []
+        for game in owned_games:
+            appid = game.get('appid')
+            total_min = game.get('playtime_forever', 0)
+            last2w_min = recent_map.get(appid, game.get('playtime_2weeks', 0)) or 0
+            
+            # Fix inconsistency (last2w > total)
+            if total_min < last2w_min:
+                total_min = last2w_min
+            
+            self._games_data.append({
+                'appid': appid,
+                'name': game.get('name', f"AppID {appid or 'Unknown'}"),
+                'playtime_forever': total_min,
+                'playtime_2weeks': last2w_min
+            })
+
+        # Sort by total playtime (descending) by default
+        sorted_games = sorted(
+            self._games_data,
             key=lambda g: g.get('playtime_forever', 0),
             reverse=True
         )
@@ -195,6 +278,25 @@ class LibraryView(QWidget):
         # Populate table with game data
         self.table.setRowCount(len(owned_sorted))
         for row, game in enumerate(owned_sorted):
+        # Populate table with sorted data
+        self._populate_table(sorted_games)
+        
+        # Set initial sort indicator on total hours column
+        header = self.table.horizontalHeader()
+        header.setSortIndicator(1, Qt.SortOrder.DescendingOrder)
+
+        self.status.setText(f"Załadowano gier: {len(self._games_data)}")
+        self.fetch_btn.setEnabled(True)
+
+    def _populate_table(self, games_list: list) -> None:
+        """
+        Populate the table with game data.
+        
+        Args:
+            games_list: List of game dictionaries with name, playtime_forever, playtime_2weeks
+        """
+        self.table.setRowCount(len(games_list))
+        for row, game in enumerate(games_list):
             # Game name
             name = game.get('name', f"AppID {game.get('appid', 'Unknown')}")
             name_item = QTableWidgetItem(name)
@@ -206,6 +308,7 @@ class LibraryView(QWidget):
             # Fix inconsistency (last2w > total)
             if total_min < last2w_min:
                 total_min = last2w_min
+            last2w_min = game.get('playtime_2weeks', 0)
             
             total_h = total_min / 60.0
             last2w_h = last2w_min / 60.0
