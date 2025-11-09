@@ -247,9 +247,6 @@ class LibraryView(QWidget):
             if appid:
                 recent_map[appid] = playtime_2weeks
 
-        # Sort games by total playtime
-        owned_sorted = sorted(
-            owned_games,
         # Merge playtime data and store for sorting
         self._games_data = []
         for game in owned_games:
@@ -275,9 +272,6 @@ class LibraryView(QWidget):
             reverse=True
         )
 
-        # Populate table with game data
-        self.table.setRowCount(len(owned_sorted))
-        for row, game in enumerate(owned_sorted):
         # Populate table with sorted data
         self._populate_table(sorted_games)
         
@@ -303,11 +297,6 @@ class LibraryView(QWidget):
             
             # Total playtime
             total_min = game.get('playtime_forever', 0)
-            last2w_min = recent_map.get(game.get('appid'), game.get('playtime_2weeks', 0)) or 0
-            
-            # Fix inconsistency (last2w > total)
-            if total_min < last2w_min:
-                total_min = last2w_min
             last2w_min = game.get('playtime_2weeks', 0)
             
             total_h = total_min / 60.0
@@ -322,9 +311,6 @@ class LibraryView(QWidget):
             self.table.setItem(row, 0, name_item)
             self.table.setItem(row, 1, total_item)
             self.table.setItem(row, 2, last_item)
-
-        self.status.setText(f"Załadowano gier: {len(owned_sorted)}")
-        self.fetch_btn.setEnabled(True)
 
     async def _resolve_steam_id(self, raw_input: str) -> Optional[str]:
         """
