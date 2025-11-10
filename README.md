@@ -9,7 +9,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688.svg)](https://fastapi.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Funkcjonalności](#-funkcjonalności) • [Architektura](#-architektura) • [Instalacja](#-instalacja) • [Dokumentacja](#-dokumentacja)
+[Funkcjonalności](#-funkcjonalności) • [Architektura](-architektura) • [Instalacja](#-instalacja) • [Dokumentacja](#-dokumentacja)
 
 ![Dashboard Preview](https://img.shields.io/badge/Status-Active-success)
 
@@ -21,19 +21,19 @@
 
 - [O Projekcie](#-o-projekcie)
 - [Funkcjonalności](#-funkcjonalności)
-- [Architektura](#-architektura)
+- [Architektura](-architektura)
 - [Struktura Projektu](#-struktura-projektu)
 - [Instalacja](#-instalacja)
   - [Aplikacja GUI](#aplikacja-gui-desktopowa)
   - [Serwer Backend](#serwer-backend)
-- [Uruchamianie](#-uruchamianie)
+- [Uruchamianie](-uruchamianie)
   - [Uruchomienie Serwera](#1-uruchomienie-serwera-backend)
   - [Uruchomienie GUI](#2-uruchomienie-aplikacji-gui)
 - [Konfiguracja](#-konfiguracja)
 - [Użytkowanie](#-użytkowanie)
 - [Tworzenie Pakietu Wykonywalnego](#-tworzenie-pakietu-wykonywalnego)
 - [Dokumentacja](#-dokumentacja)
-- [Stack Technologiczny](#-stack-technologiczny)
+- [Stack Technologiczny](-stack-technologiczny)
 - [Bezpieczeństwo](#-bezpieczeństwo)
 - [Rozwój](#-rozwój)
 - [Troubleshooting](#-troubleshooting)
