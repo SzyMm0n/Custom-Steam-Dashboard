@@ -53,13 +53,18 @@ class ISteamService(ABC):
 
 class SteamClient(BaseAsyncService, ISteamService):
 
-    api_key: str = os.getenv('STEAM_API_KEY', '')
+    api_key: str
 
     def __init__(self, *, timeout: httpx.Timeout | float | None = None):
         if timeout is not None:
             super().__init__(timeout=timeout)
         else:
             super().__init__()
+
+        self.api_key = os.getenv('STEAM_API_KEY', '')
+        if not self.api_key:
+            logger.error("STEAM_API_KEY not found in environment variables.")
+            raise ValueError("STEAM_API_KEY not found in environment variables.")
 
     async def get_player_count(self, appid: int) -> PlayerCountResponse:
         """
@@ -222,7 +227,7 @@ class SteamClient(BaseAsyncService, ISteamService):
         data = await self._get_json(player_games_endpoint, params=params)
         owned_games = []
         if data and 'response' in data:
-            logger.debug(f"Owned games data retrieved successfully for steam_id: {steam_id}")
+            logger.debug(f"Owned games data retrieved successfully for steam_id: {steam_id[:7]}****{steam_id[-4:]}")
             games = data.get('response', {}).get('games', [])
             for game in games:
                 owned_games.append(
@@ -236,7 +241,7 @@ class SteamClient(BaseAsyncService, ISteamService):
                 )
             return owned_games
 
-        logger.warning(f"Failed to retrieve owned games data for steam_id: {steam_id}")
+        logger.warning(f"Failed to retrieve owned games data for steam_id: {steam_id[:7]}****{steam_id[-4:]}")
         return owned_games
 
     async def get_recently_played_games(self, steam_id: str) -> list[SteamPlayerGameOverview]:
