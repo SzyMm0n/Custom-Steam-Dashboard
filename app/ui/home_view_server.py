@@ -5,6 +5,7 @@ Fetches data from the backend server.
 """
 import asyncio
 import logging
+import os
 from typing import List, Dict, Any, Optional, Set
 
 from PySide6.QtWidgets import (
@@ -38,17 +39,19 @@ class HomeView(QWidget):
 
     MAX_PLAYERS_SLIDER = 2000000  # Maximum value for player count slider
 
-    def __init__(self, server_url: str = "http://localhost:8000", parent=None):
+    def __init__(self, server_url: Optional[str] = None, parent=None):
         """
         Initialize the home view.
 
         Args:
-            server_url: URL of the backend server
+            server_url: URL of the backend server (defaults to SERVER_URL from environment)
             parent: Parent widget
         """
         super().__init__(parent)
 
         # Server client for data fetching
+        if server_url is None:
+            server_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self._server_client = ServerClient(base_url=server_url)
         self._server_url = server_url  # Store for passing to dialogs
 

@@ -114,9 +114,9 @@ def main():
     """
     Main entry point for the Custom Steam Dashboard application.
     
-    The application now requires authentication with the backend server.
+    The application requires authentication with the backend server.
     Make sure:
-    1. The server is running at http://localhost:8000 (or your custom URL)
+    1. The server is running and accessible (configure via SERVER_URL environment variable)
     2. CLIENT_ID and CLIENT_SECRET environment variables are set
     3. Server CLIENTS_JSON configuration includes your client credentials
     """

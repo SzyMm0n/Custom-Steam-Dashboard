@@ -3,6 +3,7 @@ Server client module for Custom Steam Dashboard.
 Handles communication with the backend server API.
 """
 import logging
+import os
 from typing import List, Dict, Any, Optional
 import httpx
 
@@ -23,13 +24,15 @@ class ServerClient:
     - Handle connection errors gracefully
     """
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: Optional[str] = None):
         """
         Initialize the server client.
         
         Args:
-            base_url: Base URL of the server API
+            base_url: Base URL of the server API (defaults to SERVER_URL from environment)
         """
+        if base_url is None:
+            base_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self.base_url = base_url.rstrip('/')
         self.timeout = httpx.Timeout(30.0, connect=10.0)
 

@@ -53,7 +53,7 @@ class GameDetailDialog(QDialog):
     def __init__(
         self, 
         game_data: Any, 
-        server_url: str = "http://localhost:8000",
+        server_url: Optional[str] = None,
         parent: Optional[QWidget] = None
     ):
         """
@@ -62,10 +62,13 @@ class GameDetailDialog(QDialog):
         Args:
             game_data: Either a string (game title) or dict with game information
                       (name, appid, players, tags, deal_url, deal_id, store_id, store_name)
-            server_url: URL of the backend server
+            server_url: URL of the backend server (defaults to SERVER_URL from environment)
             parent: Parent widget
         """
         super().__init__(parent)
+        if server_url is None:
+            import os
+            server_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self._server_client = ServerClient(base_url=server_url)
         self.setWindowTitle("Szczegóły gry")
         self.setMinimumWidth(420)

@@ -313,6 +313,16 @@ STEAM_ID=your_steam_id              # Twój Steam ID (dla testów biblioteki)
 # Server Configuration
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8000
+SERVER_URL=http://localhost:8000    # URL serwera dla aplikacji GUI
+
+# Authentication (wymagane dla GUI)
+CLIENT_ID=desktop-main              # ID klienta
+CLIENT_SECRET=your-client-secret    # Sekret klienta (generuj: python -c "import secrets; print(secrets.token_urlsafe(32))")
+
+# JWT Configuration (SERWER)
+JWT_SECRET=your-jwt-secret          # Sekret JWT (min 32 bajty)
+JWT_TTL_SECONDS=1200                # Czas życia tokenu (20 minut)
+CLIENTS_JSON={"desktop-main": "your-client-secret"}  # Lista klientów
 ```
 
 ### 3. Inicjalizacja Bazy Danych
@@ -343,7 +353,9 @@ python app.py
 uvicorn server.app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Serwer będzie dostępny pod adresem: **`http://localhost:8000`**
+Serwer będzie dostępny domyślnie pod adresem: **`http://localhost:8000`**
+
+(URL serwera można skonfigurować przez zmienną środowiskową `SERVER_URL`)
 
 #### Weryfikacja działania serwera:
 ```bash
@@ -595,8 +607,9 @@ uvicorn server.app:app --port 8001
 # Sprawdź czy serwer działa
 curl http://localhost:8000/health
 
-# Sprawdź URL w GUI (domyślnie: http://localhost:8000)
-python -m app.main_server --server-url http://localhost:8000
+# Sprawdź URL w zmiennej środowiskowej SERVER_URL
+# Domyślnie używa http://localhost:8000
+echo $SERVER_URL
 ```
 
 #### ❌ Błąd: "Qt platform plugin not found"

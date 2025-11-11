@@ -3,6 +3,7 @@ Deals client module for Custom Steam Dashboard.
 Handles communication with the backend server for deals and pricing information.
 """
 import logging
+import os
 from typing import List, Dict, Any, Optional
 import httpx
 
@@ -21,13 +22,15 @@ class DealsClient:
     This client provides a clean interface for the GUI to request deals data.
     """
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: Optional[str] = None):
         """
         Initialize the deals client.
         
         Args:
-            base_url: Base URL of the backend server API
+            base_url: Base URL of the backend server API (defaults to SERVER_URL from environment)
         """
+        if base_url is None:
+            base_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self.base_url = base_url.rstrip('/')
         self.timeout = httpx.Timeout(30.0, connect=10.0)
     
@@ -162,7 +165,10 @@ class DealsClientContext:
         ...     deals = await client.get_best_deals()
     """
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: Optional[str] = None):
+        if base_url is None:
+            import os
+            base_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self.base_url = base_url
         self._client = None
     
@@ -179,7 +185,7 @@ class DealsClientContext:
 async def get_current_deals(
     limit: int = 20,
     min_discount: int = 20,
-    server_url: str = "http://localhost:8000"
+    server_url: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Convenience function to fetch deals without creating a client instance.
@@ -187,11 +193,14 @@ async def get_current_deals(
     Args:
         limit: Maximum number of deals to return
         min_discount: Minimum discount percentage
-        server_url: Backend server URL
-    
+        server_url: Backend server URL (defaults to SERVER_URL from environment)
+
     Returns:
         List of deal dictionaries
     """
+    if server_url is None:
+        import os
+        server_url = os.getenv("SERVER_URL", "http://localhost:8000")
     client = DealsClient(server_url)
     return await client.get_best_deals(limit, min_discount)
 

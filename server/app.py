@@ -544,5 +544,6 @@ async def get_game_deal(appid: int, request: Request, client_id: str = Depends(r
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    uvicorn.run(app, host=os.getenv("HOST","0.0.0.0"), port=os.getenv("PORT",8000))
 

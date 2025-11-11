@@ -3,8 +3,10 @@ Main window module for Custom Steam Dashboard.
 Contains the primary application window with navigation and view management.
 """
 import asyncio
+import os
 import sys
 from pathlib import Path
+from typing import Optional
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QToolBar
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QSize
@@ -23,12 +25,12 @@ class MainWindow(QMainWindow):
     - Refresh functionality
     """
 
-    def __init__(self, server_url: str = "http://localhost:8000"):
+    def __init__(self, server_url: Optional[str] = None):
         """
         Initialize the main window.
 
         Args:
-            server_url: URL of the backend server
+            server_url: URL of the backend server (defaults to SERVER_URL from environment)
         """
         super().__init__()
         self.setWindowTitle("Steam Dashboard")
@@ -37,6 +39,8 @@ class MainWindow(QMainWindow):
         # Set window icon
         self._set_window_icon()
 
+        if server_url is None:
+            server_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self._server_url = server_url
 
         # Setup central widget and layout

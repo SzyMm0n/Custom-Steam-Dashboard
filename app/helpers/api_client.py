@@ -4,6 +4,7 @@ Handles JWT authentication and request signing with HMAC.
 """
 import logging
 import json
+import os
 from typing import Optional, Dict, Any
 from urllib.parse import urljoin
 import httpx
@@ -24,13 +25,15 @@ class AuthenticatedAPIClient:
     - Token storage and management
     """
     
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: Optional[str] = None):
         """
         Initialize the authenticated API client.
         
         Args:
-            base_url: Base URL of the server API
+            base_url: Base URL of the server API (defaults to SERVER_URL from environment)
         """
+        if base_url is None:
+            base_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self.base_url = base_url.rstrip('/')
         self.timeout = httpx.Timeout(30.0, connect=10.0)
         
@@ -230,13 +233,13 @@ class AuthenticatedAPIClient:
 _api_client: Optional[AuthenticatedAPIClient] = None
 
 
-def get_api_client(base_url: str = "http://localhost:8000") -> AuthenticatedAPIClient:
+def get_api_client(base_url: Optional[str] = None) -> AuthenticatedAPIClient:
     """
     Get singleton API client instance.
-    
+
     Args:
-        base_url: Base URL of the server API
-        
+        base_url: Base URL of the server API (defaults to SERVER_URL from environment)
+
     Returns:
         AuthenticatedAPIClient instance
     """

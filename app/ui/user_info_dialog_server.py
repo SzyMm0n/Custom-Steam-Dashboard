@@ -5,6 +5,7 @@ Displays Steam user profile and game library information using server API.
 from __future__ import annotations
 import asyncio
 import logging
+import os
 from typing import Optional
 from PySide6.QtCore import Qt, QLocale
 from PySide6.QtGui import QPixmap, QFont, QFontDatabase
@@ -35,14 +36,16 @@ class SteamUserInfoDialog(QDialog):
     - Shows game library with playtime statistics
     - Polish locale support
     """
-    def __init__(self, server_url: str = "http://localhost:8000", parent=None):
+    def __init__(self, server_url: Optional[str] = None, parent=None):
         """
         Initialize the Steam user info dialog.
         Args:
-            server_url: URL of the backend server
+            server_url: URL of the backend server (defaults to SERVER_URL from environment)
             parent: Parent widget
         """
         super().__init__(parent)
+        if server_url is None:
+            server_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self._server_client = ServerClient(base_url=server_url)
         self.setWindowTitle("Informacje o użytkowniku Steam")
         self.setMinimumSize(800, 560)

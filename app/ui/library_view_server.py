@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Optional
 
 from PySide6.QtCore import Qt
@@ -41,15 +42,17 @@ class LibraryView(QWidget):
     - No API key required (server handles authentication)
     """
 
-    def __init__(self, server_url: str = "http://localhost:8000", parent: Optional[QWidget] = None) -> None:
+    def __init__(self, server_url: Optional[str] = None, parent: Optional[QWidget] = None) -> None:
         """
         Initialize the library view.
 
         Args:
-            server_url: URL of the backend server
+            server_url: URL of the backend server (defaults to SERVER_URL from environment)
             parent: Parent widget
         """
         super().__init__(parent)
+        if server_url is None:
+            server_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self._server_client = ServerClient(base_url=server_url)
         
         # Store games data for sorting
