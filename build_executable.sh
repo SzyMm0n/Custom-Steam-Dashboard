@@ -87,9 +87,9 @@ if [ -d "dist" ]; then
     echo ""
     echo -e "${GREEN}To run the application:${NC}"
     if [ "$(uname)" == "Darwin" ]; then
-        echo "  open dist/SteamDashboard.app"
+        echo "  open dist/CustomSteamDashboard.app"
     else
-        echo "  ./dist/SteamDashboard"
+        echo "  ./dist/CustomSteamDashboard"
     fi
 else
     echo -e "${RED}Error: dist directory not found!${NC}"
@@ -99,3 +99,33 @@ fi
 echo ""
 echo "=========================================="
 
+# Create desktop entry file for Linux
+if [ "$(uname)" = "Linux" ]; then
+    echo -e "${YELLOW}[5/5] Creating desktop entry...${NC}"
+
+    ICONS=$(pwd)/app/icons
+    INSTALL_DIR=$(pwd)/dist
+    DESKTOP_FILE="$INSTALL_DIR/CustomSteamDashboard.desktop"
+
+    cat > "$DESKTOP_FILE" << EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Steam Dashboard
+Comment=Custom Steam Dashboard Application
+Exec=$INSTALL_DIR/CustomSteamDashboard
+Icon=$ICONS/icon-256x256.png
+Terminal=false
+Categories=Game;Utility;
+StartupWMClass=SteamDashboard
+EOF
+
+    chmod +x "$DESKTOP_FILE"
+    echo -e "${GREEN}✓ Desktop entry created: $DESKTOP_FILE${NC}"
+    echo ""
+    echo -e "${YELLOW}To install system-wide:${NC}"
+    echo "  mkdir -p ~/.local/share/applications"
+    echo "  cp $DESKTOP_FILE ~/.local/share/applications/"
+    echo "  update-desktop-database ~/.local/share/applications/"
+    echo ""
+fi

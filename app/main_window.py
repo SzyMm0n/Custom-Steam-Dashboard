@@ -3,8 +3,10 @@ Main window module for Custom Steam Dashboard.
 Contains the primary application window with navigation and view management.
 """
 import asyncio
+import sys
+from pathlib import Path
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QToolBar
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QSize
 from .ui.home_view_server import HomeView
 from .ui.library_view_server import LibraryView
@@ -32,6 +34,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Steam Dashboard")
         self.setMinimumSize(1000, 800)
         
+        # Set window icon
+        self._set_window_icon()
+
         self._server_url = server_url
 
         # Setup central widget and layout
@@ -54,6 +59,33 @@ class MainWindow(QMainWindow):
         self._init_toolbar()
 
     # ===== UI Initialization =====
+
+    def _set_window_icon(self):
+        """
+        Set the window icon for the application.
+        Tries to find icon in multiple locations (dev and bundled executable).
+        """
+        # Possible icon paths (in order of preference)
+        icon_paths = [
+            # For bundled executable (PyInstaller)
+            Path(sys._MEIPASS) / "icons" / "icon-128x128.png" if hasattr(sys, '_MEIPASS') else None,
+            # For development - relative to this file
+            Path(__file__).parent / "icons" / "icon-128x128.png",
+            # Alternative sizes
+            Path(__file__).parent / "icons" / "icon-32x32.png",
+            Path(__file__).parent / "icons" / "icon-16x16.png",
+        ]
+
+        # Try each path until we find a valid icon
+        for icon_path in icon_paths:
+            if icon_path and icon_path.exists():
+                icon = QIcon(str(icon_path))
+                if not icon.isNull():
+                    self.setWindowIcon(icon)
+                    return
+
+        # If no icon found, log a warning but continue
+        print("Warning: Could not find application icon")
 
     def _init_toolbar(self):
         """
