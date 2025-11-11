@@ -176,7 +176,7 @@ Custom-Steam-Dashboard/
 │   └── core/                        # Logika biznesowa GUI
 │       └── services/
 │           ├── server_client.py     # Klient HTTP do backendu
-│           └── deals_api.py         # Integracja z CheapShark
+│           └── deals_client.py      # Integracja z IsThereAnyDeal API
 │
 ├── ⚙️ server/                       # SERWER BACKEND
 │   ├── app.py                       # Główna aplikacja FastAPI
@@ -188,6 +188,7 @@ Custom-Steam-Dashboard/
 │   │
 │   └── services/                    # Logika biznesowa
 │       ├── steam_service.py         # Klient Steam API
+│       ├── deals_service.py         # Logika IsThereAnyDeal API
 │       ├── models.py                # Modele Pydantic
 │       ├── parse_html.py            # Parser HTML
 │       └── _base_http.py            # Bazowy klient HTTP
@@ -385,7 +386,7 @@ Aplikacja GUI automatycznie połączy się z serwerem i wyświetli główne okno
    - Odświeżanie co 5 minut przez scheduler
    
 2. **Best Deals** - Najlepsze promocje
-   - Źródło: CheapShark API
+   - Źródło: IsThereAnyDeal API
    - Kliknij grę aby zobaczyć szczegóły
    
 3. **Best Upcoming Releases** - Nadchodzące premiery
