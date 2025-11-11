@@ -18,11 +18,11 @@ from app.core.services.server_client import ServerClient
 from app.ui.components_server import NumberValidator, GameDetailDialog
 from app.ui.styles import apply_style
 
-# DealsApiClient optional - import if available
+# DealsClient - import for deals functionality
 try:
-    from app.core.services.deals_api import DealsApiClient
+    from app.core.services.deals_client import DealsClient
 except Exception:
-    DealsApiClient = None
+    DealsClient = None
 
 logger = logging.getLogger(__name__)
 
@@ -646,66 +646,85 @@ class HomeView(QWidget):
         self.upcoming_title.setText("Best Upcoming Releases")
 
     async def _fetch_deals(self):
-        """Fetch and display best deals."""
+        """Fetch and display best deals from IsThereAnyDeal via backend."""
         deals = []
-        if DealsApiClient is not None:
-            try:
-                async with DealsApiClient() as deals_client:
-                    deals = await deals_client.get_current_deals(limit=10, min_discount=20)
-            except Exception as e:
-                logger.error(f"Error fetching deals: {e}")
-                deals = []
-        
+        server_error = False
+
+        if DealsClient is None:
+            logger.warning("DealsClient not available")
+            self.trending_list.clear()
+            self.trending_list.addItem("DealsClient nie jest dostępny.")
+            return
+
+        try:
+            deals_client = DealsClient(base_url=self._server_url)
+            deals = await deals_client.get_best_deals(limit=10, min_discount=20)
+        except Exception as e:
+            logger.error(f"Error fetching deals: {e}")
+            deals = []
+            server_error = True
+
         self.trending_list.clear()
+        if server_error:
+            self.trending_list.addItem("Nie można połączyć się z serwerem.")
+            self.trending_list.addItem("   Upewnij się że serwer działa na " + self._server_url)
+            return
+
         if not deals:
-            self.trending_list.addItem("Brak aktualnych promocji.")
+            self.trending_list.addItem("ℹ️ Brak aktywnych promocji dla monitorowanych gier.")
+            self.trending_list.addItem("   (Sprawdź ponownie podczas Steam Sale!)")
             return
         
         for d in deals:
             try:
-                # Extract deal data
-                if isinstance(d, dict):
-                    sale = d.get('salePrice') or d.get('sale_price') or d.get('sale')
-                    normal = d.get('normalPrice') or d.get('normal_price') or d.get('retailPrice')
-                    title = d.get('title') or d.get('name') or d.get('gameName')
-                    appid = d.get('steamAppID') or d.get('steam_app_id') or d.get('appID')
-                    deal_id = d.get('dealID') or d.get('deal_id')
-                    store_id = d.get('storeID') or d.get('store_id')
-                    store_name = d.get('storeName') or d.get('store_name')
-                    deal_url = d.get('storeURL') or d.get('dealURL') or d.get('url')
+                # Extract deal data from IsThereAnyDeal format
+                game_title = d.get('game_title', 'Unknown Game')
+                current_price = d.get('current_price', 0.0)
+                regular_price = d.get('regular_price', 0.0)
+                discount_percent = d.get('discount_percent', 0)
+                store_name = d.get('store_name', 'Unknown Store')
+                store_url = d.get('store_url', '')
+                appid = d.get('steam_appid')
+                currency = d.get('currency', 'USD')
+
+                # Format price display
+                if currency == 'USD':
+                    currency_symbol = '$'
+                elif currency == 'EUR':
+                    currency_symbol = '€'
+                elif currency == 'GBP':
+                    currency_symbol = '£'
+                elif currency == 'PLN':
+                    currency_symbol = 'zł'
                 else:
-                    sale = getattr(d, 'salePrice', None) or getattr(d, 'sale_price', None)
-                    normal = getattr(d, 'normalPrice', None) or getattr(d, 'normal_price', None)
-                    title = getattr(d, 'title', None) or getattr(d, 'name', None)
-                    appid = getattr(d, 'steamAppID', None) or getattr(d, 'steam_app_id', None)
-                    deal_id = getattr(d, 'dealID', None) or getattr(d, 'deal_id', None)
-                    store_id = getattr(d, 'storeID', None) or getattr(d, 'store_id', None)
-                    store_name = getattr(d, 'storeName', None) or getattr(d, 'store_name', None)
-                    deal_url = getattr(d, 'storeURL', None) or getattr(d, 'dealURL', None)
-                
-                if not deal_url and deal_id:
-                    import urllib.parse
-                    deal_url = f"https://www.cheapshark.com/redirect?dealID={urllib.parse.quote_plus(str(deal_id))}"
-                
-                if title is None:
-                    title = str(d)
-                
-                try:
-                    appid_int = int(appid) if appid is not None else None
-                    if appid_int is not None and appid_int <= 0:
-                        appid_int = None
-                except Exception:
-                    appid_int = None
-                
-                text = self._format_deal_line(title, sale, normal)
+                    currency_symbol = currency + ' '
+
+                # Create display text (in Polish)
+                if discount_percent > 0:
+                    # Format based on currency convention (PLN goes after, others before)
+                    if currency == 'PLN':
+                        text = (f"{game_title} — {current_price:.2f} {currency_symbol} "
+                               f"(było {regular_price:.2f} {currency_symbol}, -{discount_percent}%) "
+                               f"— {store_name}")
+                    else:
+                        text = (f"{game_title} — {currency_symbol}{current_price:.2f} "
+                               f"(było {currency_symbol}{regular_price:.2f}, -{discount_percent}%) "
+                               f"— {store_name}")
+                else:
+                    if currency == 'PLN':
+                        text = f"{game_title} — {current_price:.2f} {currency_symbol} — {store_name}"
+                    else:
+                        text = f"{game_title} — {currency_symbol}{current_price:.2f} — {store_name}"
+
                 item = QListWidgetItem(text)
                 item.setData(Qt.ItemDataRole.UserRole, {
-                    "name": title,
-                    "appid": appid_int,
-                    "deal_url": deal_url,
-                    "deal_id": deal_id,
-                    "store_id": store_id,
+                    "name": game_title,
+                    "appid": appid,
+                    "deal_url": store_url,
                     "store_name": store_name,
+                    "current_price": current_price,
+                    "regular_price": regular_price,
+                    "discount_percent": discount_percent,
                 })
                 self.trending_list.addItem(item)
             except Exception as e:

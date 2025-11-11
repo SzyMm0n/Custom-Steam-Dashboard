@@ -74,7 +74,7 @@ Wydajny serwer **FastAPI** z PostgreSQL, który:
 - ✅ **Monitorowanie popularności gier** - śledź liczbę graczy online w czasie rzeczywistym
 - ✅ **Filtrowanie po tagach** - znajdź gry według gatunków i kategorii
 - ✅ **Zakres liczby graczy** - filtruj po min/max liczbie aktywnych graczy
-- ✅ **Promocje i okazje** - najlepsze ceny z różnych platform
+- ✅ **Promocje i okazje** - najlepsze ceny z IsThereAnyDeal API (Steam, GOG, Epic Games, Humble Bundle)
 - ✅ **Kalendarz premier** - nie przegap nadchodzących wydań
 - ✅ **Analiza biblioteki** - przegląd Twojej kolekcji Steam z czasem gry
 - ✅ **Responsywny interfejs** - płynne działanie dzięki asyncio
@@ -142,7 +142,7 @@ Aplikacja wykorzystuje **architekturę klient-serwer** z wyraźnym podziałem od
                ▼
 ┌─────────────────────────────────────────────────────────────┐
 │               ZEWNĘTRZNE API                                │
-│  • Steam Store API  • Steam Web API  • CheapShark API       │
+│  • Steam Store API  • Steam Web API  • IsThereAnyDeal API   │
 └─────────────────────────────────────────────────────────────┘
 ```
 

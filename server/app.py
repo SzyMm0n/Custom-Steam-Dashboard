@@ -25,6 +25,7 @@ from pydantic import ValidationError
 
 from database.database import DatabaseManager, init_db, close_db
 from services.steam_service import SteamClient
+from services.deals_service import IsThereAnyDealClient
 from scheduler import SchedulerManager
 from validation import (
     SteamIDValidator,
@@ -46,6 +47,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 # Global instances
 db: Optional[DatabaseManager] = None
 steam_client: Optional[SteamClient] = None
+deals_client: Optional[IsThereAnyDealClient] = None
 scheduler_manager: Optional[SchedulerManager] = None
 
 
@@ -54,7 +56,7 @@ async def lifespan(app: FastAPI):
     """
     Application lifespan manager for startup and shutdown events.
     """
-    global db, steam_client, scheduler_manager
+    global db, steam_client, deals_client, scheduler_manager
 
     # Startup
     logger.info("Starting Custom Steam Dashboard Server...")
@@ -67,6 +69,10 @@ async def lifespan(app: FastAPI):
         # Initialize Steam client
         steam_client = SteamClient()
         logger.info("Steam client initialized")
+
+        # Initialize Deals client
+        deals_client = IsThereAnyDealClient()
+        logger.info("Deals client initialized")
 
         # Seed watchlist with top 100 most played games if empty
         await db.seed_watchlist(steam_client)
@@ -87,6 +93,12 @@ async def lifespan(app: FastAPI):
         if scheduler_manager:
             scheduler_manager.shutdown()
             logger.info("Scheduler shut down")
+
+        # Close deals client
+        if deals_client:
+            await deals_client.aclose()
+            logger.info("Deals client closed")
+
         # Steam client cleanup happens automatically via BaseAsyncService context manager
             logger.info("Steam client closed")
 
@@ -351,6 +363,131 @@ async def get_all_categories(request: Request):
         return {"categories": categories}
     except Exception as e:
         logger.error(f"Error fetching categories: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===== Deals Endpoints =====
+
+@app.get("/api/deals/best")
+@limiter.limit("20/minute")
+async def get_best_deals(
+    request: Request,
+    limit: int = 20,
+    min_discount: int = 20
+):
+    """
+    Get best current game deals from IsThereAnyDeal.
+
+    Checks prices for games in the watchlist database.
+
+    Args:
+        limit: Maximum number of deals to return (default: 20, max: 50)
+        min_discount: Minimum discount percentage (default: 20)
+
+    Returns:
+        List of best deals with price and store information
+    """
+    try:
+        # Validate parameters
+        limit = min(max(1, limit), 50)  # Between 1 and 50
+        min_discount = min(max(0, min_discount), 100)  # Between 0 and 100
+
+        # Get list of games from watchlist to check for deals
+        watchlist = await db.get_watchlist()
+        game_appids = [game['appid'] for game in watchlist if 'appid' in game]
+
+        # Create mapping of appid to game name for display
+        game_names = {game['appid']: game['name'] for game in watchlist if 'appid' in game and 'name' in game}
+
+        if not game_appids:
+            return {
+                "deals": [],
+                "count": 0,
+                "message": "No games in watchlist to check for deals"
+            }
+
+        logger.info(f"Checking deals for {len(game_appids)} games from watchlist")
+
+        # Get deals for watchlist games
+        deals = await deals_client.get_best_deals(
+            limit=limit,
+            min_discount=min_discount,
+            game_appids=game_appids[:100],  # Limit to first 100 games
+            game_names=game_names
+        )
+
+        return {
+            "deals": [deal.model_dump() for deal in deals],
+            "count": len(deals)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching best deals: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/deals/game/{appid}")
+@limiter.limit("30/minute")
+async def get_game_deal(appid: int, request: Request):
+    """
+    Get price information and deals for a specific game by Steam AppID.
+
+    First checks database for game details, then fetches from Steam API if not found.
+    Returns best available deal from IsThereAnyDeal.
+
+    Args:
+        appid: Steam application ID
+
+    Returns:
+        Price information and best deal for the game
+    """
+    try:
+        # Validate appid
+        validator = AppIDValidator(appid=appid)
+        validated_appid = validator.appid
+
+        # First, try to get game from database
+        game = await db.get_game(validated_appid)
+
+        # If not in database, fetch from Steam API and add to database
+        if not game:
+            logger.info(f"Game {validated_appid} not in database, fetching from Steam API")
+            game_details = await steam_client.get_game_details(validated_appid)
+
+            if not game_details:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Game with appid {validated_appid} not found"
+                )
+
+            # Add game to database
+            await db.upsert_game(game_details)
+            logger.info(f"Added game {validated_appid} to database")
+
+            # Fetch the newly added game
+            game = await db.get_game(validated_appid)
+
+        # Get deal information from IsThereAnyDeal
+        deal = await deals_client.get_game_prices(validated_appid)
+
+        if not deal:
+            # Return game info without deal
+            return {
+                "game": game,
+                "deal": None,
+                "message": "No active deals found for this game"
+            }
+
+        return {
+            "game": game,
+            "deal": deal.model_dump()
+        }
+
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors())
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching game deal: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

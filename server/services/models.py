@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pydantic.dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict
 
 # === Pydantic models for Steam API responses ===
@@ -43,4 +42,36 @@ class SteamPlayerDetails(BaseModel):
     profileurl: str
     avatar: str
     avatarfull: str
+
+
+# === Pydantic models for Deals API responses ===
+class DealInfo(BaseModel):
+    """Information about a game deal"""
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    steam_appid: int
+    game_title: str
+    store_name: str
+    store_url: str
+    current_price: float
+    regular_price: float
+    discount_percent: int
+    currency: str = "USD"
+    drm: str = "Unknown"
+
+
+class GamePrice(BaseModel):
+    """Price information for a specific game"""
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    steam_appid: int
+    game_title: str
+    store_name: str
+    store_url: str
+    current_price: float
+    regular_price: float
+    discount_percent: int
+    currency: str = "USD"
+    drm: str = "Unknown"
+
 

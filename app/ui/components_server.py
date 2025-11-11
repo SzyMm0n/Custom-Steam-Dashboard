@@ -265,21 +265,21 @@ class GameDetailDialog(QDialog):
     def _open_store_page(self) -> None:
         """
         Open the appropriate store page for the game.
-        Priority: Steam page > Direct deal URL > CheapShark redirect > CheapShark search
+        Priority: Best deal URL > Steam page > Fallback search
         """
         try:
-            # 1) Prefer Steam app page when appid is known
+            # 1) Prefer the best deal URL from IsThereAnyDeal (could be any store)
+            if isinstance(self._deal_url, str) and self._deal_url.strip():
+                QDesktopServices.openUrl(QUrl(self._deal_url))
+                return
+
+            # 2) Fallback to Steam app page when appid is known
             if self._appid:
                 url = QUrl(f"https://store.steampowered.com/app/{int(self._appid)}/")
                 QDesktopServices.openUrl(url)
                 return
 
-            # 2) If we have any direct deal/store URL, open it
-            if isinstance(self._deal_url, str) and self._deal_url.strip():
-                QDesktopServices.openUrl(QUrl(self._deal_url))
-                return
-
-            # 3) If we have a deal id, construct CheapShark redirect
+            # 3) If we have a deal id (legacy CheapShark), construct redirect
             if self._deal_id:
                 redir = QUrl(
                     f"https://www.cheapshark.com/redirect?dealID={urllib.parse.quote_plus(str(self._deal_id))}"
@@ -287,10 +287,12 @@ class GameDetailDialog(QDialog):
                 QDesktopServices.openUrl(redir)
                 return
 
-            # 4) Fallback: Open CheapShark search page
-            cs_url = self._make_cheapshark_search_url()
-            if cs_url is not None:
-                QDesktopServices.openUrl(cs_url)
+            # 4) Fallback: Try Steam search by title
+            if self._title and self._title != "Nieznana gra":
+                search_url = QUrl(
+                    f"https://store.steampowered.com/search/?term={urllib.parse.quote_plus(self._title)}"
+                )
+                QDesktopServices.openUrl(search_url)
         except Exception as e:
             logger.error(f"Error opening store page: {e}")
 
