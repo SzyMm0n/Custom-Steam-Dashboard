@@ -37,13 +37,18 @@
 - [Bezpieczeństwo](#-bezpieczeństwo)
 - [Rozwój](#-rozwój)
 - [Troubleshooting](#-troubleshooting)
+- [Credits](#-credits)
 - [Licencja](#-licencja)
 
 ---
 
 ## 🎯 O Projekcie
 
-**Custom Steam Dashboard** to zaawansowana aplikacja desktopowa z backendem serwerowym, która umożliwia monitorowanie aktywności gier na platformie Steam w czasie rzeczywistym. Projekt składa się z dwóch głównych komponentów:
+**Custom Steam Dashboard** to aplikacja wykonana na potrzeby przedmiotu, Dynamiczna Analiza Oprogramowania, na studiach informatycznych.
+Celem było stworzenie oprogramowania do dynamicznej analizy kodu. Dlatego aplikacja nie jest gotowym produktem komercyjnym, ale raczej przykładem zaawansowanego projektu edukacyjnego.
+Aplikacja umożliwia monitorowanie popularności gier na platformie Steam, oferując interaktywny interfejs użytkownika zbudowany w PySide6 oraz wydajny serwer backend oparty na FastAPI i PostgreSQL.
+Projekt demonstruje nowoczesne podejście do tworzenia aplikacji klient-serwer z wykorzystaniem asynchronicznego programowania w Pythonie, zapewniając responsywny interfejs użytkownika oraz skalowalny backend.
+
 
 ### 🖥️ **Aplikacja GUI** (Desktopowa)
 Nowoczesny interfejs użytkownika zbudowany w **PySide6** z asynchronicznym wsparciem (`qasync`), który komunikuje się z backendem i wyświetla:
@@ -312,8 +317,12 @@ SERVER_PORT=8000
 ### 3. Inicjalizacja Bazy Danych
 
 Przy pierwszym uruchomieniu serwer automatycznie utworzy wymagane tabele:
-- `game_apps` - informacje o grach
-- `player_counts` - historyczne dane o liczbie graczy
+- `games` - informacje o grach
+- `game_genres` - gatunki gier
+- `game_categories` - kategorie gier
+- `player_counts_raw` - surowe dane liczby graczy
+- `player_counts_hourly` - zarchiwizowane dane godzinowe
+- `player_counts_daily` - zarchiwizowane dane dzienne
 - `watchlist` - lista obserwowanych gier
 
 ---
@@ -402,26 +411,32 @@ Aplikacja GUI automatycznie połączy się z serwerem i wyświetli główne okno
 
 Możesz zbudować standalone aplikację bez wymagania instalacji Pythona:
 
-### Linux / macOS
+### Przygotowanie
+```bash
+# Zainstaluj wszystkie zależności
+pip install -r requirements.txt
+
+# Opcjonalnie: Weryfikacja zależności
+python check_build_deps.py
+```
+
+### Budowanie
+
+**Linux / macOS:**
 ```bash
 chmod +x build_executable.sh
 ./build_executable.sh
 ```
 
-### Windows
+**Windows:**
 ```cmd
 build_executable.bat
 ```
 
 Plik wykonywalny znajdziesz w katalogu `dist/`:
-- Linux/Mac: `dist/SteamDashboard`
-- Windows: `dist/SteamDashboard.exe`
-
-**Wymagania przed budowaniem:**
-```bash
-pip install pyinstaller>=6.9
-python check_build_deps.py  # Weryfikacja zależności
-```
+- 🐧 Linux: `dist/SteamDashboard`
+- 🍎 macOS: `dist/SteamDashboard.app`
+- 🪟 Windows: `dist/SteamDashboard.exe` (z ikoną ICO)
 
 ---
 
@@ -439,31 +454,31 @@ Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 ## 🛠️ Stack Technologiczny
 
 ### Frontend (GUI)
-| Technologia | Wersja | Zastosowanie |
-|-------------|--------|--------------|
-| **PySide6** | 6.7+ | Framework Qt dla GUI |
-| **qasync** | 0.26+ | Integracja Qt z asyncio |
-| **httpx** | 0.27+ | Klient HTTP/2 |
-| **Pydantic** | 2.7+ | Walidacja modeli danych |
+| Technologia  | Wersja | Zastosowanie            |
+|--------------|--------|-------------------------|
+| **PySide6**  | 6.7+   | Framework Qt dla GUI    |
+| **qasync**   | 0.26+  | Integracja Qt z asyncio |
+| **httpx**    | 0.27+  | Klient HTTP/2           |
+| **Pydantic** | 2.7+   | Walidacja modeli danych |
 
 ### Backend (Serwer)
-| Technologia | Wersja | Zastosowanie |
-|-------------|--------|--------------|
-| **FastAPI** | 0.115+ | REST API framework |
-| **Uvicorn** | 0.32+ | Serwer ASGI |
-| **PostgreSQL** | 13+ | Baza danych |
-| **asyncpg** | 0.29+ | Async driver PostgreSQL |
-| **APScheduler** | 3.10+ | Scheduler zadań |
-| **slowapi** | 0.1.9+ | Rate limiting |
+| Technologia     | Wersja | Zastosowanie            |
+|-----------------|--------|-------------------------|
+| **FastAPI**     | 0.115+ | REST API framework      |
+| **Uvicorn**     | 0.32+  | Serwer ASGI             |
+| **PostgreSQL**  | 13+    | Baza danych             |
+| **asyncpg**     | 0.29+  | Async driver PostgreSQL |
+| **APScheduler** | 3.10+  | Scheduler zadań         |
+| **slowapi**     | 0.1.9+ | Rate limiting           |
 
 ### Utilities
-| Technologia | Zastosowanie |
-|-------------|--------------|
-| **tenacity** | Retry logic z exponential backoff |
+| Technologia       | Zastosowanie                         |
+|-------------------|--------------------------------------|
+| **tenacity**      | Retry logic z exponential backoff    |
 | **python-dotenv** | Zarządzanie zmiennymi środowiskowymi |
-| **loguru** | Zaawansowane logowanie |
-| **platformdirs** | Ścieżki specyficzne dla OS |
-| **PyInstaller** | Budowanie plików wykonywalnych |
+| **loguru**        | Zaawansowane logowanie               |
+| **platformdirs**  | Ścieżki specyficzne dla OS           |
+| **PyInstaller**   | Budowanie plików wykonywalnych       |
 
 ---
 
@@ -619,18 +634,11 @@ Zapraszamy do współpracy! Aby wnieść swój wkład:
 
 ```bash
 # Klonuj repo
-git clone https://github.com/your-username/Custom-Steam-Dashboard.git
+git clone https://github.com/SzyMm0n/Custom-Steam-Dashboard.git
 cd Custom-Steam-Dashboard
 
 # Zainstaluj zależności dev
 pip install -r requirements.txt
-pip install pytest pytest-qt ruff mypy
-
-# Uruchom testy (gdy dostępne)
-pytest
-
-# Formatowanie kodu
-ruff check . --fix
 ```
 
 ---
@@ -650,13 +658,12 @@ of this software and associated documentation files...
 
 ---
 
-## 🙏 Podziękowania
+## 🎨 Credits
 
-- **Steam** - za publiczne API
-- **CheapShark** - za API promocji gier
-- **Qt/PySide6** - za framework GUI
-- **FastAPI** - za świetny framework REST API
-- **Społeczność Python** - za niesamowite biblioteki
+### Ikony
+
+Ikona aplikacji pochodzi z:
+- **Marketing analysis icons** stworzone przez Fajrul Fitrianto - [Flaticon](https://www.flaticon.com/free-icons/marketing-analysis)
 
 ---
 
