@@ -11,6 +11,7 @@ fastapi>=0.115
 uvicorn[standard]>=0.32
 APScheduler>=3.10
 slowapi>=0.1.9
+PyJWT>=2.8
 
 # === MODELE / UTYLITY ===
 pydantic>=2.7

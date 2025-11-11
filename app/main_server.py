@@ -1,15 +1,66 @@
 import sys
 import asyncio
 from pathlib import Path
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QIcon
+from dotenv import load_dotenv
+
+# Load environment variables before any other imports that use them
+load_dotenv()
 
 from app.main_window import MainWindow 
+from app.core.services.server_client import ServerClient
 from qasync import QEventLoop
 
 
-async def main_coro(app, window):
-    """Main coroutine that runs and maintains the application window."""
+async def authenticate_with_server(server_url: str) -> bool:
+    """
+    Authenticate with the server before starting the GUI.
+
+    Args:
+        server_url: Server URL
+
+    Returns:
+        True if authentication successful, False otherwise
+    """
+    try:
+        client = ServerClient(server_url)
+        success = await client.authenticate()
+        if success:
+            print("✓ Successfully authenticated with server")
+            return True
+        else:
+            print("✗ Failed to authenticate with server")
+            return False
+    except Exception as e:
+        print(f"✗ Error during authentication: {e}")
+        return False
+
+
+async def main_coro(app, server_url: str):
+    """Main coroutine that authenticates and runs the application window."""
+
+    # Step 1: Authenticate with server
+    print("Authenticating with server...")
+    auth_success = await authenticate_with_server(server_url)
+
+    if not auth_success:
+        # Show error dialog
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Critical)
+        msg.setWindowTitle("Authentication Failed")
+        msg.setText("Failed to authenticate with the server.")
+        msg.setInformativeText(
+            f"Please ensure:\n"
+            f"1. The server is running at {server_url}\n"
+            f"2. CLIENT_ID and CLIENT_SECRET are set correctly in environment\n"
+            f"3. Server security configuration matches client credentials"
+        )
+        msg.exec()
+        return False
+
+    # Step 2: Create and show main window
+    window = MainWindow(server_url)
     window.show()
     
     future = asyncio.Future()
@@ -63,9 +114,11 @@ def main():
     """
     Main entry point for the Custom Steam Dashboard application.
     
-    The application now fetches data from a backend server instead of
-    maintaining a local database. Make sure the server is running at
-    http://localhost:8000 before starting the application.
+    The application now requires authentication with the backend server.
+    Make sure:
+    1. The server is running at http://localhost:8000 (or your custom URL)
+    2. CLIENT_ID and CLIENT_SECRET environment variables are set
+    3. Server CLIENTS_JSON configuration includes your client credentials
     """
     # 1. Initialize Qt application
     app = QApplication(sys.argv)
@@ -77,16 +130,20 @@ def main():
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    # 3. Create main window (connects to server)
-    # You can pass a custom server URL as: MainWindow(server_url="http://your-server:8000")
-    window = MainWindow()
-    
-    # 4. Run main coroutine
+    # 3. Server URL (can be customized via environment variable)
+    import os
+    server_url = os.getenv("SERVER_URL", "http://localhost:8000")
+
+    # 4. Authenticate and run main coroutine
     with loop:
         try:
-            loop.run_until_complete(main_coro(app, window))
+            result = loop.run_until_complete(main_coro(app, server_url))
+            if result is False:
+                # Authentication failed, exit
+                sys.exit(1)
         except Exception as e:
             print(f"Critical error while running application: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

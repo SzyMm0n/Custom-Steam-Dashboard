@@ -10,16 +10,19 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
+# Load .env FIRST, before any other imports that use environment variables
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(env_path)
+
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from pydantic import ValidationError
 
@@ -33,6 +36,9 @@ from validation import (
     AppIDListValidator,
     VanityURLValidator
 )
+from security import require_auth, require_session_and_signed_request, rate_limit_key
+from middleware import SignatureVerificationMiddleware
+import auth_routes
 
 # Configure logging
 logging.basicConfig(
@@ -41,8 +47,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+# Initialize rate limiter (using client_id from JWT)
+limiter = Limiter(key_func=rate_limit_key, default_limits=["100/minute"])
 
 # Global instances
 db: Optional[DatabaseManager] = None
@@ -60,7 +66,6 @@ async def lifespan(app: FastAPI):
 
     # Startup
     logger.info("Starting Custom Steam Dashboard Server...")
-    load_dotenv('../.env')
     try:
         # Initialize database
         db = await init_db()
@@ -137,14 +142,59 @@ async def value_error_handler(request: Request, exc: ValueError):
         content={"detail": str(exc)}
     )
 
-# Add CORS middleware
+# Add CORS middleware (simplified for desktop GUI)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
+    allow_origins=["http://localhost:*", "http://127.0.0.1:*"],  # Only local connections
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+# Add signature verification middleware
+app.add_middleware(SignatureVerificationMiddleware)
+
+# Register authentication router
+app.include_router(auth_routes.router)
+
+# Protect API documentation endpoints
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.openapi.utils import get_openapi
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html(payload: dict = Depends(require_auth)):
+    """Protected Swagger UI documentation."""
+    return get_swagger_ui_html(
+        openapi_url="/openapi.json",
+        title="Custom Steam Dashboard API - Swagger UI",
+        oauth2_redirect_url="/docs/oauth2-redirect",
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css",
+    )
+
+@app.get("/redoc", include_in_schema=False)
+async def redoc_html(payload: dict = Depends(require_auth)):
+    """Protected ReDoc documentation."""
+    return get_redoc_html(
+        openapi_url="/openapi.json",
+        title="Custom Steam Dashboard API - ReDoc",
+        redoc_js_url="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js",
+    )
+
+@app.get("/openapi.json", include_in_schema=False)
+async def get_open_api_endpoint(payload: dict = Depends(require_auth)):
+    """Protected OpenAPI schema."""
+    return get_openapi(
+        title="Custom Steam Dashboard API",
+        version="1.0.0",
+        description="REST API for Custom Steam Dashboard application",
+        routes=app.routes,
+    )
+
+# Disable default docs
+app.docs_url = None
+app.redoc_url = None
+app.openapi_url = None
 
 
 # ===== API Endpoints =====
@@ -175,7 +225,7 @@ async def health_check(request: Request):
 
 @app.get("/api/games")
 @limiter.limit("30/minute")
-async def get_all_games(request: Request):
+async def get_all_games(request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """Get all games"""
     try:
         games = await db.get_all_games()
@@ -187,7 +237,7 @@ async def get_all_games(request: Request):
 
 @app.get("/api/games/{appid}")
 @limiter.limit("60/minute")
-async def get_game(appid: int, request: Request):
+async def get_game(appid: int, request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """Get game details by appid"""
     try:
         # Validate appid
@@ -209,7 +259,7 @@ async def get_game(appid: int, request: Request):
 
 @app.post("/api/games/tags/batch")
 @limiter.limit("20/minute")
-async def get_games_tags_batch(data: AppIDListValidator, request: Request):
+async def get_games_tags_batch(data: AppIDListValidator, request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """
     Get genres and categories for multiple games in one request.
 
@@ -233,7 +283,7 @@ async def get_games_tags_batch(data: AppIDListValidator, request: Request):
 
 @app.get("/api/owned-games/{steamid}")
 @limiter.limit("20/minute")
-async def get_most_played_games(steamid: str, request: Request):
+async def get_most_played_games(steamid: str, request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """Get player owned games from Steam library"""
     try:
         # Validate steamid
@@ -250,7 +300,7 @@ async def get_most_played_games(steamid: str, request: Request):
 
 @app.get("/api/recently-played/{steamid}")
 @limiter.limit("20/minute")
-async def get_recently_played_games(steamid: str, request: Request):
+async def get_recently_played_games(steamid: str, request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """Get player recently played games from Steam library"""
     try:
         # Validate steamid
@@ -267,7 +317,7 @@ async def get_recently_played_games(steamid: str, request: Request):
 
 @app.get("/api/coming-soon")
 @limiter.limit("30/minute")
-async def get_coming_soon_games(request: Request):
+async def get_coming_soon_games(request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """Get coming soon games from Steam"""
     try:
         games = await steam_client.get_coming_soon_games()
@@ -279,7 +329,7 @@ async def get_coming_soon_games(request: Request):
 
 @app.get("/api/player-summary/{steamid}")
 @limiter.limit("30/minute")
-async def get_player_summary(steamid: str, request: Request):
+async def get_player_summary(steamid: str, request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """Get Steam player summary"""
     try:
         # Validate steamid
@@ -297,7 +347,7 @@ async def get_player_summary(steamid: str, request: Request):
 
 @app.get("/api/resolve-vanity/{vanity_url:path}")
 @limiter.limit("20/minute")
-async def resolve_vanity_url(vanity_url: str, request: Request):
+async def resolve_vanity_url(vanity_url: str, request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """
     Resolve a Steam vanity URL or custom name to a Steam ID64.
 
@@ -331,7 +381,7 @@ async def resolve_vanity_url(vanity_url: str, request: Request):
 
 @app.get("/api/current-players")
 @limiter.limit("30/minute")
-async def get_current_players_for_ui(request: Request):
+async def get_current_players_for_ui(request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """Get current player counts for watchlist games for UI"""
     try:
         # Watchlist holds last fetched player counts for each game
@@ -344,7 +394,7 @@ async def get_current_players_for_ui(request: Request):
 
 @app.get("/api/genres")
 @limiter.limit("30/minute")
-async def get_all_genres(request: Request):
+async def get_all_genres(request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """Get all unique genres from games"""
     try:
         genres = await db.get_all_genres()
@@ -356,7 +406,7 @@ async def get_all_genres(request: Request):
 
 @app.get("/api/categories")
 @limiter.limit("30/minute")
-async def get_all_categories(request: Request):
+async def get_all_categories(request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """Get all unique categories from games"""
     try:
         categories = await db.get_all_categories()
@@ -373,7 +423,8 @@ async def get_all_categories(request: Request):
 async def get_best_deals(
     request: Request,
     limit: int = 20,
-    min_discount: int = 20
+    min_discount: int = 20,
+    client_id: str = Depends(require_session_and_signed_request)
 ):
     """
     Get best current game deals from IsThereAnyDeal.
@@ -427,7 +478,7 @@ async def get_best_deals(
 
 @app.get("/api/deals/game/{appid}")
 @limiter.limit("30/minute")
-async def get_game_deal(appid: int, request: Request):
+async def get_game_deal(appid: int, request: Request, client_id: str = Depends(require_session_and_signed_request)):
     """
     Get price information and deals for a specific game by Steam AppID.
 

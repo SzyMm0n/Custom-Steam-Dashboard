@@ -6,6 +6,8 @@ import logging
 from typing import List, Dict, Any, Optional
 import httpx
 
+from app.helpers.api_client import AuthenticatedAPIClient
+
 logger = logging.getLogger(__name__)
 
 
@@ -14,6 +16,7 @@ class ServerClient:
     Client for communicating with Custom Steam Dashboard server.
     
     Features:
+    - Authenticated requests with JWT and HMAC signatures
     - Fetch current player counts for watchlist games
     - Get game details and tags
     - Fetch deals and upcoming releases
@@ -29,7 +32,21 @@ class ServerClient:
         """
         self.base_url = base_url.rstrip('/')
         self.timeout = httpx.Timeout(30.0, connect=10.0)
-    
+
+        # Create a new authenticated API client instance for this ServerClient
+        # (not using singleton - each ServerClient gets its own authenticated session)
+        self._api_client = AuthenticatedAPIClient(base_url)
+
+    async def authenticate(self) -> bool:
+        """
+        Authenticate with the server.
+        Must be called before making any API requests.
+
+        Returns:
+            True if authentication successful, False otherwise
+        """
+        return await self._api_client.login()
+
     # ===== Game Data Endpoints =====
     
     async def get_current_players(self) -> List[Dict[str, Any]]:
@@ -40,13 +57,9 @@ class ServerClient:
             List of games with player counts and metadata
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/current-players")
-                response.raise_for_status()
-                data = response.json()
+            data = await self._api_client.get("/api/current-players")
+            if data:
                 return data.get("games", [])
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching current players: {e}")
             return []
         except Exception as e:
             logger.error(f"Unexpected error fetching current players: {e}")
@@ -60,13 +73,9 @@ class ServerClient:
             List of all games
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/games")
-                response.raise_for_status()
-                data = response.json()
+            data = await self._api_client.get("/api/games")
+            if data:
                 return data.get("games", [])
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching all games: {e}")
             return []
         except Exception as e:
             logger.error(f"Unexpected error fetching all games: {e}")
@@ -82,13 +91,9 @@ class ServerClient:
             List of upcoming games
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/coming-soon")
-                response.raise_for_status()
-                data = response.json()
+            data = await self._api_client.get("/api/coming-soon")
+            if data:
                 return data.get("games", [])
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching coming soon games: {e}")
             return []
         except Exception as e:
             logger.error(f"Unexpected error fetching coming soon games: {e}")
@@ -105,13 +110,9 @@ class ServerClient:
             List of owned games
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/owned-games/{steamid}")
-                response.raise_for_status()
-                data = response.json()
+            data = await self._api_client.get(f"/api/owned-games/{steamid}")
+            if data:
                 return data.get("games", [])
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching owned games: {e}")
             return []
         except Exception as e:
             logger.error(f"Unexpected error fetching owned games: {e}")
@@ -128,13 +129,9 @@ class ServerClient:
             List of recently played games
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/recently-played/{steamid}")
-                response.raise_for_status()
-                data = response.json()
+            data = await self._api_client.get(f"/api/recently-played/{steamid}")
+            if data:
                 return data.get("games", [])
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching recently played games: {e}")
             return []
         except Exception as e:
             logger.error(f"Unexpected error fetching recently played games: {e}")
@@ -151,13 +148,7 @@ class ServerClient:
             Player summary dict or None
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/player-summary/{steamid}")
-                response.raise_for_status()
-                return response.json()
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching player summary: {e}")
-            return None
+            return await self._api_client.get(f"/api/player-summary/{steamid}")
         except Exception as e:
             logger.error(f"Unexpected error fetching player summary: {e}")
             return None
@@ -179,19 +170,9 @@ class ServerClient:
             import urllib.parse
             encoded_vanity = urllib.parse.quote(vanity_url, safe='')
 
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/resolve-vanity/{encoded_vanity}")
-                response.raise_for_status()
-                data = response.json()
+            data = await self._api_client.get(f"/api/resolve-vanity/{encoded_vanity}")
+            if data:
                 return data.get('steamid')
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(f"Could not resolve vanity URL: {vanity_url}")
-                return None
-            logger.error(f"Error resolving vanity URL: {e}")
-            return None
-        except httpx.HTTPError as e:
-            logger.error(f"Error resolving vanity URL: {e}")
             return None
         except Exception as e:
             logger.error(f"Unexpected error resolving vanity URL: {e}")
@@ -207,13 +188,9 @@ class ServerClient:
             List of genre names
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/genres")
-                response.raise_for_status()
-                data = response.json()
+            data = await self._api_client.get("/api/genres")
+            if data:
                 return data.get("genres", [])
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching genres: {e}")
             return []
         except Exception as e:
             logger.error(f"Unexpected error fetching genres: {e}")
@@ -227,13 +204,9 @@ class ServerClient:
             List of category names
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/categories")
-                response.raise_for_status()
-                data = response.json()
+            data = await self._api_client.get("/api/categories")
+            if data:
                 return data.get("categories", [])
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching categories: {e}")
             return []
         except Exception as e:
             logger.error(f"Unexpected error fetching categories: {e}")
@@ -254,13 +227,8 @@ class ServerClient:
             return {}
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(
-                    f"{self.base_url}/api/games/tags/batch",
-                    json={"appids": appids}
-                )
-                response.raise_for_status()
-                data = response.json()
+            data = await self._api_client.post("/api/games/tags/batch", {"appids": appids})
+            if data:
                 tags_batch_raw = data.get("tags", {})
 
                 # Convert string keys back to int and add combined "tags" field
@@ -276,8 +244,6 @@ class ServerClient:
                     }
 
                 return tags_batch
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching game tags batch: {e}")
             return {appid: {"genres": [], "categories": [], "tags": []} for appid in appids}
         except Exception as e:
             logger.error(f"Unexpected error fetching game tags batch: {e}")
@@ -308,21 +274,53 @@ class ServerClient:
             Dict with game details (name, description, images, price, genres, categories) or None
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.get(f"{self.base_url}/api/games/{appid}")
-                response.raise_for_status()
-                return response.json()
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 404:
-                logger.warning(f"Game {appid} not found in database")
-                return None
-            logger.error(f"Error fetching game details: {e}")
-            return None
-        except httpx.HTTPError as e:
-            logger.error(f"Error fetching game details: {e}")
-            return None
+            return await self._api_client.get(f"/api/games/{appid}")
         except Exception as e:
             logger.error(f"Unexpected error fetching game details: {e}")
+            return None
+
+    # ===== Deals Endpoints =====
+
+    async def get_best_deals(
+        self,
+        limit: int = 20,
+        min_discount: int = 20
+    ) -> List[Dict[str, Any]]:
+        """
+        Get the best current game deals from the server.
+
+        Args:
+            limit: Maximum number of deals to return (1-50, default: 20)
+            min_discount: Minimum discount percentage (0-100, default: 20)
+
+        Returns:
+            List of deal dictionaries
+        """
+        try:
+            data = await self._api_client.get(
+                f"/api/deals/best?limit={limit}&min_discount={min_discount}"
+            )
+            if data:
+                return data.get("deals", [])
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error fetching deals: {e}")
+            return []
+
+    async def get_game_deal(self, appid: int) -> Optional[Dict[str, Any]]:
+        """
+        Get deal and price information for a specific game.
+
+        Args:
+            appid: Steam application ID
+
+        Returns:
+            Dictionary containing game and deal information
+        """
+        try:
+            return await self._api_client.get(f"/api/deals/game/{appid}")
+        except Exception as e:
+            logger.error(f"Unexpected error fetching game deal: {e}")
             return None
 
     # ===== Health Check =====
@@ -335,6 +333,7 @@ class ServerClient:
             Health status dict
         """
         try:
+            # Health check doesn't require authentication
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(f"{self.base_url}/health")
                 response.raise_for_status()
@@ -345,4 +344,3 @@ class ServerClient:
         except Exception as e:
             logger.error(f"Unexpected error checking server health: {e}")
             return {"status": "error", "message": str(e)}
-

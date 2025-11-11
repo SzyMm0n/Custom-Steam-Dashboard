@@ -18,11 +18,6 @@ from app.core.services.server_client import ServerClient
 from app.ui.components_server import NumberValidator, GameDetailDialog
 from app.ui.styles import apply_style
 
-# DealsClient - import for deals functionality
-try:
-    from app.core.services.deals_client import DealsClient
-except Exception:
-    DealsClient = None
 
 logger = logging.getLogger(__name__)
 
@@ -650,15 +645,9 @@ class HomeView(QWidget):
         deals = []
         server_error = False
 
-        if DealsClient is None:
-            logger.warning("DealsClient not available")
-            self.trending_list.clear()
-            self.trending_list.addItem("DealsClient nie jest dostępny.")
-            return
-
         try:
-            deals_client = DealsClient(base_url=self._server_url)
-            deals = await deals_client.get_best_deals(limit=10, min_discount=20)
+            # Use ServerClient (already authenticated) instead of DealsClient
+            deals = await self._server_client.get_best_deals(limit=10, min_discount=20)
         except Exception as e:
             logger.error(f"Error fetching deals: {e}")
             deals = []
