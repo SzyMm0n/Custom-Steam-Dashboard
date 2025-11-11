@@ -450,6 +450,22 @@ Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 | 🌐 [SERVER_DOCUMENTATION_PL.md](docs/SERVER_DOCUMENTATION_PL.md) | Dokumentacja serwera FastAPI |
 | 🎨 [UI_DOCUMENTATION_PL.md](docs/UI_DOCUMENTATION_PL.md) | Dokumentacja interfejsu GUI |
 
+### 🔐 Dokumentacja Systemu Autoryzacji JWT + HMAC
+
+Kompleksowy przewodnik po systemie bezpieczeństwa:
+
+| Dokument | Opis | Czas | Poziom |
+|----------|------|------|--------|
+| 📖 [JWT_OVERVIEW.md](docs/JWT_OVERVIEW.md) | Przegląd i quick start | 5 min | Wszyscy |
+| 🎓 [JWT_TEORIA.md](docs/JWT_TEORIA.md) | Podstawy JWT - teoria | 15 min | Początkujący |
+| 💻 [JWT_IMPLEMENTACJA.md](docs/JWT_IMPLEMENTACJA.md) | Szczegóły techniczne | 25 min | Średnio |
+| 🔒 [JWT_ANALIZA_BEZPIECZENSTWA.md](docs/JWT_ANALIZA_BEZPIECZENSTWA.md) | Analiza zagrożeń | 20 min | Zaawansowany |
+| ⚡ [JWT_WPLYW_NA_WYDAJNOSC.md](docs/JWT_WPLYW_NA_WYDAJNOSC.md) | Performance impact | 15 min | Średnio |
+| ✅ [JWT_BEST_PRACTICES.md](docs/JWT_BEST_PRACTICES.md) | Best practices & DevOps | 20 min | Production |
+| ⚡ [JWT_QUICK_REFERENCE.md](docs/JWT_QUICK_REFERENCE.md) | Quick reference card | 2 min | Quick lookup |
+
+**🎯 Szybki start:** [JWT_OVERVIEW.md](docs/JWT_OVERVIEW.md) → wybierz dokumenty według potrzeb
+
 ---
 
 ## 🛠️ Stack Technologiczny
