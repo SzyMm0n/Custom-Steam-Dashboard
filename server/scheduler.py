@@ -3,7 +3,7 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -41,7 +41,7 @@ class PlayerCountCollector:
         Collect player counts for all games in the watchlist.
         This method is called by the scheduler every 5 minutes.
         """
-        start_time = datetime.now()
+        start_time = datetime.now(timezone.utc)
         try:
             logger.info("Starting player count collection...")
             
@@ -77,8 +77,8 @@ class PlayerCountCollector:
                         )
 
                         # Get current timestamp
-                        timestamp = int(datetime.now().timestamp())
-                        
+                        timestamp = int(datetime.now(timezone.utc).timestamp())
+
                         # Store in database with timeout
                         await asyncio.wait_for(
                             self.db.insert_player_count(
@@ -128,14 +128,14 @@ class PlayerCountCollector:
                 logger.error("Overall timeout reached for player count collection")
                 return
 
-            elapsed_time = (datetime.now() - start_time).total_seconds()
+            elapsed_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             logger.info(
                 f"Player count collection completed in {elapsed_time:.1f}s: "
                 f"{success_count} successful, {error_count} failed"
             )
 
         except Exception as e:
-            elapsed_time = (datetime.now() - start_time).total_seconds()
+            elapsed_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             logger.error(
                 f"Error in player count collection job after {elapsed_time:.1f}s: {e}",
                 exc_info=True
@@ -163,7 +163,7 @@ class WatchlistRefresher:
         Refresh genres and categories for all games in the watchlist.
         This method can be scheduled to run periodically.
         """
-        start_time = datetime.now()
+        start_time = datetime.now(timezone.utc)
         try:
             logger.info("Starting watchlist refresh...")
 
@@ -229,14 +229,14 @@ class WatchlistRefresher:
                 logger.error("Overall timeout reached for watchlist refresh")
                 return
 
-            elapsed_time = (datetime.now() - start_time).total_seconds()
+            elapsed_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             logger.info(
                 f"Watchlist refresh completed in {elapsed_time:.1f}s: "
                 f"{success_count} successful, {error_count} failed"
             )
 
         except Exception as e:
-            elapsed_time = (datetime.now() - start_time).total_seconds()
+            elapsed_time = (datetime.now(timezone.utc) - start_time).total_seconds()
             logger.error(
                 f"Error in watchlist tags refresh job after {elapsed_time:.1f}s: {e}",
                 exc_info=True
@@ -429,7 +429,7 @@ class SchedulerManager:
         self.scheduler.add_job(
             func=self.watchlist_refresher.refresh_watchlist,
             trigger=IntervalTrigger(hours=1),
-            next_run_time=datetime.now(),  # Start immediately
+            next_run_time=datetime.now(timezone.utc),  # Start immediately
             id='watchlist_refresh',
             name='Refresh watchlist',
             replace_existing=True,
@@ -439,7 +439,7 @@ class SchedulerManager:
         self.scheduler.add_job(
             func=self.game_data_filler.fill_game_data,
             trigger=IntervalTrigger(hours=1),
-            next_run_time=datetime.now()+timedelta(minutes=2),  # Start shortly after watchlist refresh
+            next_run_time=datetime.now(timezone.utc)+timedelta(minutes=2),  # Start shortly after watchlist refresh
             id='game_data_fill',
             name='Fill game data for watchlist games',
             replace_existing=True,

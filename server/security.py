@@ -124,8 +124,8 @@ def create_jwt(client_id: str, extra_claims: Optional[Dict[str, Any]] = None) ->
 
 def verify_jwt(token: str) -> Dict[str, Any]:
     """
-    Verify and decode JWT token.
-    
+    Verify and decode JWT token with clock skew tolerance.
+
     Args:
         token: JWT token string
         
@@ -136,7 +136,25 @@ def verify_jwt(token: str) -> Dict[str, Any]:
         HTTPException: If token is invalid or expired
     """
     try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        # Add 5 minutes leeway for clock skew between client and server
+        payload = jwt.decode(
+            token,
+            JWT_SECRET,
+            algorithms=[JWT_ALGORITHM],
+            leeway=timedelta(minutes=5)
+        )
+
+        # Debug logging for time differences
+        if 'iat' in payload:
+            token_iat = datetime.fromtimestamp(payload['iat'], tz=timezone.utc)
+            server_time = datetime.now(timezone.utc)
+            time_diff = (server_time - token_iat).total_seconds()
+
+            logger.debug(f"Token issued at: {token_iat}, Server time: {server_time}, Diff: {time_diff:.2f}s")
+
+            if abs(time_diff) > 300:  # More than 5 minutes
+                logger.warning(f"Large time difference detected: {time_diff:.2f}s")
+
         return payload
     except jwt.ExpiredSignatureError:
         logger.warning("JWT token expired")

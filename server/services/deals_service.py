@@ -4,7 +4,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -71,7 +71,7 @@ class IsThereAnyDealClient(BaseAsyncService, IDealsService):
         """
         # Check if we have a valid token
         if self._token and self._token_expires_at:
-            if datetime.now() < self._token_expires_at:
+            if datetime.now(timezone.utc) < self._token_expires_at:
                 return self._token
 
         # Request new token
@@ -89,7 +89,7 @@ class IsThereAnyDealClient(BaseAsyncService, IDealsService):
 
             self._token = token_data["access_token"]
             expires_in = token_data.get("expires_in", 3600)  # Default 1 hour
-            self._token_expires_at = datetime.now() + timedelta(seconds=expires_in - 60)
+            self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in - 60)
 
             logger.info("Successfully obtained IsThereAnyDeal access token")
             return self._token
