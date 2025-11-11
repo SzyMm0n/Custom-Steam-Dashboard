@@ -1,12 +1,27 @@
 import sys
 import asyncio
+import os
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QIcon
 from dotenv import load_dotenv
 
 # Load environment variables before any other imports that use them
-load_dotenv()
+# For PyInstaller executable, look for .env next to the executable
+if getattr(sys, 'frozen', False):
+    # Running as compiled executable
+    application_path = Path(sys.executable).parent
+else:
+    # Running as script
+    application_path = Path(__file__).parent.parent
+
+# Try to load .env from multiple locations
+env_file = application_path / '.env'
+if env_file.exists():
+    load_dotenv(env_file)
+else:
+    # Fallback: try current directory
+    load_dotenv()
 
 from app.main_window import MainWindow 
 from app.core.services.server_client import ServerClient

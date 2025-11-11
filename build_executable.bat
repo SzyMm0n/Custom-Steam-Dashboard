@@ -61,16 +61,40 @@ if exist "dist" (
     echo Executable location:
     echo   %CD%\dist\
     echo.
+
+    REM Copy .env.example as .env to dist folder if it doesn't exist
+    if not exist "dist\.env" (
+        if exist ".env.example" (
+            copy .env.example dist\.env >nul
+            echo ✓ Created dist\.env from .env.example
+            echo ⚠ IMPORTANT: Edit dist\.env with your credentials!
+            echo.
+        )
+    )
+
+    REM Copy README_USER.md to dist folder
+    if exist "README_USER.md" (
+        copy README_USER.md dist\ >nul
+        echo ✓ Copied README_USER.md to dist\
+        echo.
+    )
+
     echo Files created:
     dir /b dist
     echo.
+    echo Configuration:
+    echo   1. Edit dist\.env file with your settings:
+    echo      - SERVER_URL ^(backend API URL^)
+    echo      - CLIENT_ID and CLIENT_SECRET ^(authentication^)
+    echo   2. Make sure these match your server configuration
+    echo.
     echo Note:
+    echo   - The .env file must be in the same directory as the executable
     echo   - Make sure the backend server is running before launching the app
-    echo   - Default server URL: http://localhost:8000
     echo   - You can distribute the entire 'dist' folder
     echo.
     echo To run the application:
-    echo   dist\SteamDashboard.exe
+    echo   dist\CustomSteamDashboard.exe
 ) else (
     echo Error: dist directory not found!
     pause

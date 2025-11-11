@@ -447,9 +447,25 @@ build_executable.bat
 ```
 
 Plik wykonywalny znajdziesz w katalogu `dist/`:
-- 🐧 Linux: `dist/SteamDashboard`
-- 🍎 macOS: `dist/SteamDashboard.app`
-- 🪟 Windows: `dist/SteamDashboard.exe` (z ikoną ICO)
+- 🐧 Linux: `dist/CustomSteamDashboard`
+- 🍎 macOS: `dist/CustomSteamDashboard.app`
+- 🪟 Windows: `dist/CustomSteamDashboard.exe` (z ikoną ICO)
+
+### Konfiguracja i dystrybucja
+
+**Automatycznie tworzone pliki w `dist/`:**
+- `.env` - Plik konfiguracji (skopiowany z `.env.example`)
+- `README_USER.md` - Instrukcja dla użytkownika końcowego
+
+**⚠️ WAŻNE przed dystrybucją:**
+1. Edytuj `dist/.env` i usuń swoje sekrety (zostaw tylko placeholdery)
+2. Użytkownik końcowy musi wypełnić `dist/.env` swoimi danymi:
+   - `SERVER_URL` - adres serwera backend
+   - `CLIENT_ID` i `CLIENT_SECRET` - credentials od administratora
+
+**Dokumentacja:**
+- 📦 [DISTRIBUTION.md](DISTRIBUTION.md) - Kompletny przewodnik dystrybucji
+- 📖 [README_USER.md](README_USER.md) - Instrukcja dla użytkownika końcowego
 
 ---
 
@@ -461,6 +477,8 @@ Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 |----------|------|
 | 🌐 [SERVER_DOCUMENTATION_PL.md](docs/SERVER_DOCUMENTATION_PL.md) | Dokumentacja serwera FastAPI |
 | 🎨 [UI_DOCUMENTATION_PL.md](docs/UI_DOCUMENTATION_PL.md) | Dokumentacja interfejsu GUI |
+| 📦 [DISTRIBUTION.md](DISTRIBUTION.md) | Przewodnik budowania i dystrybucji executable |
+| 📖 [README_USER.md](README_USER.md) | Instrukcja dla użytkownika końcowego |
 
 ### 🔐 Dokumentacja Systemu Autoryzacji JWT + HMAC
 

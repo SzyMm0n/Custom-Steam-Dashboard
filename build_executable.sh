@@ -77,13 +77,37 @@ if [ -d "dist" ]; then
     echo -e "${GREEN}Executable location:${NC}"
     echo "  $(pwd)/dist/"
     echo ""
+
+    # Copy .env.example as .env to dist folder if it doesn't exist
+    if [ ! -f "dist/.env" ]; then
+        if [ -f ".env.example" ]; then
+            cp .env.example dist/.env
+            echo -e "${GREEN}✓ Created dist/.env from .env.example${NC}"
+            echo -e "${YELLOW}⚠ IMPORTANT: Edit dist/.env with your credentials!${NC}"
+            echo ""
+        fi
+    fi
+
+    # Copy README_USER.md to dist folder
+    if [ -f "README_USER.md" ]; then
+        cp README_USER.md dist/
+        echo -e "${GREEN}✓ Copied README_USER.md to dist/${NC}"
+        echo ""
+    fi
+
     echo "Files created:"
     ls -lh dist/
     echo ""
+    echo -e "${YELLOW}Configuration:${NC}"
+    echo "  1. Edit dist/.env file with your settings:"
+    echo "     - SERVER_URL (backend API URL)"
+    echo "     - CLIENT_ID and CLIENT_SECRET (authentication)"
+    echo "  2. Make sure these match your server configuration"
+    echo ""
     echo -e "${YELLOW}Note:${NC}"
+    echo "  - The .env file must be in the same directory as the executable"
     echo "  - Make sure the backend server is running before launching the app"
-    echo "  - Default server URL: http://localhost:8000"
-    echo "  - You can distribute the entire 'dist' folder or just the executable"
+    echo "  - You can distribute the entire 'dist' folder"
     echo ""
     echo -e "${GREEN}To run the application:${NC}"
     if [ "$(uname)" == "Darwin" ]; then
@@ -111,7 +135,7 @@ if [ "$(uname)" = "Linux" ]; then
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Steam Dashboard
+Name=Custom Steam Dashboard
 Comment=Custom Steam Dashboard Application
 Exec=$INSTALL_DIR/CustomSteamDashboard
 Icon=$ICONS/icon-256x256.png
