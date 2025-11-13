@@ -475,17 +475,16 @@ Jeżeli planujesz udostępnić aplikację innym użytkownikom:
 
 Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 
-### 📘 Dokumentacja Główna
+### 📘 Dokumentacja Ogólna
 
 | Dokument | Opis |
 |----------|------|
-| 🌐 **[SERVER_DOCUMENTATION_PL.md](docs/SERVER_DOCUMENTATION_PL.md)** | ⚠️ Przestarzałe - zobacz [server/](docs/server/) |
-| 🎨 **[UI_DOCUMENTATION_PL.md](docs/UI_DOCUMENTATION_PL.md)** | ⚠️ Przestarzałe - zobacz [ui/](docs/ui/) |
-| 🔧 [TECHNICAL_DOCUMENTATION_PL.md](docs/TECHNICAL_DOCUMENTATION_PL.md) | Kompletna dokumentacja techniczna projektu |
+| 🔧 [TECHNICAL_DOCUMENTATION_PL.md](docs/general/TECHNICAL_DOCUMENTATION_PL.md) | Kompletna dokumentacja techniczna projektu |
+| 💰 [DEALS_API_MIGRATION.md](docs/general/DEALS_API_MIGRATION.md) | Migracja z CheapShark do IsThereAnyDeal API |
 | 📦 [DISTRIBUTION.md](DISTRIBUTION.md) | Przewodnik budowania i dystrybucji executable |
 | 📖 [README_USER.md](README_USER.md) | Instrukcja dla użytkownika końcowego |
 
-### 🌐 Dokumentacja Serwera (Nowa!)
+### 🌐 Dokumentacja Serwera
 
 | Dokument | Opis |
 |----------|------|
@@ -497,47 +496,46 @@ Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 | 🎮 [SERVER_SERVICES.md](docs/server/SERVER_SERVICES.md) | Steam API, ITAD, HTTP client |
 | ✅ [SERVER_VALIDATION.md](docs/server/SERVER_VALIDATION.md) | Pydantic validators, obsługa błędów |
 
-### 📱 Dokumentacja UI (Nowa!)
+### 📱 Dokumentacja UI
 
 | Dokument | Opis |
 |----------|------|
 | 📖 **[UI_OVERVIEW.md](docs/ui/UI_OVERVIEW.md)** | **Przegląd, quick start, architektura** |
+| 📱 [UI_COMPONENTS.md](docs/ui/UI_COMPONENTS.md) | Komponenty i widgety reużywalne |
+| 🏠 [UI_HOME_VIEW.md](docs/ui/UI_HOME_VIEW.md) | Widok główny - statystyki i filtry |
+| 📚 [UI_LIBRARY_VIEW.md](docs/ui/UI_LIBRARY_VIEW.md) | Przeglądarka biblioteki Steam |
+| 🪟 [UI_MAIN_WINDOW.md](docs/ui/UI_MAIN_WINDOW.md) | Główne okno i nawigacja |
+| 🔐 [UI_AUTHENTICATION.md](docs/ui/UI_AUTHENTICATION.md) | System uwierzytelniania JWT |
+| 🎨 [UI_STYLING.md](docs/ui/UI_STYLING.md) | Style Qt i ciemny motyw |
 
-> **📝 Uwaga:** Pozostałe dokumenty UI (Components, Home View, Library View, etc.) będą wkrótce dostępne.
+### 🔒 Dokumentacja Bezpieczeństwa
 
-### 🔐 Dokumentacja Systemu Autoryzacji JWT + HMAC
+| Dokument | Opis |
+|----------|------|
+| 🔑 **[AUTH_AND_SIGNING_README.md](docs/security/AUTH_AND_SIGNING_README.md)** | **Pełny przewodnik po autoryzacji i podpisywaniu** |
+| 🛡️ [PROPOZYCJE_ZABEZPIECZEN.md](docs/security/PROPOZYCJE_ZABEZPIECZEN.md) | Plan implementacji zabezpieczeń |
+| 🚦 [RATE_LIMITING_VALIDATION.md](docs/security/RATE_LIMITING_VALIDATION.md) | Rate limiting i walidacja danych |
 
-Kompleksowy przewodnik po systemie bezpieczeństwa:
+### 🔐 Dokumentacja JWT (JSON Web Tokens)
+
+Kompleksowy przewodnik po systemie JWT:
 
 | Dokument | Opis | Czas | Poziom |
 |----------|------|------|--------|
-| 🔑 [AUTH_AND_SIGNING_README.md](docs/AUTH_AND_SIGNING_README.md) | Pełny przewodnik po autoryzacji i podpisywaniu | 30 min | Wszyscy |
-| 📖 [JWT_OVERVIEW.md](docs/JWT_OVERVIEW.md) | Przegląd i quick start | 5 min | Wszyscy |
-| 🎓 [JWT_TEORIA.md](docs/JWT_TEORIA.md) | Podstawy JWT - teoria | 15 min | Początkujący |
-| 💻 [JWT_IMPLEMENTACJA.md](docs/JWT_IMPLEMENTACJA.md) | Szczegóły techniczne implementacji | 25 min | Średnio |
-| 🔒 [JWT_ANALIZA_BEZPIECZENSTWA.md](docs/JWT_ANALIZA_BEZPIECZENSTWA.md) | Analiza zagrożeń i zabezpieczeń | 20 min | Zaawansowany |
-| ⚡ [JWT_WPLYW_NA_WYDAJNOSC.md](docs/JWT_WPLYW_NA_WYDAJNOSC.md) | Wpływ JWT na wydajność aplikacji | 15 min | Średnio |
-| ✅ [JWT_BEST_PRACTICES.md](docs/JWT_BEST_PRACTICES.md) | Best practices & DevOps | 20 min | Production |
-| ⚡ [JWT_QUICK_REFERENCE.md](docs/JWT_QUICK_REFERENCE.md) | Quick reference card | 2 min | Quick lookup |
-| 📋 [JWT_DOCUMENTATION_SUMMARY.md](docs/JWT_DOCUMENTATION_SUMMARY.md) | Podsumowanie dokumentacji JWT | 5 min | Wszyscy |
-
-### 🔒 Dokumentacja Bezpieczeństwa i Walidacji
-
-| Dokument | Opis |
-|----------|------|
-| 🛡️ [PROPOZYCJE_ZABEZPIECZEN.md](docs/PROPOZYCJE_ZABEZPIECZEN.md) | Plan implementacji zabezpieczeń |
-| 🚦 [RATE_LIMITING_VALIDATION.md](docs/RATE_LIMITING_VALIDATION.md) | Rate limiting i walidacja danych wejściowych |
-
-### 🔄 Migracje i Zmiany API
-
-| Dokument | Opis |
-|----------|------|
-| 💰 [DEALS_API_MIGRATION.md](docs/DEALS_API_MIGRATION.md) | Migracja z CheapShark do IsThereAnyDeal API |
+| 📖 [JWT_OVERVIEW.md](docs/jwt/JWT_OVERVIEW.md) | Przegląd i quick start | 5 min | Wszyscy |
+| 🎓 [JWT_TEORIA.md](docs/jwt/JWT_TEORIA.md) | Podstawy JWT - teoria | 15 min | Początkujący |
+| 💻 [JWT_IMPLEMENTACJA.md](docs/jwt/JWT_IMPLEMENTACJA.md) | Szczegóły techniczne implementacji | 25 min | Średnio |
+| 🔒 [JWT_ANALIZA_BEZPIECZENSTWA.md](docs/jwt/JWT_ANALIZA_BEZPIECZENSTWA.md) | Analiza zagrożeń i zabezpieczeń | 20 min | Zaawansowany |
+| ⚡ [JWT_WPLYW_NA_WYDAJNOSC.md](docs/jwt/JWT_WPLYW_NA_WYDAJNOSC.md) | Wpływ JWT na wydajność aplikacji | 15 min | Średnio |
+| ✅ [JWT_BEST_PRACTICES.md](docs/jwt/JWT_BEST_PRACTICES.md) | Best practices & DevOps | 20 min | Production |
+| ⚡ [JWT_QUICK_REFERENCE.md](docs/jwt/JWT_QUICK_REFERENCE.md) | Quick reference card | 2 min | Quick lookup |
+| 📋 [JWT_DOCUMENTATION_SUMMARY.md](docs/jwt/JWT_DOCUMENTATION_SUMMARY.md) | Podsumowanie dokumentacji JWT | 5 min | Wszyscy |
 
 **🎯 Szybki start:**  
 - **Serwer:** [SERVER_OVERVIEW.md](docs/server/SERVER_OVERVIEW.md) → poznaj backend  
 - **GUI:** [UI_OVERVIEW.md](docs/ui/UI_OVERVIEW.md) → poznaj interfejs użytkownika  
-- **Autoryzacja:** [AUTH_AND_SIGNING_README.md](docs/AUTH_AND_SIGNING_README.md) → zrozum bezpieczeństwo
+- **Autoryzacja:** [AUTH_AND_SIGNING_README.md](docs/security/AUTH_AND_SIGNING_README.md) → zrozum bezpieczeństwo  
+- **JWT:** [JWT_OVERVIEW.md](docs/jwt/JWT_OVERVIEW.md) → podstawy tokenów
 
 ---
 

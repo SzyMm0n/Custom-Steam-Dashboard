@@ -178,12 +178,12 @@ Pełna dokumentacja podzielona na moduły:
 
 | Dokument | Opis |
 |----------|------|
-| [📱 UI_COMPONENTS.md](ui/UI_COMPONENTS.md) | Komponenty i widgety |
-| [🏠 UI_HOME_VIEW.md](ui/UI_HOME_VIEW.md) | Widok główny |
-| [📚 UI_LIBRARY_VIEW.md](ui/UI_LIBRARY_VIEW.md) | Widok biblioteki |
-| [🪟 UI_MAIN_WINDOW.md](ui/UI_MAIN_WINDOW.md) | Główne okno aplikacji |
-| [🔐 UI_AUTHENTICATION.md](ui/UI_AUTHENTICATION.md) | System uwierzytelniania |
-| [🎨 UI_STYLING.md](ui/UI_STYLING.md) | Style i motywy Qt |
+| [📱 UI_COMPONENTS.md](UI_COMPONENTS.md) | Komponenty i widgety (NumberValidator, GameDetailDialog) |
+| [🏠 UI_HOME_VIEW.md](UI_HOME_VIEW.md) | Widok główny (statystyki, filtry, promocje) |
+| [📚 UI_LIBRARY_VIEW.md](UI_LIBRARY_VIEW.md) | Widok biblioteki Steam użytkownika |
+| [🪟 UI_MAIN_WINDOW.md](UI_MAIN_WINDOW.md) | Główne okno aplikacji (toolbar, nawigacja) |
+| [🔐 UI_AUTHENTICATION.md](UI_AUTHENTICATION.md) | System uwierzytelniania (JWT + HMAC) |
+| [🎨 UI_STYLING.md](UI_STYLING.md) | Style i motywy Qt (ciemny motyw) |
 
 ---
 
