@@ -388,7 +388,9 @@ class DatabaseManager:
                     appid, name, detailed_description, header_image,
                     background_image, release_date, price, is_free
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                ON CONFLICT (appid) DO NOTHING 
+                ON CONFLICT (appid) DO UPDATE 
+                SET price = EXCLUDED.price,
+                    is_free = EXCLUDED.is_free,
             """,
                 game_data.appid,
                 game_data.name,
