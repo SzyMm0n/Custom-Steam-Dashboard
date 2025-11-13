@@ -163,30 +163,52 @@ Aplikacja wykorzystuje **architekturę klient-serwer** z wyraźnym podziałem od
 Custom-Steam-Dashboard/
 │
 ├── 🖥️ app/                          # APLIKACJA GUI
+│   ├── __init__.py
 │   ├── main_server.py               # Punkt wejścia aplikacji
 │   ├── main_window.py               # Główne okno Qt
 │   │
 │   ├── ui/                          # Komponenty interfejsu
+│   │   ├── __init__.py
 │   │   ├── home_view_server.py      # Widok główny (statystyki)
 │   │   ├── library_view_server.py   # Widok biblioteki
 │   │   ├── components_server.py     # Reużywalne komponenty
 │   │   ├── user_info_dialog_server.py # Dialog użytkownika
 │   │   └── styles.py                # Style Qt
 │   │
-│   └── core/                        # Logika biznesowa GUI
-│       └── services/
-│           ├── server_client.py     # Klient HTTP do backendu
-│           └── deals_client.py      # Integracja z IsThereAnyDeal API
+│   ├── core/                        # Logika biznesowa GUI
+│   │   ├── __init__.py
+│   │   └── services/
+│   │       ├── __init__.py
+│   │       ├── server_client.py     # Klient HTTP do backendu
+│   │       └── deals_client.py      # Integracja z IsThereAnyDeal API
+│   │
+│   ├── helpers/                     # Narzędzia pomocnicze
+│   │   ├── __init__.py
+│   │   ├── api_client.py            # Bazowy klient API
+│   │   └── signing.py               # HMAC signing dla żądań
+│   │
+│   └── icons/                       # Ikony aplikacji
+│       ├── icon-16x16.png
+│       ├── icon-32x32.png
+│       ├── icon-128x128.png
+│       ├── icon-256x256.png
+│       └── icon.ico
 │
 ├── ⚙️ server/                       # SERWER BACKEND
+│   ├── __init__.py
 │   ├── app.py                       # Główna aplikacja FastAPI
-│   ├── scheduler.py                 # Zarządzanie zadaniami
+│   ├── auth_routes.py               # Endpointy uwierzytelniania JWT
+│   ├── middleware.py                # Middleware (CORS, auth)
+│   ├── scheduler.py                 # Zarządzanie zadaniami APScheduler
+│   ├── security.py                  # JWT, HMAC, rate limiting
 │   ├── validation.py                # Walidatory Pydantic
 │   │
 │   ├── database/                    # Warstwa danych
+│   │   ├── __init__.py
 │   │   └── database.py              # Manager PostgreSQL
 │   │
 │   └── services/                    # Logika biznesowa
+│       ├── __init__.py
 │       ├── steam_service.py         # Klient Steam API
 │       ├── deals_service.py         # Logika IsThereAnyDeal API
 │       ├── models.py                # Modele Pydantic
@@ -194,15 +216,62 @@ Custom-Steam-Dashboard/
 │       └── _base_http.py            # Bazowy klient HTTP
 │
 ├── 📚 docs/                         # DOKUMENTACJA
-│   ├── SERVER_DOCUMENTATION_PL.md
-│   └── UI_DOCUMENTATION_PL.md
+│   ├── general/                     # Dokumentacja ogólna
+│   │   ├── DEALS_API_MIGRATION.md
+│   │   ├── DISTRIBUTION.md
+│   │   └── README_USER.md
+│   │
+│   ├── jwt/                         # Dokumentacja JWT
+│   │   ├── JWT_OVERVIEW.md
+│   │   ├── JWT_TEORIA.md
+│   │   ├── JWT_IMPLEMENTACJA.md
+│   │   ├── JWT_ANALIZA_BEZPIECZENSTWA.md
+│   │   ├── JWT_WPLYW_NA_WYDAJNOSC.md
+│   │   ├── JWT_BEST_PRACTICES.md
+│   │   ├── JWT_QUICK_REFERENCE.md
+│   │   └── JWT_DOCUMENTATION_SUMMARY.md
+│   │
+│   ├── security/                    # Dokumentacja bezpieczeństwa
+│   │   ├── AUTH_AND_SIGNING_README.md
+│   │   └── RATE_LIMITING_VALIDATION.md
+│   │
+│   ├── server/                      # Dokumentacja serwera
+│   │   ├── SERVER_OVERVIEW.md
+│   │   ├── SERVER_API_ENDPOINTS.md
+│   │   ├── SERVER_SECURITY.md
+│   │   ├── SERVER_DATABASE.md
+│   │   ├── SERVER_SCHEDULER.md
+│   │   ├── SERVER_SERVICES.md
+│   │   └── SERVER_VALIDATION.md
+│   │
+│   └── ui/                          # Dokumentacja UI
+│       ├── UI_OVERVIEW.md
+│       ├── UI_COMPONENTS.md
+│       ├── UI_HOME_VIEW.md
+│       ├── UI_LIBRARY_VIEW.md
+│       ├── UI_MAIN_WINDOW.md
+│       ├── UI_AUTHENTICATION.md
+│       └── UI_STYLING.md
+│
+├── 🧪 scripts/                      # Skrypty pomocnicze i testowe
+│   ├── generate_signature.py       # Generator sygnatur HMAC
+│   ├── test_auth.py                 # Testy uwierzytelniania
+│   ├── test_deals.py                # Testy API promocji
+│   ├── test_gui_deals.py            # Testy GUI promocji
+│   └── validate_server_env.py       # Walidacja konfiguracji serwera
 │
 ├── 🔧 build/                        # Pliki buildu (PyInstaller)
+│   └── steam_dashboard/
+│
+├── 📦 dist/                         # Skompilowane pliki wykonywalne
+│
+├── .env.example                     # Przykładowa konfiguracja
+├── .gitignore                       # Ignorowane pliki Git
 ├── requirements.txt                 # Zależności Pythona
 ├── steam_dashboard.spec             # Specyfikacja PyInstaller
 ├── build_executable.sh              # Skrypt budowania (Linux/Mac)
 ├── build_executable.bat             # Skrypt budowania (Windows)
-├── check_build_deps.py              # Weryfikacja zależności
+├── check_build_deps.py              # Weryfikacja zależności buildu
 └── LICENSE                          # Licencja MIT
 ```
 
