@@ -253,12 +253,6 @@ Custom-Steam-Dashboard/
 │       ├── UI_AUTHENTICATION.md
 │       └── UI_STYLING.md
 │
-├── 🧪 scripts/                      # Skrypty pomocnicze i testowe
-│   ├── generate_signature.py       # Generator sygnatur HMAC
-│   ├── test_auth.py                 # Testy uwierzytelniania
-│   ├── test_deals.py                # Testy API promocji
-│   ├── test_gui_deals.py            # Testy GUI promocji
-│   └── validate_server_env.py       # Walidacja konfiguracji serwera
 │
 ├── 🔧 build/                        # Pliki buildu (PyInstaller)
 │   └── steam_dashboard/
