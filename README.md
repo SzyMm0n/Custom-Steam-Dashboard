@@ -475,10 +475,13 @@ Jeżeli planujesz udostępnić aplikację innym użytkownikom:
 
 Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 
+### 📘 Dokumentacja Główna
+
 | Dokument | Opis |
 |----------|------|
 | 🌐 [SERVER_DOCUMENTATION_PL.md](docs/SERVER_DOCUMENTATION_PL.md) | Dokumentacja serwera FastAPI |
 | 🎨 [UI_DOCUMENTATION_PL.md](docs/UI_DOCUMENTATION_PL.md) | Dokumentacja interfejsu GUI |
+| 🔧 [TECHNICAL_DOCUMENTATION_PL.md](docs/TECHNICAL_DOCUMENTATION_PL.md) | Kompletna dokumentacja techniczna projektu |
 | 📦 [DISTRIBUTION.md](DISTRIBUTION.md) | Przewodnik budowania i dystrybucji executable |
 | 📖 [README_USER.md](README_USER.md) | Instrukcja dla użytkownika końcowego |
 
@@ -488,15 +491,30 @@ Kompleksowy przewodnik po systemie bezpieczeństwa:
 
 | Dokument | Opis | Czas | Poziom |
 |----------|------|------|--------|
+| 🔑 [AUTH_AND_SIGNING_README.md](docs/AUTH_AND_SIGNING_README.md) | Pełny przewodnik po autoryzacji i podpisywaniu | 30 min | Wszyscy |
 | 📖 [JWT_OVERVIEW.md](docs/JWT_OVERVIEW.md) | Przegląd i quick start | 5 min | Wszyscy |
 | 🎓 [JWT_TEORIA.md](docs/JWT_TEORIA.md) | Podstawy JWT - teoria | 15 min | Początkujący |
-| 💻 [JWT_IMPLEMENTACJA.md](docs/JWT_IMPLEMENTACJA.md) | Szczegóły techniczne | 25 min | Średnio |
-| 🔒 [JWT_ANALIZA_BEZPIECZENSTWA.md](docs/JWT_ANALIZA_BEZPIECZENSTWA.md) | Analiza zagrożeń | 20 min | Zaawansowany |
-| ⚡ [JWT_WPLYW_NA_WYDAJNOSC.md](docs/JWT_WPLYW_NA_WYDAJNOSC.md) | Performance impact | 15 min | Średnio |
+| 💻 [JWT_IMPLEMENTACJA.md](docs/JWT_IMPLEMENTACJA.md) | Szczegóły techniczne implementacji | 25 min | Średnio |
+| 🔒 [JWT_ANALIZA_BEZPIECZENSTWA.md](docs/JWT_ANALIZA_BEZPIECZENSTWA.md) | Analiza zagrożeń i zabezpieczeń | 20 min | Zaawansowany |
+| ⚡ [JWT_WPLYW_NA_WYDAJNOSC.md](docs/JWT_WPLYW_NA_WYDAJNOSC.md) | Wpływ JWT na wydajność aplikacji | 15 min | Średnio |
 | ✅ [JWT_BEST_PRACTICES.md](docs/JWT_BEST_PRACTICES.md) | Best practices & DevOps | 20 min | Production |
 | ⚡ [JWT_QUICK_REFERENCE.md](docs/JWT_QUICK_REFERENCE.md) | Quick reference card | 2 min | Quick lookup |
+| 📋 [JWT_DOCUMENTATION_SUMMARY.md](docs/JWT_DOCUMENTATION_SUMMARY.md) | Podsumowanie dokumentacji JWT | 5 min | Wszyscy |
 
-**🎯 Szybki start:** [JWT_OVERVIEW.md](docs/JWT_OVERVIEW.md) → wybierz dokumenty według potrzeb
+### 🔒 Dokumentacja Bezpieczeństwa i Walidacji
+
+| Dokument | Opis |
+|----------|------|
+| 🚦 [RATE_LIMITING_VALIDATION.md](docs/RATE_LIMITING_VALIDATION.md) | Rate limiting i walidacja danych wejściowych |
+
+### 🔄 Migracje i Zmiany API
+
+| Dokument | Opis |
+|----------|------|
+| 💰 [DEALS_API_MIGRATION.md](docs/DEALS_API_MIGRATION.md) | Migracja z CheapShark do IsThereAnyDeal API |
+
+**🎯 Szybki start:** [JWT_OVERVIEW.md](docs/JWT_OVERVIEW.md) → wybierz dokumenty według potrzeb  
+**🔐 Pełna dokumentacja autoryzacji:** [AUTH_AND_SIGNING_README.md](docs/AUTH_AND_SIGNING_README.md)
 
 ---
 
