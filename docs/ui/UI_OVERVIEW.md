@@ -34,34 +34,34 @@
 ┌──────────────────────────────────────────────────────────┐
 │                   APLIKACJA GUI (PySide6)                │
 │                                                          │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │              MainWindow (QMainWindow)              │ │
-│  │                                                    │ │
-│  │  ┌──────────────┐  ┌──────────────┐               │ │
-│  │  │   Toolbar    │  │   QStacked   │               │ │
-│  │  │              │  │    Widget    │               │ │
-│  │  │ • Home       │  │              │               │ │
-│  │  │ • Library    │  │ ┌──────────┐ │               │ │
-│  │  │ • Refresh    │  │ │ HomeView │ │               │ │
-│  │  └──────────────┘  │ └──────────┘ │               │ │
-│  │                    │ ┌──────────┐ │               │ │
-│  │                    │ │ Library  │ │               │ │
-│  │                    │ │   View   │ │               │ │
-│  │                    │ └──────────┘ │               │ │
-│  │                    └──────────────┘               │ │
-│  └────────────────────────────────────────────────────┘ │
-│                          │                             │
-│                          ▼                             │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │               ServerClient (HTTP)                  │ │
-│  │                                                    │ │
-│  │  • AuthenticatedAPIClient                         │ │
-│  │  • HMAC Signing (app/helpers/signing.py)         │ │
-│  │  • JWT Token Management                           │ │
-│  │  • Automatic Retry Logic                          │ │
-│  └────────────────────────────────────────────────────┘ │
-│                          │                             │
-└──────────────────────────┼─────────────────────────────┘
+│  ┌────────────────────────────────────────────────────┐  │
+│  │              MainWindow (QMainWindow)              │  │
+│  │                                                    │  │
+│  │  ┌──────────────┐  ┌──────────────┐                │  │
+│  │  │   Toolbar    │  │   QStacked   │                │  │
+│  │  │              │  │    Widget    │                │  │
+│  │  │ • Home       │  │              │                │  │
+│  │  │ • Library    │  │ ┌──────────┐ │                │  │
+│  │  │ • Refresh    │  │ │ HomeView │ │                │  │
+│  │  └──────────────┘  │ └──────────┘ │                │  │
+│  │                    │ ┌──────────┐ │                │  │
+│  │                    │ │ Library  │ │                │  │
+│  │                    │ │   View   │ │                │  │
+│  │                    │ └──────────┘ │                │  │
+│  │                    └──────────────┘                │  │
+│  └────────────────────────────────────────────────────┘  │
+│                          │                               │
+│                          ▼                               │
+│  ┌────────────────────────────────────────────────────┐  │
+│  │               ServerClient (HTTP)                  │  │
+│  │                                                    │  │
+│  │  • AuthenticatedAPIClient                          │  │
+│  │  • HMAC Signing (app/helpers/signing.py)           │  │
+│  │  • JWT Token Management                            │  │
+│  │  • Automatic Retry Logic                           │  │
+│  └────────────────────────────────────────────────────┘  │
+│                          │                               │
+└──────────────────────────┼───────────────────────────────┘
                            │ HTTPS/HTTP + JWT + HMAC
                            ▼
                 ┌──────────────────────┐
@@ -351,16 +351,16 @@ QMessageBox.critical(
 
 ## Następne Kroki
 
-1. **Komponenty UI**: [UI_COMPONENTS.md](ui/UI_COMPONENTS.md)
-2. **Home View**: [UI_HOME_VIEW.md](ui/UI_HOME_VIEW.md)
-3. **Library View**: [UI_LIBRARY_VIEW.md](ui/UI_LIBRARY_VIEW.md)
-4. **Main Window**: [UI_MAIN_WINDOW.md](ui/UI_MAIN_WINDOW.md)
+1. **Komponenty UI**: [UI_COMPONENTS.md](UI_COMPONENTS.md)
+2. **Home View**: [UI_HOME_VIEW.md](UI_HOME_VIEW.md)
+3. **Library View**: [UI_LIBRARY_VIEW.md](UI_LIBRARY_VIEW.md)
+4. **Main Window**: [UI_MAIN_WINDOW.md](UI_MAIN_WINDOW.md)
 
 ---
 
 ## Wsparcie
 
-- **Dokumentacja Serwera**: [server/SERVER_OVERVIEW.md](server/SERVER_OVERVIEW.md)
-- **Dokumentacja JWT**: [JWT_OVERVIEW.md](JWT_OVERVIEW.md)
+- **Dokumentacja Serwera**: [SERVER_OVERVIEW.md](server/SERVER_OVERVIEW.md)
+- **Dokumentacja JWT**: [JWT_OVERVIEW.md](../jwt/JWT_OVERVIEW.md)
 - **Issues**: [GitHub Issues](https://github.com/SzyMm0n/Custom-Steam-Dashboard/issues)
 

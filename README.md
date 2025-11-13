@@ -466,8 +466,8 @@ Jeżeli planujesz udostępnić aplikację innym użytkownikom:
    - `CLIENT_ID` i `CLIENT_SECRET` - credentials od administratora
 
 **Dokumentacja:**
-- 📦 [DISTRIBUTION.md](DISTRIBUTION.md) - Kompletny przewodnik dystrybucji
-- 📖 [README_USER.md](README_USER.md) - Instrukcja dla użytkownika końcowego
+- 📦 [DISTRIBUTION.md](docs/general/DISTRIBUTION.md) - Kompletny przewodnik dystrybucji
+- 📖 [README_USER.md](docs/general/README_USER.md) - Instrukcja dla użytkownika końcowego
 
 ---
 
@@ -479,10 +479,11 @@ Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 
 | Dokument | Opis |
 |----------|------|
-| 🔧 [TECHNICAL_DOCUMENTATION_PL.md](docs/general/TECHNICAL_DOCUMENTATION_PL.md) | Kompletna dokumentacja techniczna projektu |
 | 💰 [DEALS_API_MIGRATION.md](docs/general/DEALS_API_MIGRATION.md) | Migracja z CheapShark do IsThereAnyDeal API |
-| 📦 [DISTRIBUTION.md](DISTRIBUTION.md) | Przewodnik budowania i dystrybucji executable |
-| 📖 [README_USER.md](README_USER.md) | Instrukcja dla użytkownika końcowego |
+| 📦 [DISTRIBUTION.md](docs/general/DISTRIBUTION.md) | Przewodnik budowania i dystrybucji executable |
+| 📖 [README_USER.md](docs/general/README_USER.md) | Instrukcja dla użytkownika końcowego |
+
+> **ℹ️ Uwaga:** Dokumentacja techniczna została podzielona na moduły i znajduje się w sekcjach "Dokumentacja Serwera" i "Dokumentacja UI" poniżej.
 
 ### 🌐 Dokumentacja Serwera
 
@@ -513,7 +514,6 @@ Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 | Dokument | Opis |
 |----------|------|
 | 🔑 **[AUTH_AND_SIGNING_README.md](docs/security/AUTH_AND_SIGNING_README.md)** | **Pełny przewodnik po autoryzacji i podpisywaniu** |
-| 🛡️ [PROPOZYCJE_ZABEZPIECZEN.md](docs/security/PROPOZYCJE_ZABEZPIECZEN.md) | Plan implementacji zabezpieczeń |
 | 🚦 [RATE_LIMITING_VALIDATION.md](docs/security/RATE_LIMITING_VALIDATION.md) | Rate limiting i walidacja danych |
 
 ### 🔐 Dokumentacja JWT (JSON Web Tokens)

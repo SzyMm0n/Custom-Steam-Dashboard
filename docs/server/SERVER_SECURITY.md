@@ -514,7 +514,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 ## Pełna Dokumentacja
 
-- [AUTH_AND_SIGNING_README.md](../AUTH_AND_SIGNING_README.md) - Pełny przewodnik
-- [JWT_OVERVIEW.md](../JWT_OVERVIEW.md) - Przegląd JWT
-- [JWT_BEST_PRACTICES.md](../JWT_BEST_PRACTICES.md) - Best practices
+- [AUTH_AND_SIGNING_README.md](../security/AUTH_AND_SIGNING_README.md) - Pełny przewodnik
+- [JWT_OVERVIEW.md](../jwt/JWT_OVERVIEW.md) - Przegląd JWT
+- [JWT_BEST_PRACTICES.md](../jwt/JWT_BEST_PRACTICES.md) - Best practices
 

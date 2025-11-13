@@ -140,27 +140,27 @@ dialog.exec()
 
 ```
 ┌─────────────────────────────────────────┐
-│         Szczegóły gry                  │
+│         Szczegóły gry                   │
 ├─────────────────────────────────────────┤
-│  Counter-Strike 2                      │  <- Tytuł (bold, 14px)
-│                                        │
-│  ┌───────────────────────────────┐    │
-│  │                               │    │
-│  │    [Header Image]             │    │  <- Obraz ze Steam
-│  │                               │    │
-│  └───────────────────────────────┘    │
-│                                        │
-│  For over two decades, Counter-       │  <- Opis
-│  Strike has offered an elite...       │
-│                                        │
-│  Obecna liczba graczy: 1,000,000      │  <- Statystyki
-│                                        │
-│  Gatunki: Action, Free to Play        │  <- Tagi
-│  Kategorie: Multi-player, ...         │
-│                                        │
-│  [Zobacz w Steam Store]               │  <- Przyciski
-│  [Zobacz promocję]                     │
-│  [Zamknij]                             │
+│  Counter-Strike 2                       │  <- Tytuł (bold, 14px)
+│                                         │
+│  ┌───────────────────────────────┐      │
+│  │                               │      │
+│  │    [Header Image]             │      │  <- Obraz ze Steam
+│  │                               │      │
+│  └───────────────────────────────┘      │
+│                                         │
+│  For over two decades, Counter-         │  <- Opis
+│  Strike has offered an elite...         │
+│                                         │
+│  Obecna liczba graczy: 1,000,000        │  <- Statystyki
+│                                         │
+│  Gatunki: Action, Free to Play          │  <- Tagi
+│  Kategorie: Multi-player, ...           │
+│                                         │
+│  [Zobacz w Steam Store]                 │  <- Przyciski
+│  [Zobacz promocję]                      │
+│  [Zamknij]                              │
 └─────────────────────────────────────────┘
 ```
 

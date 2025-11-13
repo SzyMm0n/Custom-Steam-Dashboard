@@ -285,6 +285,6 @@ CLIENT_SECRET=your-client-secret-from-server
 
 ## Następne Kroki
 
-- **Security (Server)**: [../server/SERVER_SECURITY.md](../server/SERVER_SECURITY.md)
-- **JWT Documentation**: [../JWT_OVERVIEW.md](../JWT_OVERVIEW.md)
+- **Security (Server)**: [SERVER_SECURITY.md](../server/SERVER_SECURITY.md)
+- **JWT Documentation**: [JWT_OVERVIEW.md](../jwt/JWT_OVERVIEW.md)
 

@@ -39,31 +39,31 @@
 ┌─────────────────────────────────────────────────────────┐
 │                    FastAPI Server                       │
 │                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │          Middleware & Security Layer             │  │
-│  │  • JWT Authentication                            │  │
-│  │  • HMAC Signature Verification                   │  │
-│  │  • Rate Limiting (slowapi)                       │  │
-│  │  • CORS Policy                                   │  │
-│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │          Middleware & Security Layer             │   │
+│  │  • JWT Authentication                            │   │
+│  │  • HMAC Signature Verification                   │   │
+│  │  • Rate Limiting (slowapi)                       │   │
+│  │  • CORS Policy                                   │   │
+│  └──────────────────────────────────────────────────┘   │
 │                         │                               │
-│  ┌──────────────────────┴──────────────────────────┐   │
+│  ┌──────────────────────┴───────────────────────────┐   │
 │  │              REST API Endpoints                  │   │
 │  │                                                  │   │
-│  │  /health         - Health check                 │   │
-│  │  /auth/*         - Authentication               │   │
-│  │  /api/games/*    - Game data & statistics       │   │
-│  │  /api/library/*  - User library                 │   │
-│  │  /api/deals/*    - Game deals                   │   │
-│  │  /api/upcoming/* - Upcoming releases            │   │
-│  └──────────────────────────────────────────────────┘  │
+│  │  /health         - Health check                  │   │
+│  │  /auth/*         - Authentication                │   │
+│  │  /api/games/*    - Game data & statistics        │   │
+│  │  /api/library/*  - User library                  │   │
+│  │  /api/deals/*    - Game deals                    │   │
+│  │  /api/upcoming/* - Upcoming releases             │   │
+│  └──────────────────────────────────────────────────┘   │
 │                         │                               │
-│  ┌──────────────┬───────┴────────┬───────────────┐     │
-│  │   Scheduler  │   Services     │   Database    │     │
-│  │              │                │               │     │
-│  │ • Cron Jobs  │ • SteamClient  │ • PostgreSQL  │     │
-│  │ • Data Sync  │ • DealsClient  │ • asyncpg     │     │
-│  └──────────────┴────────────────┴───────────────┘     │
+│  ┌──────────────┬───────┴────────┬───────────────┐      │
+│  │   Scheduler  │   Services     │   Database    │      │
+│  │              │                │               │      │
+│  │ • Cron Jobs  │ • SteamClient  │ • PostgreSQL  │      │
+│  │ • Data Sync  │ • DealsClient  │ • asyncpg     │      │
+│  └──────────────┴────────────────┴───────────────┘      │
 └─────────────────────────────────────────────────────────┘
                      │               │
                      ▼               ▼
@@ -206,6 +206,8 @@ curl http://localhost:8000/health
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
+#### UWAGA! Domyślnie /docs i /redoc są zablokowane w app.py.
+
 ---
 
 ## Zmienne Środowiskowe
@@ -279,7 +281,7 @@ Pełna dokumentacja podzielona na moduły:
 
 ## Wsparcie
 
-- **Dokumentacja JWT**: [docs/JWT_OVERVIEW.md](../JWT_OVERVIEW.md)
-- **Dokumentacja autoryzacji**: [docs/AUTH_AND_SIGNING_README.md](../AUTH_AND_SIGNING_README.md)
+- **Dokumentacja JWT**: [docs/JWT_OVERVIEW.md](../jwt/JWT_OVERVIEW.md)
+- **Dokumentacja autoryzacji**: [docs/AUTH_AND_SIGNING_README.md](../security/AUTH_AND_SIGNING_README.md)
 - **Issues**: [GitHub Issues](https://github.com/SzyMm0n/Custom-Steam-Dashboard/issues)
 
