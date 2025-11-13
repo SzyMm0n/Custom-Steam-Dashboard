@@ -458,6 +458,8 @@ Plik wykonywalny znajdziesz w katalogu `dist/`:
 - `README_USER.md` - Instrukcja dla użytkownika końcowego
 
 **⚠️ WAŻNE przed dystrybucją:**
+
+Jeżeli planujesz udostępnić aplikację innym użytkownikom:
 1. Edytuj `dist/.env` i usuń swoje sekrety (zostaw tylko placeholdery)
 2. Użytkownik końcowy musi wypełnić `dist/.env` swoimi danymi:
    - `SERVER_URL` - adres serwera backend
@@ -568,14 +570,10 @@ Przed wdrożeniem w środowisku produkcyjnym:
 
 - [ ] **Wykresy i wizualizacje** - interaktywne wykresy liczby graczy (matplotlib/pyqtgraph)
 - [ ] **Heatmapa aktywności** - wizualizacja godzin szczytu
-- [ ] **Notyfikacje** - alerty o promocjach i premierach
 - [ ] **Multi-user support** - obsługa wielu profili Steam
-- [ ] **Export danych** - CSV, JSON export statystyk
 - [ ] **Motywy** - ciemny/jasny motyw interfejsu
 - [ ] **Rozszerzone filtry** - więcej opcji filtrowania
-- [ ] **Integracja z Discord** - rich presence
 - [ ] **PWA/Web UI** - interfejs webowy obok GUI
-- [ ] **Docker** - konteneryzacja serwera
 
 ### Architektura Docelowa
 
