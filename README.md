@@ -479,11 +479,31 @@ Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 
 | Dokument | Opis |
 |----------|------|
-| 🌐 [SERVER_DOCUMENTATION_PL.md](docs/SERVER_DOCUMENTATION_PL.md) | Dokumentacja serwera FastAPI |
-| 🎨 [UI_DOCUMENTATION_PL.md](docs/UI_DOCUMENTATION_PL.md) | Dokumentacja interfejsu GUI |
+| 🌐 **[SERVER_DOCUMENTATION_PL.md](docs/SERVER_DOCUMENTATION_PL.md)** | ⚠️ Przestarzałe - zobacz [server/](docs/server/) |
+| 🎨 **[UI_DOCUMENTATION_PL.md](docs/UI_DOCUMENTATION_PL.md)** | ⚠️ Przestarzałe - zobacz [ui/](docs/ui/) |
 | 🔧 [TECHNICAL_DOCUMENTATION_PL.md](docs/TECHNICAL_DOCUMENTATION_PL.md) | Kompletna dokumentacja techniczna projektu |
 | 📦 [DISTRIBUTION.md](DISTRIBUTION.md) | Przewodnik budowania i dystrybucji executable |
 | 📖 [README_USER.md](README_USER.md) | Instrukcja dla użytkownika końcowego |
+
+### 🌐 Dokumentacja Serwera (Nowa!)
+
+| Dokument | Opis |
+|----------|------|
+| 📖 **[SERVER_OVERVIEW.md](docs/server/SERVER_OVERVIEW.md)** | **Przegląd, quick start, konfiguracja** |
+| 🔌 [SERVER_API_ENDPOINTS.md](docs/server/SERVER_API_ENDPOINTS.md) | Wszystkie endpointy API z przykładami |
+| 🔐 [SERVER_SECURITY.md](docs/server/SERVER_SECURITY.md) | JWT + HMAC, middleware, rate limiting |
+| 🗄️ [SERVER_DATABASE.md](docs/server/SERVER_DATABASE.md) | PostgreSQL, tabele, operacje |
+| ⏰ [SERVER_SCHEDULER.md](docs/server/SERVER_SCHEDULER.md) | Zadania cykliczne, APScheduler |
+| 🎮 [SERVER_SERVICES.md](docs/server/SERVER_SERVICES.md) | Steam API, ITAD, HTTP client |
+| ✅ [SERVER_VALIDATION.md](docs/server/SERVER_VALIDATION.md) | Pydantic validators, obsługa błędów |
+
+### 📱 Dokumentacja UI (Nowa!)
+
+| Dokument | Opis |
+|----------|------|
+| 📖 **[UI_OVERVIEW.md](docs/ui/UI_OVERVIEW.md)** | **Przegląd, quick start, architektura** |
+
+> **📝 Uwaga:** Pozostałe dokumenty UI (Components, Home View, Library View, etc.) będą wkrótce dostępne.
 
 ### 🔐 Dokumentacja Systemu Autoryzacji JWT + HMAC
 
@@ -505,6 +525,7 @@ Kompleksowy przewodnik po systemie bezpieczeństwa:
 
 | Dokument | Opis |
 |----------|------|
+| 🛡️ [PROPOZYCJE_ZABEZPIECZEN.md](docs/PROPOZYCJE_ZABEZPIECZEN.md) | Plan implementacji zabezpieczeń |
 | 🚦 [RATE_LIMITING_VALIDATION.md](docs/RATE_LIMITING_VALIDATION.md) | Rate limiting i walidacja danych wejściowych |
 
 ### 🔄 Migracje i Zmiany API
@@ -513,8 +534,10 @@ Kompleksowy przewodnik po systemie bezpieczeństwa:
 |----------|------|
 | 💰 [DEALS_API_MIGRATION.md](docs/DEALS_API_MIGRATION.md) | Migracja z CheapShark do IsThereAnyDeal API |
 
-**🎯 Szybki start:** [JWT_OVERVIEW.md](docs/JWT_OVERVIEW.md) → wybierz dokumenty według potrzeb  
-**🔐 Pełna dokumentacja autoryzacji:** [AUTH_AND_SIGNING_README.md](docs/AUTH_AND_SIGNING_README.md)
+**🎯 Szybki start:**  
+- **Serwer:** [SERVER_OVERVIEW.md](docs/server/SERVER_OVERVIEW.md) → poznaj backend  
+- **GUI:** [UI_OVERVIEW.md](docs/ui/UI_OVERVIEW.md) → poznaj interfejs użytkownika  
+- **Autoryzacja:** [AUTH_AND_SIGNING_README.md](docs/AUTH_AND_SIGNING_README.md) → zrozum bezpieczeństwo
 
 ---
 

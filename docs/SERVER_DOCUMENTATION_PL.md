@@ -1,17 +1,78 @@
 # Dokumentacja Serwera - Custom Steam Dashboard
 
-## Spis Treści
-1. [Przegląd Struktury](#przegląd-struktury)
-2. [Środowisko i Konfiguracja](#środowisko-i-konfiguracja)
-3. [Moduł Database](#moduł-database)
-4. [Moduł Services](#moduł-services)
-5. [Moduł Scheduler](#moduł-scheduler)
-6. [Moduł App (FastAPI)](#moduł-app-fastapi)
-7. [Moduł Common](#moduł-common)
+> **⚠️ UWAGA:** Ta dokumentacja jest przestarzała i została zastąpiona nowymi, szczegółowymi dokumentami.
+>
+> **Przejdź do nowej dokumentacji:** [server/SERVER_OVERVIEW.md](server/SERVER_OVERVIEW.md)
 
 ---
 
-## Przegląd Struktury
+## 📚 Nowa Struktura Dokumentacji
+
+Dokumentacja serwera została podzielona na tematyczne moduły dla lepszej organizacji:
+
+### Główne Dokumenty
+
+| Dokument | Opis | Link |
+|----------|------|------|
+| **📖 Przegląd Serwera** | Quick start, architektura, konfiguracja | [SERVER_OVERVIEW.md](server/SERVER_OVERVIEW.md) |
+| **🔌 API Endpoints** | Wszystkie endpointy z przykładami | [SERVER_API_ENDPOINTS.md](server/SERVER_API_ENDPOINTS.md) |
+| **🔐 Bezpieczeństwo** | JWT + HMAC, middleware, rate limiting | [SERVER_SECURITY.md](server/SERVER_SECURITY.md) |
+| **🗄️ Baza Danych** | PostgreSQL, tabele, operacje | [SERVER_DATABASE.md](server/SERVER_DATABASE.md) |
+| **⏰ Scheduler** | Zadania cykliczne, APScheduler | [SERVER_SCHEDULER.md](server/SERVER_SCHEDULER.md) |
+| **🎮 Serwisy** | Steam API, ITAD, HTTP client | [SERVER_SERVICES.md](server/SERVER_SERVICES.md) |
+| **✅ Walidacja** | Pydantic validators, obsługa błędów | [SERVER_VALIDATION.md](server/SERVER_VALIDATION.md) |
+
+---
+
+## 🚀 Quick Start
+
+Zamiast czytać ten przestarzały dokument, zacznij od:
+
+1. **[SERVER_OVERVIEW.md](server/SERVER_OVERVIEW.md)** - Przegląd i quick start
+2. **[SERVER_API_ENDPOINTS.md](server/SERVER_API_ENDPOINTS.md)** - Poznaj dostępne endpointy
+3. **[SERVER_SECURITY.md](server/SERVER_SECURITY.md)** - Zrozum system bezpieczeństwa
+
+---
+
+## 📋 Co się zmieniło od ostatniej aktualizacji?
+
+### Dodano:
+- ✅ **Uwierzytelnianie JWT + HMAC** - Dwuwarstwowe bezpieczeństwo
+- ✅ **Rate Limiting** - Ochrona przed nadmiernym obciążeniem (slowapi)
+- ✅ **Middleware weryfikacji** - Automatyczna weryfikacja podpisów
+- ✅ **IsThereAnyDeal API** - Promocje gier (zamiast CheapShark)
+- ✅ **Agregacja danych** - Godzinowa i dzienna archiwizacja
+- ✅ **Timezone UTC** - Wszystkie operacje w UTC
+- ✅ **Walidacja Pydantic** - Wszystkie endpointy z walidacją
+- ✅ **Connection pooling** - asyncpg z pool management
+
+### Zmieniono:
+- 🔄 **Struktura bazy** - Dodano tabele `game_genres`, `game_categories`, `watchlist`
+- 🔄 **Scheduler** - Dodano agregację godzinową/dzienną
+- 🔄 **CORS** - Zaktualizowano konfigurację (nie tylko localhost)
+- 🔄 **Endpointy** - Wszystkie `/api/*` wymagają JWT + HMAC
+
+### Usunięto:
+- ❌ **CheapShark API** - Zastąpione przez IsThereAnyDeal
+- ❌ **Niezabezpieczone endpointy** - Wszystkie wymagają autoryzacji
+
+---
+
+## 🔗 Powiązana Dokumentacja
+
+- **Autoryzacja**: [AUTH_AND_SIGNING_README.md](AUTH_AND_SIGNING_README.md)
+- **JWT System**: [JWT_OVERVIEW.md](JWT_OVERVIEW.md)
+- **Rate Limiting**: [RATE_LIMITING_VALIDATION.md](RATE_LIMITING_VALIDATION.md)
+- **Bezpieczeństwo**: [PROPOZYCJE_ZABEZPIECZEN.md](PROPOZYCJE_ZABEZPIECZEN.md)
+
+---
+
+## 📝 Stara Dokumentacja (Archiwum)
+
+<details>
+<summary>Kliknij, aby zobaczyć przestarzałą treść (tylko do referencji)</summary>
+
+### Przegląd Struktury
 
 Serwer Custom Steam Dashboard to backend oparty na FastAPI, który zapewnia:
 - REST API dla aplikacji klienckiej

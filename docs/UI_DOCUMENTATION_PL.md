@@ -1,6 +1,75 @@
-# Custom-Steam-Dashboard — Dokumentacja warstwy UI (aktualna)
+# Dokumentacja UI - Custom Steam Dashboard
 
-Ten dokument skupia się wyłącznie na warstwie UI: widokach, dialogach, przepływach i interakcjach. Zawiera porównanie do poprzedniej wersji, opis klas i metod (co robią, po co, argumenty), a także krótkie przykłady użycia.
+> **⚠️ UWAGA:** Ta dokumentacja jest przestarzała i została zastąpiona nowymi, szczegółowymi dokumentami.
+>
+> **Przejdź do nowej dokumentacji:** [ui/UI_OVERVIEW.md](ui/UI_OVERVIEW.md)
+
+---
+
+## 📚 Nowa Struktura Dokumentacji
+
+Dokumentacja UI została podzielona na tematyczne moduły dla lepszej organizacji:
+
+### Główne Dokumenty
+
+| Dokument | Opis | Link |
+|----------|------|------|
+| **📖 Przegląd UI** | Quick start, architektura, przepływ aplikacji | [UI_OVERVIEW.md](ui/UI_OVERVIEW.md) |
+| **📱 Komponenty** | Reużywalne widgety i komponenty | [UI_COMPONENTS.md](ui/UI_COMPONENTS.md) |
+| **🏠 Home View** | Widok główny - statystyki i promocje | [UI_HOME_VIEW.md](ui/UI_HOME_VIEW.md) |
+| **📚 Library View** | Przeglądarka biblioteki Steam | [UI_LIBRARY_VIEW.md](ui/UI_LIBRARY_VIEW.md) |
+| **🪟 Main Window** | Główne okno i nawigacja | [UI_MAIN_WINDOW.md](ui/UI_MAIN_WINDOW.md) |
+| **🔐 Authentication** | System uwierzytelniania (JWT + HMAC) | [UI_AUTHENTICATION.md](ui/UI_AUTHENTICATION.md) |
+| **🎨 Styling** | Style Qt i motywy | [UI_STYLING.md](ui/UI_STYLING.md) |
+
+---
+
+## 🚀 Quick Start
+
+Zamiast czytać ten przestarzały dokument, zacznij od:
+
+1. **[UI_OVERVIEW.md](ui/UI_OVERVIEW.md)** - Przegląd i quick start
+2. **[UI_MAIN_WINDOW.md](ui/UI_MAIN_WINDOW.md)** - Główne okno aplikacji
+3. **[UI_HOME_VIEW.md](ui/UI_HOME_VIEW.md)** - Widok główny
+
+---
+
+## 📋 Co się zmieniło od ostatniej aktualizacji?
+
+### Dodano:
+- ✅ **Automatyczne uwierzytelnianie** - JWT + HMAC przed startem GUI
+- ✅ **ServerClient** - Zunifikowany klient HTTP z retry logic
+- ✅ **Obsługa błędów** - User-friendly komunikaty błędów
+- ✅ **qasync integration** - Pełna asynchroniczność w Qt
+- ✅ **Automatic token refresh** - Automatyczne odświeżanie tokena JWT
+- ✅ **HMAC signing** - Wszystkie żądania podpisane HMAC
+- ✅ **Environment variables** - Konfiguracja przez .env
+
+### Zmieniono:
+- 🔄 **MainWindow** - Nowa architektura z QStackedWidget
+- 🔄 **HomeView** - Komunikacja przez ServerClient zamiast bezpośrednio z API
+- 🔄 **LibraryView** - Przepisane na nową architekturę
+- 🔄 **Styles** - Zaktualizowane style Qt
+
+### Usunięto:
+- ❌ **Bezpośrednie wywołania API** - Zastąpione przez ServerClient
+- ❌ **Synchroniczne operacje** - Wszystko jest async
+- ❌ **Hardcoded URLs** - Wszystko przez zmienne środowiskowe
+
+---
+
+## 🔗 Powiązana Dokumentacja
+
+- **Serwer**: [SERVER_OVERVIEW.md](server/SERVER_OVERVIEW.md)
+- **Autoryzacja**: [AUTH_AND_SIGNING_README.md](AUTH_AND_SIGNING_README.md)
+- **JWT**: [JWT_OVERVIEW.md](JWT_OVERVIEW.md)
+
+---
+
+## 📝 Stara Dokumentacja (Archiwum)
+
+<details>
+<summary>Kliknij, aby zobaczyć przestarzałą treść (tylko do referencji)</summary>
 
 Spis treści:
 - 1) Co się zmieniło względem poprzedniej wersji
