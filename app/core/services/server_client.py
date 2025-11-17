@@ -326,6 +326,37 @@ class ServerClient:
             logger.error(f"Unexpected error fetching game deal: {e}")
             return None
 
+    async def get_player_history_comparison(self, appids: List[int], days: float = 7) -> Dict[int, Dict[str, Any]]:
+        """
+        Get player count history for multiple games for comparison.
+
+        Args:
+            appids: List of Steam application IDs
+            days: Number of days of history to retrieve (default: 7, supports fractional for hours)
+
+        Returns:
+            Dictionary mapping appid to game data with history
+        """
+        if not appids:
+            return {}
+
+        try:
+            logger.info(f"Fetching player history comparison for {len(appids)} games, {days} days")
+            data = await self._api_client.post(
+                f"/api/player-history/compare?days={days}",
+                {"appids": appids}
+            )
+            if data:
+                games_data = data.get("games", {})
+                logger.info(f"Received history data for {len(games_data)} games")
+                # Convert string keys to int
+                return {int(k): v for k, v in games_data.items()}
+            logger.warning("No data returned from player history comparison endpoint")
+            return {}
+        except Exception as e:
+            logger.error(f"Unexpected error fetching player history comparison: {e}", exc_info=True)
+            return {}
+
     # ===== Health Check =====
     
     async def health_check(self) -> Dict[str, Any]:

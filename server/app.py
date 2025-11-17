@@ -542,6 +542,62 @@ async def get_game_deal(appid: int, request: Request, client_id: str = Depends(r
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/player-history/compare")
+@limiter.limit("20/minute")
+async def get_player_history_comparison(
+    data: AppIDListValidator,
+    request: Request,
+    client_id: str = Depends(require_session_and_signed_request),
+    days: float = 7,
+    limit: int = 1000
+):
+    """
+    Get player count history for multiple games for comparison.
+
+    Args:
+        data: AppIDListValidator with list of Steam application IDs
+        days: Number of days of history to retrieve (default: 7, supports fractional days for hours)
+        limit: Maximum number of records per game (default: 1000)
+
+    Returns:
+        Dictionary mapping appid to player count history
+    """
+    try:
+        # Validate days parameter (supports fractional days for hour ranges)
+        days = min(max(0.04, days), 30)  # Between 1 hour (0.04 days) and 30 days
+        limit = min(max(10, limit), 5000)  # Between 10 and 5000 records
+
+        history_data = {}
+
+        for appid in data.appids:
+            # Get player count history for each game
+            history = await db.get_player_count_history(appid, limit=limit)
+
+            # Filter by days if needed
+            if days and history:
+                import time
+                cutoff_timestamp = int(time.time()) - int(days * 24 * 60 * 60)
+                history = [
+                    record for record in history
+                    if record.get('time_stamp', 0) >= cutoff_timestamp
+                ]
+
+            # Get game info for name
+            game = await db.get_game(appid)
+
+            history_data[appid] = {
+                "name": game.get("name", f"Game {appid}") if game else f"Game {appid}",
+                "history": history
+            }
+
+        return {"games": history_data}
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.errors())
+    except Exception as e:
+        logger.error(f"Error fetching player history comparison: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     import os

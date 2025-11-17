@@ -21,7 +21,7 @@ platformdirs>=4.2
 loguru>=0.7
 
 # === WYKRESY (jeden z wariantów) ===
-# matplotlib>=3.8
+matplotlib>=3.8
 # pyqtgraph>=0.13
 
 # === DANE / POSTGRESQL ===

@@ -12,6 +12,7 @@ from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QSize
 from .ui.home_view_server import HomeView
 from .ui.library_view_server import LibraryView
+from .ui.comparison_view_server import ComparisonView
 
 
 class MainWindow(QMainWindow):
@@ -58,6 +59,9 @@ class MainWindow(QMainWindow):
 
         self.library_view = LibraryView(server_url=self._server_url)
         self.stack.addWidget(self.library_view)
+
+        self.comparison_view = ComparisonView(server_url=self._server_url)
+        self.stack.addWidget(self.comparison_view)
 
         # Initialize toolbar
         self._init_toolbar()
@@ -110,6 +114,11 @@ class MainWindow(QMainWindow):
         lib_action.triggered.connect(self.navigate_to_library)
         toolbar.addAction(lib_action)
 
+        # Comparison view action
+        comparison_action = QAction("Porównanie gier", self)
+        comparison_action.triggered.connect(self.navigate_to_comparison)
+        toolbar.addAction(comparison_action)
+
         # Refresh action
         refresh_action = QAction("Odśwież", self)
         refresh_action.triggered.connect(self.refresh_current_view)
@@ -120,6 +129,10 @@ class MainWindow(QMainWindow):
     def navigate_to_library(self):
         """Navigate to the library view."""
         self.stack.setCurrentWidget(self.library_view)
+
+    def navigate_to_comparison(self):
+        """Navigate to the comparison view."""
+        self.stack.setCurrentWidget(self.comparison_view)
 
     def refresh_current_view(self):
         """
