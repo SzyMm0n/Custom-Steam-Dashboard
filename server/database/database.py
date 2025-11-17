@@ -359,7 +359,8 @@ class DatabaseManager:
         async with self.acquire() as conn:
             await conn.execute(f"""
                 INSERT INTO {self._table('game_genres')} (appid, genre) VALUES ($1, UNNEST($2::VARCHAR[]))
-                ON CONFLICT (appid, genre) DO NOTHING 
+                ON CONFLICT (appid, genre) DO UPDATE 
+                SET genre = EXCLUDED.genre
             """, appid, genres)
     async def upsert_game_categories(self, appid: int, categories: List[str]) -> None:
         """
@@ -372,7 +373,8 @@ class DatabaseManager:
         async with self.acquire() as conn:
             await conn.execute(f"""
                 INSERT INTO {self._table('game_categories')} (appid, category) VALUES ($1, UNNEST($2::VARCHAR[]))
-                ON CONFLICT (appid, category) DO NOTHING 
+                ON CONFLICT (appid, category) DO UPDATE 
+                SET category = EXCLUDED.category
             """, appid, categories)
 
     async def upsert_game(self, game_data: 'SteamGameDetails') -> None:
@@ -389,8 +391,13 @@ class DatabaseManager:
                     background_image, release_date, price, is_free
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT (appid) DO UPDATE 
-                SET price = EXCLUDED.price,
-                    is_free = EXCLUDED.is_free,
+                SET name = EXCLUDED.name,
+                    detailed_description = EXCLUDED.detailed_description,
+                    header_image = EXCLUDED.header_image,
+                    background_image = EXCLUDED.background_image,
+                    release_date = EXCLUDED.release_date,
+                    price = EXCLUDED.price,
+                    is_free = EXCLUDED.is_free
             """,
                 game_data.appid,
                 game_data.name,
