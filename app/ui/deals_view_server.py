@@ -15,7 +15,9 @@ from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices
 
 from app.core.services.server_client import ServerClient
-from app.ui.styles import apply_style
+from app.ui.styles import apply_style, refresh_style
+from app.ui.theme_manager import ThemeManager
+from app.ui.theme_switcher import ThemeSwitcher
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +47,10 @@ class DealsView(QWidget):
         self._best_deals = []
         self._search_results = None
         
+        # Theme manager
+        self._theme_manager = ThemeManager()
+        self._theme_manager.theme_changed.connect(self._on_theme_changed)
+
         self._init_ui()
         
         # Auto-refresh timer (every 10 minutes for deals)
@@ -59,12 +65,20 @@ class DealsView(QWidget):
         """Initialize the user interface."""
         layout = QVBoxLayout(self)
         
-        # Title
+        # Title and theme switcher
+        title_layout = QHBoxLayout()
+
         title = QLabel("Promocje i okazje")
         title.setStyleSheet("font-size: 18pt; font-weight: bold; margin: 10px;")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
-        
+        title_layout.addWidget(title)
+
+        title_layout.addStretch()
+
+        theme_switcher = ThemeSwitcher()
+        title_layout.addWidget(theme_switcher)
+
+        layout.addLayout(title_layout)
+
         # Search section
         search_group = self._create_search_section()
         layout.addWidget(search_group)
@@ -454,21 +468,43 @@ class DealsView(QWidget):
             url_label.setStyleSheet("margin: 5px;")
             layout.addWidget(url_label)
         
-        # Style based on discount
-        if discount >= 75:
-            bg_color = "#1B5E20"  # Dark green
-        elif discount >= 50:
-            bg_color = "#0D47A1"  # Dark blue
-        elif discount >= 25:
-            bg_color = "#4A148C"  # Dark purple
-        else:
-            bg_color = "#2a2a2a"  # Default dark gray
+        # Style based on discount using theme colors
+        colors = self._theme_manager.get_colors()
 
-        widget.setStyleSheet(f"background-color: {bg_color}; border-radius: 5px; margin: 5px; padding: 5px;")
+        # Get base background color and adjust for discount level
+        if discount >= 75:
+            # Best deals - use accent color
+            bg_color = colors['accent']
+        elif discount >= 50:
+            # Good deals - slightly dimmer
+            bg_color = colors['accent_hover']
+        elif discount >= 25:
+            # Decent deals
+            bg_color = colors['background_group']
+        else:
+            # Small discount
+            bg_color = colors['background_light']
+
+        widget.setStyleSheet(f"""
+            background-color: {bg_color}; 
+            border-radius: 5px; 
+            margin: 5px; 
+            padding: 5px;
+            color: {colors['foreground']};
+        """)
 
         return widget
     
     async def refresh_data(self):
         """Refresh all data (best deals)."""
         await self._load_best_deals()
+
+    def _on_theme_changed(self, mode: str, palette: str):
+        """Handle theme change event."""
+        # Refresh widget style
+        refresh_style(self)
+
+        # Reload deal items to update their colors
+        if self._best_deals:
+            self._update_best_deals_list()
 

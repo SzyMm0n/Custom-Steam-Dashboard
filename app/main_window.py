@@ -14,6 +14,8 @@ from .ui.home_view_server import HomeView
 from .ui.library_view_server import LibraryView
 from .ui.comparison_view_server import ComparisonView
 from .ui.deals_view_server import DealsView
+from .ui.styles import apply_style, refresh_style
+from .ui.theme_manager import ThemeManager
 
 
 class MainWindow(QMainWindow):
@@ -45,6 +47,10 @@ class MainWindow(QMainWindow):
             server_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self._server_url = server_url
 
+        # Initialize theme manager
+        self._theme_manager = ThemeManager()
+        self._theme_manager.theme_changed.connect(self._on_theme_changed)
+
         # Setup central widget and layout
         central_widget = QWidget()
         layout = QVBoxLayout(central_widget)
@@ -69,6 +75,9 @@ class MainWindow(QMainWindow):
 
         # Initialize toolbar
         self._init_toolbar()
+
+        # Apply initial theme
+        apply_style(self)
 
     # ===== UI Initialization =====
 
@@ -155,3 +164,8 @@ class MainWindow(QMainWindow):
         current_widget = self.stack.currentWidget()
         if hasattr(current_widget, "refresh_data"):
             asyncio.create_task(current_widget.refresh_data())
+
+    def _on_theme_changed(self, mode: str, palette: str):
+        """Handle theme change event."""
+        # Refresh main window style
+        refresh_style(self)

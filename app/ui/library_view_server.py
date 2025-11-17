@@ -25,7 +25,9 @@ from PySide6.QtGui import QPixmap
 
 import httpx
 from app.core.services.server_client import ServerClient
-from app.ui.styles import apply_style
+from app.ui.styles import apply_style, refresh_style
+from app.ui.theme_manager import ThemeManager
+from app.ui.theme_switcher import ThemeSwitcher
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,10 @@ class LibraryView(QWidget):
             2: Qt.SortOrder.DescendingOrder   # Last 2 weeks
         }
         
+        # Theme manager
+        self._theme_manager = ThemeManager()
+        self._theme_manager.theme_changed.connect(self._on_theme_changed)
+
         self._init_ui()
 
     # ===== UI Initialization =====
@@ -76,13 +82,18 @@ class LibraryView(QWidget):
         """
         layout = QVBoxLayout(self)
 
-        # Title section
+        # Title section with theme switcher
+        title_layout = QHBoxLayout()
         title = QLabel("Biblioteka gier")
         f = title.font()
         f.setPointSize(f.pointSize() + 2)
         f.setBold(True)
         title.setFont(f)
-        layout.addWidget(title)
+        title_layout.addWidget(title)
+        title_layout.addStretch()
+        theme_switcher = ThemeSwitcher()
+        title_layout.addWidget(theme_switcher)
+        layout.addLayout(title_layout)
 
         # Profile header with avatar and username
         profile_row = QHBoxLayout()
@@ -353,4 +364,9 @@ class LibraryView(QWidget):
                     self.avatar_lbl.setPixmap(pix)
         except Exception as e:
             logger.error(f"Error loading avatar: {e}")
+
+    def _on_theme_changed(self, mode: str, palette: str):
+        """Handle theme change event."""
+        # Refresh widget style
+        refresh_style(self)
 

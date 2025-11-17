@@ -18,7 +18,9 @@ from PySide6.QtCore import QTimer, Qt, QLocale
 
 from app.core.services.server_client import ServerClient
 from app.ui.components_server import NumberValidator, GameDetailDialog, GameDetailPanel
-from app.ui.styles import apply_style
+from app.ui.styles import apply_style, refresh_style
+from app.ui.theme_manager import ThemeManager
+from app.ui.theme_switcher import ThemeSwitcher
 
 
 logger = logging.getLogger(__name__)
@@ -69,6 +71,10 @@ class HomeView(QWidget):
         # Game detail panel (temporary section)
         self._detail_panel: Optional[GameDetailPanel] = None
 
+        # Theme manager
+        self._theme_manager = ThemeManager()
+        self._theme_manager.theme_changed.connect(self._on_theme_changed)
+
         # UI components
         self.layout = QVBoxLayout(self)
         self.main_h_layout = QHBoxLayout()
@@ -106,11 +112,18 @@ class HomeView(QWidget):
         Initialize the user interface layout.
         Creates left panel with game list and right panel with filters.
         """
-        # Left column - Live games list
-        left_column = QVBoxLayout()
+        # Title and theme switcher
+        title_layout = QHBoxLayout()
         self.top_live_title = QLabel("Live Games Count")
         self.top_live_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 5px;")
-        
+        title_layout.addWidget(self.top_live_title)
+        title_layout.addStretch()
+        theme_switcher = ThemeSwitcher()
+        title_layout.addWidget(theme_switcher)
+
+        # Left column - Live games list
+        left_column = QVBoxLayout()
+
         # Search bar for filtering games
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
@@ -130,13 +143,6 @@ class HomeView(QWidget):
         
         # Search results info label
         self.search_info_label = QLabel("")
-        self.search_info_label.setStyleSheet("""
-            padding: 8px;
-            background-color: #e3f2fd;
-            border-left: 4px solid #667eea;
-            border-radius: 3px;
-            color: #333;
-        """)
         self.search_info_label.setVisible(False)
         
         # Game list
@@ -144,7 +150,6 @@ class HomeView(QWidget):
         self.top_live_list.setMinimumWidth(500)
         self.top_live_list.itemClicked.connect(self._on_live_item_clicked)
         
-        left_column.addWidget(self.top_live_title)
         left_column.addLayout(search_layout)
         left_column.addWidget(self.search_info_label)
         left_column.addWidget(self.top_live_list)
@@ -234,6 +239,7 @@ class HomeView(QWidget):
         right_column_layout.addStretch(1)
 
         # Add panels to main layout
+        self.layout.addLayout(title_layout)
         self.main_h_layout.addLayout(left_column, 1)
 
         # Wrap right panel in scroll area
@@ -511,6 +517,15 @@ class HomeView(QWidget):
                 f"🔍 Znaleziono <b>{found_count}</b> gier pasujących do \"{self._search_term}\" "
                 f"(z {total_count} wszystkich)"
             )
+            # Apply theme colors to search info label
+            colors = self._theme_manager.get_colors()
+            self.search_info_label.setStyleSheet(f"""
+                padding: 8px;
+                background-color: {colors['background_group']};
+                border-left: 4px solid {colors['accent']};
+                border-radius: 3px;
+                color: {colors['foreground']};
+            """)
             self.search_info_label.setVisible(True)
             
             filtered_results = search_filtered
@@ -760,3 +775,19 @@ class HomeView(QWidget):
         """
         logger.debug("Deal item clicked (placeholder method - use deals_view for full functionality)")
         pass
+
+    def _on_theme_changed(self, mode: str, palette: str):
+        """Handle theme change event."""
+        # Refresh widget style
+        refresh_style(self)
+
+        # Update search info label style for current theme
+        colors = self._theme_manager.get_colors()
+        if self._search_term:
+            self.search_info_label.setStyleSheet(f"""
+                padding: 8px;
+                background-color: {colors['background_group']};
+                border-left: 4px solid {colors['accent']};
+                border-radius: 3px;
+                color: {colors['foreground']};
+            """)

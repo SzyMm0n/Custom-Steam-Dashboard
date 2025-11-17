@@ -19,7 +19,9 @@ from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 
 from app.core.services.server_client import ServerClient
-from app.ui.styles import apply_style
+from app.ui.styles import apply_style, refresh_style
+from app.ui.theme_manager import ThemeManager
+from app.ui.theme_switcher import ThemeSwitcher
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,10 @@ class ComparisonView(QWidget):
         self._history_data = {}
         self._selected_time_range = "7d"  # Default time range
 
+        # Theme manager
+        self._theme_manager = ThemeManager()
+        self._theme_manager.theme_changed.connect(self._on_theme_changed)
+
         self._init_ui()
         
         # Auto-refresh timer (every 5 minutes)
@@ -65,12 +71,21 @@ class ComparisonView(QWidget):
         """Initialize the user interface."""
         layout = QVBoxLayout(self)
         
-        # Title
+        # Title and theme switcher
+        title_layout = QHBoxLayout()
+
         title = QLabel("Porównanie danych graczy")
         title.setStyleSheet("font-size: 18pt; font-weight: bold; margin: 10px;")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(title)
-        
+        title_layout.addWidget(title)
+
+        title_layout.addStretch()
+
+        # Theme switcher
+        theme_switcher = ThemeSwitcher()
+        title_layout.addWidget(theme_switcher)
+
+        layout.addLayout(title_layout)
+
         # Control panel
         control_panel = self._create_control_panel()
         layout.addWidget(control_panel)
@@ -273,23 +288,26 @@ class ComparisonView(QWidget):
         """Update the comparison chart."""
         self._ax.clear()
         
+        # Get current theme colors
+        colors = self._theme_manager.get_colors()
+
         if not self._history_data:
             self._ax.text(0.5, 0.5, 'Wybierz gry i kliknij "Porównaj wybrane"',
                          ha='center', va='center', transform=self._ax.transAxes,
-                         fontsize=12, color='white')
-            # Set dark background
-            self._figure.patch.set_facecolor('#2b2b2b')
-            self._ax.set_facecolor('#1e1e1e')
+                         fontsize=12, color=colors['foreground'])
+            # Set theme background
+            self._figure.patch.set_facecolor(colors['chart_bg'])
+            self._ax.set_facecolor(colors['chart_plot'])
             self._canvas.draw()
             return
         
-        # Set dark theme
-        self._figure.patch.set_facecolor('#2b2b2b')
-        self._ax.set_facecolor('#1e1e1e')
+        # Set theme colors
+        self._figure.patch.set_facecolor(colors['chart_bg'])
+        self._ax.set_facecolor(colors['chart_plot'])
 
         # Plot data for each game with brighter colors
-        colors = ['#5dade2', '#f39c12', '#2ecc71', '#e74c3c', '#9b59b6',
-                  '#1abc9c', '#e67e22', '#3498db', '#f1c40f', '#16a085']
+        plot_colors = ['#5dade2', '#f39c12', '#2ecc71', '#e74c3c', '#9b59b6',
+                       '#1abc9c', '#e67e22', '#3498db', '#f1c40f', '#16a085']
 
         for idx, (appid, game_data) in enumerate(self._history_data.items()):
             history = game_data.get('history', [])
@@ -301,26 +319,28 @@ class ComparisonView(QWidget):
             timestamps = [datetime.fromtimestamp(record.get('time_stamp', 0)) for record in history]
             counts = [record.get('count', 0) for record in history]
 
-            color = colors[idx % len(colors)]
+            color = plot_colors[idx % len(plot_colors)]
             name = game_data.get('name', f'Game {appid}')
             self._ax.plot(timestamps, counts, label=name, color=color, linewidth=2.5)
 
-        # Format chart with light colors for dark theme
-        self._ax.set_xlabel('Data', fontsize=10, color='white')
-        self._ax.set_ylabel('Liczba graczy', fontsize=10, color='white')
+        # Format chart with theme colors
+        self._ax.set_xlabel('Data', fontsize=10, color=colors['chart_text'])
+        self._ax.set_ylabel('Liczba graczy', fontsize=10, color=colors['chart_text'])
 
         # Dynamic title based on time range
         time_range_label = self._selected_time_range
         self._ax.set_title(f'Porównanie liczby graczy ({time_range_label})',
-                          fontsize=12, fontweight='bold', color='white')
+                          fontsize=12, fontweight='bold', color=colors['chart_text'])
 
-        # Legend with dark theme
-        legend = self._ax.legend(loc='best', fontsize=9, facecolor='#2b2b2b', edgecolor='#444')
+        # Legend with theme colors
+        legend = self._ax.legend(loc='best', fontsize=9,
+                                facecolor=colors['chart_bg'],
+                                edgecolor=colors['border'])
         for text in legend.get_texts():
-            text.set_color('white')
+            text.set_color(colors['chart_text'])
 
-        # Grid with lighter color for visibility
-        self._ax.grid(True, alpha=0.2, color='#666')
+        # Grid with theme color
+        self._ax.grid(True, alpha=0.2, color=colors['chart_grid'])
 
         # Format x-axis based on time range
         days = self._time_range_to_days(self._selected_time_range)
@@ -333,11 +353,11 @@ class ComparisonView(QWidget):
         self._figure.autofmt_xdate()
         
         # Tick colors
-        self._ax.tick_params(colors='white', which='both')
+        self._ax.tick_params(colors=colors['chart_text'], which='both')
 
         # Spine colors
         for spine in self._ax.spines.values():
-            spine.set_edgecolor('#444')
+            spine.set_edgecolor(colors['border'])
 
         # Format y-axis with thousand separators
         self._ax.yaxis.set_major_formatter(lambda x, p: f'{int(x):,}')
@@ -399,3 +419,11 @@ class ComparisonView(QWidget):
         await self._load_games()
         if self._selected_appids:
             await self._load_comparison()
+
+    def _on_theme_changed(self, mode: str, palette: str):
+        """Handle theme change event."""
+        # Refresh widget style
+        refresh_style(self)
+
+        # Redraw chart with new colors
+        self._update_chart()
