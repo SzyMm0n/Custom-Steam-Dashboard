@@ -1,7 +1,7 @@
-"""
-Deals view module for Custom Steam Dashboard.
+﻿"""Deals view module for Custom Steam Dashboard.
 Displays best game deals and allows searching for specific games.
 """
+
 import asyncio
 import logging
 from typing import List, Dict, Any, Optional
@@ -11,7 +11,8 @@ from PySide6.QtWidgets import (
     QListWidget, QListWidgetItem, QGroupBox, QLineEdit,
     QSizePolicy, QFrame
 )
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QTimer, QUrl
+from PySide6.QtGui import QDesktopServices
 
 from app.core.services.server_client import ServerClient
 from app.ui.styles import apply_style
@@ -127,6 +128,8 @@ class DealsView(QWidget):
         # Deals list
         self._best_deals_list = QListWidget()
         self._best_deals_list.setWordWrap(True)
+        # Connect click event to open store URL
+        self._best_deals_list.itemClicked.connect(self._on_deal_clicked)
         layout.addWidget(self._best_deals_list)
         
         # Status label
@@ -200,27 +203,39 @@ class DealsView(QWidget):
         self._best_deals_list.clear()
         
         for deal in self._best_deals:
-            # Create deal item text
-            game_name = deal.get("game_name", "Unknown Game")
+            # Create deal item text - using correct API field names
+            game_name = deal.get("game_title", "Unknown Game")
             discount = deal.get("discount_percent", 0)
-            price_new = deal.get("price_new", 0)
-            price_old = deal.get("price_old", 0)
-            store = deal.get("store", "Unknown Store")
+            price_new = deal.get("current_price", 0)
+            price_old = deal.get("regular_price", 0)
+            store = deal.get("store_name", "Unknown Store")
+            currency = deal.get("currency", "USD")
+            store_url = deal.get("store_url", "")
             
             # Format item text
             item_text = f"🎮 {game_name}\n"
             item_text += f"💰 -{discount}% | "
             
             if price_new and price_old:
-                item_text += f"{price_new:.2f} zł (było: {price_old:.2f} zł)\n"
+                item_text += f"{price_new:.2f} {currency} (było: {price_old:.2f} {currency})\n"
             elif price_new:
-                item_text += f"{price_new:.2f} zł\n"
+                item_text += f"{price_new:.2f} {currency}\n"
             else:
                 item_text += "Cena niedostępna\n"
             
             item_text += f"🏪 {store}"
             
+            if store_url:
+                item_text += " 🔗 (kliknij aby otworzyć)"
+            
             item = QListWidgetItem(item_text)
+            
+            # Store the URL in the item's data for later retrieval
+            item.setData(Qt.ItemDataRole.UserRole, store_url)
+            
+            # Make item look clickable
+            if store_url:
+                item.setToolTip(f"Kliknij aby otworzyć ofertę w sklepie: {store}")
             
             # Color based on discount
             if discount >= 75:
@@ -231,6 +246,18 @@ class DealsView(QWidget):
                 item.setBackground(Qt.GlobalColor.darkCyan)
             
             self._best_deals_list.addItem(item)
+    
+    def _on_deal_clicked(self, item: QListWidgetItem):
+        """Handle clicking on a deal item to open store URL."""
+        # Retrieve the store URL from item data
+        store_url = item.data(Qt.ItemDataRole.UserRole)
+        
+        if store_url:
+            # Open URL in default browser
+            QDesktopServices.openUrl(QUrl(store_url))
+            logger.info(f"Opening deal URL: {store_url}")
+        else:
+            logger.warning("No store URL available for this deal")
     
     async def _search_deals(self):
         """Search for deals by game title."""
@@ -313,7 +340,7 @@ class DealsView(QWidget):
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(10, 10, 10, 10)
         
-        # Deal header
+        # Deal header - using correct API field names
         if deal.get("discount_percent", 0) > 0:
             discount = deal["discount_percent"]
             header = QLabel(f"🎉 Promocja: -{discount}%")
@@ -324,29 +351,30 @@ class DealsView(QWidget):
         
         layout.addWidget(header)
         
-        # Price information
-        price_new = deal.get("price_new")
-        price_old = deal.get("price_old")
+        # Price information - using correct API field names
+        price_new = deal.get("current_price")
+        price_old = deal.get("regular_price")
+        currency = deal.get("currency", "USD")
         
         if price_new is not None:
             if price_old and price_old > price_new:
-                price_text = f"Cena: {price_new:.2f} zł (było: {price_old:.2f} zł)"
+                price_text = f"Cena: {price_new:.2f} {currency} (było: {price_old:.2f} {currency})"
             else:
-                price_text = f"Cena: {price_new:.2f} zł"
+                price_text = f"Cena: {price_new:.2f} {currency}"
             
             price_label = QLabel(price_text)
             price_label.setStyleSheet("font-size: 11pt; margin: 5px;")
             layout.addWidget(price_label)
         
-        # Store information
-        store = deal.get("store", "Unknown")
+        # Store information - using correct API field name
+        store = deal.get("store_name", "Unknown")
         store_label = QLabel(f"🏪 Sklep: {store}")
         store_label.setStyleSheet("margin: 5px;")
         layout.addWidget(store_label)
         
-        # URL if available
-        if deal.get("url"):
-            url_label = QLabel(f"🔗 <a href='{deal['url']}'>Przejdź do oferty</a>")
+        # URL if available - using correct API field name
+        if deal.get("store_url"):
+            url_label = QLabel(f"🔗 <a href='{deal['store_url']}'>Przejdź do oferty</a>")
             url_label.setOpenExternalLinks(True)
             url_label.setStyleSheet("margin: 5px;")
             layout.addWidget(url_label)

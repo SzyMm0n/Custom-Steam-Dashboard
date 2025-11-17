@@ -137,17 +137,20 @@ class IsThereAnyDealClient(BaseAsyncService, IDealsService):
         """
         logger.info(f"Searching for game: {title}")
 
-        search_url = f"{self.base_url}/games/lookup/v1"
+        # Use search endpoint instead of lookup
+        search_url = f"{self.base_url}/games/search/v1"
         params = {
             "key": self.api_key,
             "title": title,
+            "results": 1  # Only get the best match
         }
 
         try:
             data = await self._get_json(search_url, params=params)
             
-            if data and "game" in data:
-                game = data["game"]
+            # Search returns an array of results
+            if data and isinstance(data, list) and len(data) > 0:
+                game = data[0]  # Get first result (best match)
                 logger.debug(f"Found game: {game.get('title')} (ID: {game.get('id')})")
                 return game
             
