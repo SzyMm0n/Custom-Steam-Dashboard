@@ -32,6 +32,11 @@ class IDealsService(ABC):
         """Search for a game by title"""
         ...
 
+    @abstractmethod
+    async def search_deals(self, title: str, limit: int = 20, min_discount: int = 0) -> List[DealInfo]:
+        """Search for deals by game title"""
+        ...
+
 
 class IsThereAnyDealClient(BaseAsyncService, IDealsService):
     """
@@ -160,6 +165,137 @@ class IsThereAnyDealClient(BaseAsyncService, IDealsService):
         except Exception as e:
             logger.error(f"Error searching for game {title}: {e}")
             return None
+
+    async def search_deals(
+        self,
+        title: str,
+        limit: int = 20,
+        min_discount: int = 0,
+        country: str = "PL"
+    ) -> List[DealInfo]:
+        """
+        Search for deals by game title.
+
+        This method first searches for games using /games/search/v1 to get ITAD IDs,
+        then fetches price information using /games/prices/v3.
+
+        Args:
+            title: Game title to search for (case-insensitive partial match)
+            limit: Maximum number of deals to return (1-200, default: 20)
+            min_discount: Minimum discount percentage (0-100, default: 0)
+            country: Two letter country code (default: "PL" for Poland)
+
+        Returns:
+            List of DealInfo objects matching the search criteria
+        """
+        logger.info(f"Searching for deals: '{title}' (min_discount={min_discount}%, limit={limit})")
+
+        # Step 1: Search for games by title
+        search_url = f"{self.base_url}/games/search/v1"
+        search_params = {
+            "key": self.api_key,
+            "title": title,
+            "results": min(limit * 2, 50)  # Get more results than needed to account for filtering
+        }
+
+        try:
+            # Search for games
+            search_data = await self._get_json(search_url, params=search_params)
+
+            if not search_data or not isinstance(search_data, list) or len(search_data) == 0:
+                logger.warning(f"No games found matching: {title}")
+                return []
+
+            # Extract ITAD IDs from search results
+            itad_ids = [game.get("id") for game in search_data if game.get("id")]
+
+            if not itad_ids:
+                logger.warning(f"No valid game IDs found for: {title}")
+                return []
+
+            logger.info(f"Found {len(itad_ids)} games matching '{title}', fetching prices...")
+
+            # Step 2: Get prices for found games using /games/prices/v3
+            prices_url = f"{self.base_url}/games/prices/v3"
+
+            response = await self._client.post(
+                prices_url,
+                json=itad_ids,
+                params={
+                    "key": self.api_key,
+                    "country": country,
+                    "shops": "61,35,88,82"  # Steam, GOG, Epic, Humble Bundle
+                }
+            )
+            response.raise_for_status()
+            prices_data = response.json()
+
+            if not prices_data or not isinstance(prices_data, list):
+                logger.warning(f"No price data received for games matching: {title}")
+                return []
+
+            # Step 3: Process the results and create DealInfo objects
+            result = []
+
+            for game_data in prices_data:
+                game_id = game_data.get("id")
+
+                # Get game title from the original search results
+                matching_game = next((g for g in search_data if g.get("id") == game_id), None)
+                if not matching_game:
+                    continue
+
+                game_title = matching_game.get("title", "Unknown")
+                steam_appid = matching_game.get("appid")  # May be None
+
+                # Get deals for this game
+                deals = game_data.get("deals", [])
+                if not deals:
+                    continue
+
+                # Filter deals with minimum discount
+                discounted_deals = [d for d in deals if d.get("cut", 0) >= min_discount]
+
+                if not discounted_deals:
+                    continue
+
+                # Get the best deal (highest discount, then lowest price)
+                best_deal = max(discounted_deals, key=lambda d: (
+                    d.get("cut", 0),
+                    -d.get("price", {}).get("amount", float('inf'))
+                ))
+
+                price_info = best_deal.get("price", {})
+                regular_info = best_deal.get("regular", {})
+                shop_info = best_deal.get("shop", {})
+                discount = best_deal.get("cut", 0)
+
+                deal_info = DealInfo(
+                    steam_appid=steam_appid,
+                    game_title=game_title,
+                    store_name=shop_info.get("name", "Unknown Store"),
+                    store_url=best_deal.get("url", ""),
+                    current_price=price_info.get("amount", 0.0),
+                    regular_price=regular_info.get("amount", 0.0),
+                    discount_percent=discount,
+                    currency=price_info.get("currency", "USD"),
+                    drm=best_deal.get("drm", [{}])[0].get("name", "Unknown") if best_deal.get("drm") else "Unknown",
+                )
+                result.append(deal_info)
+
+                # Stop if we have enough results
+                if len(result) >= limit:
+                    break
+
+            # Sort by discount percentage (highest first)
+            result.sort(key=lambda d: d.discount_percent, reverse=True)
+
+            logger.info(f"Found {len(result)} deals with at least {min_discount}% discount for '{title}'")
+            return result[:limit]
+
+        except Exception as e:
+            logger.error(f"Error searching for deals '{title}': {e}")
+            return []
 
     async def get_game_info_by_steam_id(self, steam_appid: int) -> Optional[Dict[str, Any]]:
         """

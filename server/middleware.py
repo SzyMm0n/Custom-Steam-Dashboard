@@ -7,7 +7,7 @@ from fastapi import Request, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-from security import verify_request_signature
+from server.security import verify_request_signature
 
 logger = logging.getLogger(__name__)
 

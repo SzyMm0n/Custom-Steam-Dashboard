@@ -49,7 +49,7 @@ class DealInfo(BaseModel):
     """Information about a game deal"""
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
-    steam_appid: int
+    steam_appid: int | None = None
     game_title: str
     store_name: str
     store_url: str

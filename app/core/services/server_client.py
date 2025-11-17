@@ -326,20 +326,27 @@ class ServerClient:
             logger.error(f"Unexpected error fetching game deal: {e}")
             return None
 
-    async def search_game_deals(self, title: str) -> Optional[Dict[str, Any]]:
+    async def search_game_deals(self, title: str, min_discount: int = 0, limit: int = 20) -> Optional[Dict[str, Any]]:
         """
         Search for game deals by title.
 
         Args:
             title: Game title to search for
+            min_discount: Minimum discount percentage (0-100, default: 0)
+            limit: Maximum number of results (1-50, default: 20)
 
         Returns:
-            Dictionary with game info and deal information, or None on error
+            Dictionary with search results:
+                - found: bool indicating if any deals were found
+                - count: number of deals found
+                - deals: list of deal dictionaries
         """
         try:
             import urllib.parse
             encoded_title = urllib.parse.quote(title)
-            return await self._api_client.get(f"/api/deals/search?title={encoded_title}")
+            return await self._api_client.get(
+                f"/api/deals/search?title={encoded_title}&min_discount={min_discount}&limit={limit}"
+            )
         except Exception as e:
             logger.error(f"Unexpected error searching game deals: {e}")
             return None

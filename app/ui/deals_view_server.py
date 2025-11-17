@@ -4,12 +4,12 @@ Displays best game deals and allows searching for specific games.
 
 import asyncio
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QListWidget, QListWidgetItem, QGroupBox, QLineEdit,
-    QSizePolicy, QFrame
+    QFrame, QScrollArea
 )
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices
@@ -102,6 +102,33 @@ class DealsView(QWidget):
         input_layout.addWidget(self._search_btn)
         
         search_layout.addLayout(input_layout)
+
+        # Minimum discount selector
+        discount_layout = QHBoxLayout()
+        discount_layout.addWidget(QLabel("Min. zniżka w wyszukiwaniu:"))
+
+        from PySide6.QtWidgets import QSlider, QSpinBox
+        self._search_discount_slider = QSlider(Qt.Orientation.Horizontal)
+        self._search_discount_slider.setMinimum(0)
+        self._search_discount_slider.setMaximum(100)
+        self._search_discount_slider.setValue(0)
+        self._search_discount_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self._search_discount_slider.setTickInterval(10)
+
+        self._search_discount_spinbox = QSpinBox()
+        self._search_discount_spinbox.setMinimum(0)
+        self._search_discount_spinbox.setMaximum(100)
+        self._search_discount_spinbox.setValue(0)
+        self._search_discount_spinbox.setSuffix("%")
+
+        # Connect slider and spinbox
+        self._search_discount_slider.valueChanged.connect(self._search_discount_spinbox.setValue)
+        self._search_discount_spinbox.valueChanged.connect(self._search_discount_slider.setValue)
+
+        discount_layout.addWidget(self._search_discount_slider)
+        discount_layout.addWidget(self._search_discount_spinbox)
+
+        search_layout.addLayout(discount_layout)
         search_group.setLayout(search_layout)
         
         return search_group
@@ -120,9 +147,36 @@ class DealsView(QWidget):
         
         controls_layout.addStretch()
         
-        self._min_discount_label = QLabel("Min. zniżka: 20%")
-        controls_layout.addWidget(self._min_discount_label)
-        
+        # Min discount slider
+        from PySide6.QtWidgets import QSlider, QSpinBox
+        controls_layout.addWidget(QLabel("Min. zniżka:"))
+
+        self._best_discount_slider = QSlider(Qt.Orientation.Horizontal)
+        self._best_discount_slider.setMinimum(0)
+        self._best_discount_slider.setMaximum(100)
+        self._best_discount_slider.setValue(20)
+        self._best_discount_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
+        self._best_discount_slider.setTickInterval(10)
+        self._best_discount_slider.setMaximumWidth(150)
+
+        self._best_discount_spinbox = QSpinBox()
+        self._best_discount_spinbox.setMinimum(0)
+        self._best_discount_spinbox.setMaximum(100)
+        self._best_discount_spinbox.setValue(20)
+        self._best_discount_spinbox.setSuffix("%")
+
+        # Connect slider and spinbox
+        self._best_discount_slider.valueChanged.connect(self._best_discount_spinbox.setValue)
+        self._best_discount_spinbox.valueChanged.connect(self._best_discount_slider.setValue)
+
+        # Auto-refresh on discount change
+        self._best_discount_spinbox.valueChanged.connect(
+            lambda: asyncio.create_task(self._load_best_deals())
+        )
+
+        controls_layout.addWidget(self._best_discount_slider)
+        controls_layout.addWidget(self._best_discount_spinbox)
+
         layout.addLayout(controls_layout)
         
         # Deals list
@@ -146,18 +200,24 @@ class DealsView(QWidget):
         group = QGroupBox("Wyniki wyszukiwania")
         layout = QVBoxLayout()
         
-        # Results display
-        self._search_results_widget = QWidget()
-        self._search_results_layout = QVBoxLayout(self._search_results_widget)
-        
-        # Initial message
+        # Status label at the top (persistent)
         self._search_status_label = QLabel("Wpisz tytuł gry i kliknij 'Szukaj'")
         self._search_status_label.setStyleSheet("color: gray; font-style: italic;")
         self._search_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._search_results_layout.addWidget(self._search_status_label)
-        
-        layout.addWidget(self._search_results_widget)
-        
+        layout.addWidget(self._search_status_label)
+
+        # Results container (this will be cleared and refilled)
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+
+        self._search_results_widget = QWidget()
+        self._search_results_layout = QVBoxLayout(self._search_results_widget)
+        self._search_results_layout.addStretch()  # Initial stretch
+
+        scroll_area.setWidget(self._search_results_widget)
+        layout.addWidget(scroll_area)
+
         group.setLayout(layout)
         return group
     
@@ -182,16 +242,19 @@ class DealsView(QWidget):
             self._best_deals_status.setText("Ładowanie...")
             self._refresh_best_btn.setEnabled(False)
             
-            deals = await self._server_client.get_best_deals(limit=30, min_discount=20)
+            # Get minimum discount from slider
+            min_discount = self._best_discount_spinbox.value()
+
+            deals = await self._server_client.get_best_deals(limit=30, min_discount=min_discount)
             self._best_deals = deals
             
             self._update_best_deals_list()
             
             if deals:
-                self._best_deals_status.setText(f"Znaleziono {len(deals)} promocji")
+                self._best_deals_status.setText(f"Znaleziono {len(deals)} promocji (min. {min_discount}%)")
             else:
-                self._best_deals_status.setText("Brak aktywnych promocji")
-            
+                self._best_deals_status.setText(f"Brak promocji z min. {min_discount}% zniżki")
+
         except Exception as e:
             logger.error(f"DealsView: Error loading best deals: {e}")
             self._best_deals_status.setText("❌ Błąd ładowania promocji")
@@ -271,67 +334,65 @@ class DealsView(QWidget):
             self._search_status_label.setText(f"Szukam: {search_term}...")
             self._search_btn.setEnabled(False)
             
-            result = await self._server_client.search_game_deals(search_term)
-            
+            # Get minimum discount from slider
+            min_discount = self._search_discount_spinbox.value()
+
+            result = await self._server_client.search_game_deals(
+                search_term,
+                min_discount=min_discount,
+                limit=20
+            )
+
             if not result:
                 self._search_status_label.setText("❌ Błąd wyszukiwania")
                 return
             
-            self._display_search_result(result)
-            
+            self._display_search_results(result, search_term, min_discount)
+
         except Exception as e:
             logger.error(f"DealsView: Error searching deals: {e}")
             self._search_status_label.setText("❌ Błąd wyszukiwania")
         finally:
             self._search_btn.setEnabled(True)
     
-    def _display_search_result(self, result: Dict[str, Any]):
-        """Display search result in the results panel."""
-        # Clear previous results
+    def _display_search_results(self, result: Dict[str, Any], search_term: str, min_discount: int):
+        """Display search results in the results panel."""
+        # Clear previous results (but not the status label which is separate)
         while self._search_results_layout.count():
             child = self._search_results_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
         
         if not result.get("found"):
-            # Not found
-            self._search_status_label = QLabel("❌ Nie znaleziono gry")
+            # Update status label
+            self._search_status_label.setText(f"❌ Brak wyników dla: '{search_term}'")
             self._search_status_label.setStyleSheet("color: orange; font-weight: bold;")
-            self._search_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            self._search_results_layout.addWidget(self._search_status_label)
+
+            # Add explanation in the results area
+            if min_discount > 0:
+                no_deals_msg = QLabel(f"(brak promocji z min. {min_discount}% zniżki)")
+                no_deals_msg.setStyleSheet("color: gray; font-style: italic; text-align: center;")
+                no_deals_msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self._search_results_layout.addWidget(no_deals_msg)
+
+            self._search_results_layout.addStretch()
             return
         
-        # Found - display game and deal info
-        game = result.get("game", {})
-        deal = result.get("deal")
-        
-        # Game title
-        title_label = QLabel(f"🎮 {game.get('title', 'Unknown')}")
-        title_label.setStyleSheet("font-size: 14pt; font-weight: bold; margin: 5px;")
-        title_label.setWordWrap(True)
-        self._search_results_layout.addWidget(title_label)
-        
-        # Steam AppID if available
-        if game.get("steam_appid"):
-            appid_label = QLabel(f"Steam AppID: {game['steam_appid']}")
-            appid_label.setStyleSheet("color: gray; margin-left: 10px;")
-            self._search_results_layout.addWidget(appid_label)
-        
-        # Separator
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Sunken)
-        self._search_results_layout.addWidget(line)
-        
-        # Deal information
-        if deal:
+        # Found deals - update status
+        deals = result.get("deals", [])
+        count = result.get("count", len(deals))
+
+        if min_discount > 0:
+            self._search_status_label.setText(f"✓ Znaleziono {count} promocji (min. {min_discount}%)")
+        else:
+            self._search_status_label.setText(f"✓ Znaleziono {count} promocji")
+        self._search_status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+
+        # Display each deal in the results area
+        for deal in deals:
             deal_widget = self._create_deal_widget(deal)
             self._search_results_layout.addWidget(deal_widget)
-        else:
-            no_deal_label = QLabel("ℹ️ Brak aktywnych promocji dla tej gry")
-            no_deal_label.setStyleSheet("color: gray; font-style: italic; margin: 10px;")
-            self._search_results_layout.addWidget(no_deal_label)
-        
+
         self._search_results_layout.addStretch()
     
     def _create_deal_widget(self, deal: Dict[str, Any]) -> QWidget:
@@ -340,11 +401,18 @@ class DealsView(QWidget):
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(10, 10, 10, 10)
         
+        # Game title
+        title = deal.get("game_title", "Unknown Game")
+        title_label = QLabel(f"🎮 {title}")
+        title_label.setStyleSheet("font-size: 13pt; font-weight: bold; margin-bottom: 5px;")
+        title_label.setWordWrap(True)
+        layout.addWidget(title_label)
+
         # Deal header - using correct API field names
-        if deal.get("discount_percent", 0) > 0:
-            discount = deal["discount_percent"]
+        discount = deal.get("discount_percent", 0)
+        if discount > 0:
             header = QLabel(f"🎉 Promocja: -{discount}%")
-            header.setStyleSheet("font-size: 12pt; font-weight: bold; color: green;")
+            header.setStyleSheet("font-size: 12pt; font-weight: bold; color: #4CAF50;")
         else:
             header = QLabel("💵 Aktualna cena")
             header.setStyleSheet("font-size: 12pt; font-weight: bold;")
@@ -372,15 +440,32 @@ class DealsView(QWidget):
         store_label.setStyleSheet("margin: 5px;")
         layout.addWidget(store_label)
         
+        # DRM info if available
+        drm = deal.get("drm", "")
+        if drm and drm != "Unknown":
+            drm_label = QLabel(f"🔒 DRM: {drm}")
+            drm_label.setStyleSheet("margin: 5px; color: #888;")
+            layout.addWidget(drm_label)
+
         # URL if available - using correct API field name
         if deal.get("store_url"):
-            url_label = QLabel(f"🔗 <a href='{deal['store_url']}'>Przejdź do oferty</a>")
+            url_label = QLabel(f"🔗 <a href='{deal['store_url']}' style='color: #2196F3;'>Przejdź do oferty</a>")
             url_label.setOpenExternalLinks(True)
             url_label.setStyleSheet("margin: 5px;")
             layout.addWidget(url_label)
         
-        widget.setStyleSheet("background-color: #2a2a2a; border-radius: 5px; margin: 5px;")
-        
+        # Style based on discount
+        if discount >= 75:
+            bg_color = "#1B5E20"  # Dark green
+        elif discount >= 50:
+            bg_color = "#0D47A1"  # Dark blue
+        elif discount >= 25:
+            bg_color = "#4A148C"  # Dark purple
+        else:
+            bg_color = "#2a2a2a"  # Default dark gray
+
+        widget.setStyleSheet(f"background-color: {bg_color}; border-radius: 5px; margin: 5px; padding: 5px;")
+
         return widget
     
     async def refresh_data(self):

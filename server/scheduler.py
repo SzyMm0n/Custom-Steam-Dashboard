@@ -13,8 +13,8 @@ if str(project_root) not in sys.path:
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
-from database.database import DatabaseManager, DatabaseRollupManager
-from services.steam_service import SteamClient
+from server.database.database import DatabaseManager, DatabaseRollupManager
+from server.services.steam_service import SteamClient
 
 logger = logging.getLogger(__name__)
 

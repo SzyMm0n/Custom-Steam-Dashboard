@@ -26,19 +26,19 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from pydantic import ValidationError
 
-from database.database import DatabaseManager, init_db, close_db
-from services.steam_service import SteamClient
-from services.deals_service import IsThereAnyDealClient
-from scheduler import SchedulerManager
-from validation import (
+from server.database.database import DatabaseManager, init_db, close_db
+from server.services.steam_service import SteamClient
+from server.services.deals_service import IsThereAnyDealClient
+from server.scheduler import SchedulerManager
+from server.validation import (
     SteamIDValidator,
     AppIDValidator,
     AppIDListValidator,
     VanityURLValidator
 )
-from security import require_auth, require_session_and_signed_request, rate_limit_key
-from middleware import SignatureVerificationMiddleware
-import auth_routes
+from server.security import require_auth, require_session_and_signed_request, rate_limit_key
+from server.middleware import SignatureVerificationMiddleware
+import server.auth_routes as auth_routes
 
 # Configure logging
 logging.basicConfig(
@@ -547,16 +547,20 @@ async def get_game_deal(appid: int, request: Request, client_id: str = Depends(r
 async def search_game_deals(
     request: Request,
     title: str,
+    min_discount: int = 0,
+    limit: int = 20,
     client_id: str = Depends(require_session_and_signed_request)
 ):
     """
     Search for game deals by title.
 
     Args:
-        title: Game title to search for
+        title: Game title to search for (partial match)
+        min_discount: Minimum discount percentage (0-100, default: 0)
+        limit: Maximum number of results (1-50, default: 20)
 
     Returns:
-        Game information with current deal/price info
+        List of deals matching the search criteria
     """
     try:
         if not title or len(title.strip()) < 2:
@@ -565,41 +569,22 @@ async def search_game_deals(
                 detail="Title must be at least 2 characters long"
             )
 
-        # Search for game in ITAD
-        game_info = await deals_client.search_game(title.strip())
+        # Validate parameters
+        min_discount = min(max(0, min_discount), 100)
+        limit = min(max(1, limit), 50)
 
-        if not game_info:
-            return {
-                "found": False,
-                "message": f"No game found matching '{title}'"
-            }
-
-        # Get ITAD game ID from search result
-        game_id = game_info.get("id")
-        
-        # Get full game info to retrieve Steam AppID
-        info_url = f"{deals_client.base_url}/games/info/v2"
-        params = {
-            "key": deals_client.api_key,
-            "id": game_id
-        }
-        
-        full_info = await deals_client._get_json(info_url, params=params)
-        steam_appid = full_info.get("appid") if full_info else None
-
-        # Get price information if we have Steam AppID
-        deal = None
-        if steam_appid:
-            deal = await deals_client.get_game_prices(steam_appid)
+        # Search for deals using the new method
+        deals = await deals_client.search_deals(
+            title=title.strip(),
+            limit=limit,
+            min_discount=min_discount,
+            country="PL"
+        )
 
         return {
-            "found": True,
-            "game": {
-                "title": game_info.get("title"),
-                "id": game_id,
-                "steam_appid": steam_appid
-            },
-            "deal": deal.model_dump() if deal else None
+            "found": len(deals) > 0,
+            "count": len(deals),
+            "deals": [deal.model_dump() for deal in deals]
         }
 
     except HTTPException:

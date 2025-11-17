@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from pydantic import BaseModel, Field
 
-from security import create_jwt, verify_request_signature, CLIENTS_MAP, require_auth
+from server.security import create_jwt, verify_request_signature, CLIENTS_MAP, require_auth
 
 logger = logging.getLogger(__name__)
 
