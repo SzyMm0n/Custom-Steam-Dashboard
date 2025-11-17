@@ -326,6 +326,24 @@ class ServerClient:
             logger.error(f"Unexpected error fetching game deal: {e}")
             return None
 
+    async def search_game_deals(self, title: str) -> Optional[Dict[str, Any]]:
+        """
+        Search for game deals by title.
+
+        Args:
+            title: Game title to search for
+
+        Returns:
+            Dictionary with game info and deal information, or None on error
+        """
+        try:
+            import urllib.parse
+            encoded_title = urllib.parse.quote(title)
+            return await self._api_client.get(f"/api/deals/search?title={encoded_title}")
+        except Exception as e:
+            logger.error(f"Unexpected error searching game deals: {e}")
+            return None
+
     async def get_player_history_comparison(self, appids: List[int], days: float = 7) -> Dict[int, Dict[str, Any]]:
         """
         Get player count history for multiple games for comparison.

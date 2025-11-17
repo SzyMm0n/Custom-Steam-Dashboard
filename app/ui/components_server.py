@@ -623,6 +623,21 @@ class GameDetailPanel(QFrame):
         # Load async data
         self._load_async_data()
     
+    def _is_valid(self) -> bool:
+        """Check if the panel and its widgets are still valid (not deleted)."""
+        try:
+            # Try to access a basic property to verify object is alive
+            _ = self.isVisible()
+            # Also check key widgets
+            if hasattr(self, 'desc_lbl'):
+                _ = self.desc_lbl.text()
+            if hasattr(self, 'details_layout'):
+                _ = self.details_layout.count()
+            return True
+        except RuntimeError:
+            # C++ object has been deleted
+            return False
+
     def _parse_game_data(self, game_data: Any) -> None:
         """Parse game data from various formats."""
         if isinstance(game_data, dict):
@@ -811,27 +826,41 @@ class GameDetailPanel(QFrame):
     async def _load_from_server(self, appid: int) -> None:
         """Load game details from server."""
         try:
+            # Check if panel is still valid before proceeding
+            if not self._is_valid():
+                return
+
             game_details = await self._server_client.get_game_details(appid)
             
+            if not self._is_valid():
+                return
+
             if game_details:
                 # Update tags
                 genres = [g for g in game_details.get('genres', []) if g is not None]
                 categories = [c for c in game_details.get('categories', []) if c is not None]
                 all_tags = genres + categories
                 
-                if all_tags:
+                if all_tags and self._is_valid():
                     self._tags = set(all_tags)
                     tags_text = self._format_tags(self._tags)
                     self._update_tags_label(f"🏷️ Tagi: {tags_text}")
                 
                 # Update description
+                if not self._is_valid():
+                    return
+
                 description = game_details.get('detailed_description')
                 if description:
-                    self.desc_lbl.setText(description)
+                    if self._is_valid():
+                        self.desc_lbl.setText(description)
                 else:
                     await self._load_steam_store_details(appid)
                 
                 # Load image
+                if not self._is_valid():
+                    return
+
                 header_image_url = game_details.get('header_image')
                 if header_image_url:
                     await self._load_image_from_url(header_image_url)
@@ -839,6 +868,9 @@ class GameDetailPanel(QFrame):
                     await self._load_steam_store_details(appid)
                 
                 # Add price info
+                if not self._is_valid():
+                    return
+
                 price = game_details.get('price')
                 is_free = game_details.get('is_free')
                 release_date = game_details.get('release_date')
@@ -853,34 +885,60 @@ class GameDetailPanel(QFrame):
             else:
                 await self._load_steam_store_details(appid)
                 
+                if not self._is_valid():
+                    return
+
                 tags_data = await self._server_client.get_game_tags(appid)
-                if tags_data:
+                if tags_data and self._is_valid():
                     server_tags = tags_data.get('tags', [])
                     if server_tags:
                         self._tags = set(server_tags)
                         tags_text = self._format_tags(self._tags)
                         self._update_tags_label(f"🏷️ Tagi: {tags_text}")
+        except RuntimeError as e:
+            # Qt object already deleted
+            logger.debug(f"Panel closed during async operation: {e}")
         except Exception as e:
             logger.error(f"Error fetching from server: {e}")
-            await self._load_steam_store_details(appid)
-    
+            if self._is_valid():
+                await self._load_steam_store_details(appid)
+
     def _update_tags_label(self, text: str) -> None:
         """Update tags label."""
-        for i in range(self.details_layout.count()):
-            widget = self.details_layout.itemAt(i).widget()
-            if isinstance(widget, QLabel) and widget.text().startswith("🏷️ Tagi:"):
-                widget.setText(text)
-                return
-    
+        if not self._is_valid():
+            return
+
+        try:
+            for i in range(self.details_layout.count()):
+                widget = self.details_layout.itemAt(i).widget()
+                if isinstance(widget, QLabel) and widget.text().startswith("🏷️ Tagi:"):
+                    widget.setText(text)
+                    return
+        except RuntimeError:
+            # Layout or widget already deleted
+            pass
+
     def _add_detail_label(self, text: str) -> None:
         """Add a detail label."""
-        self.details_layout.addWidget(QLabel(text))
-    
+        if not self._is_valid():
+            return
+        try:
+            self.details_layout.addWidget(QLabel(text))
+        except RuntimeError:
+            pass
+
     async def _load_image_from_url(self, image_url: str) -> None:
         """Load image from URL."""
         try:
+            if not self._is_valid():
+                return
+
             async with httpx.AsyncClient(timeout=10.0) as client:
                 img_resp = await client.get(image_url, timeout=10.0)
+
+                if not self._is_valid():
+                    return
+
                 if img_resp.status_code == 200:
                     pix = QPixmap()
                     pix.loadFromData(img_resp.content)
@@ -889,26 +947,40 @@ class GameDetailPanel(QFrame):
                         Qt.AspectRatioMode.KeepAspectRatio,
                         Qt.TransformationMode.SmoothTransformation
                     )
-                    self.header_image_lbl.setPixmap(scaled)
+                    if self._is_valid():
+                        self.header_image_lbl.setPixmap(scaled)
+        except RuntimeError:
+            # Qt object already deleted
+            pass
         except Exception as e:
             logger.error(f"Error loading image from URL: {e}")
     
     async def _load_steam_store_details(self, appid: int) -> None:
         """Load details from Steam API (fallback)."""
         try:
+            if not self._is_valid():
+                return
+
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(
                     "https://store.steampowered.com/api/appdetails",
                     params={"appids": appid, "cc": "pl", "l": "pl"},
                 )
                 
+                if not self._is_valid():
+                    return
+
                 if resp.status_code != 200:
-                    self.desc_lbl.setText("Nie udało się załadować opisu gry.")
+                    if self._is_valid():
+                        self.desc_lbl.setText("Nie udało się załadować opisu gry.")
                     return
                 
                 data = resp.json()
                 node = data.get(str(appid)) if isinstance(data, dict) else None
                 
+                if not self._is_valid():
+                    return
+
                 if node and node.get("success"):
                     d = node.get("data", {}) or {}
                     header_image = (
@@ -918,19 +990,25 @@ class GameDetailPanel(QFrame):
                     )
                     short_desc = d.get("short_description") or d.get("about_the_game") or ""
                     
-                    if short_desc:
-                        self.desc_lbl.setText(short_desc)
-                    else:
-                        self.desc_lbl.setText("Brak opisu gry.")
-                    
-                    if header_image:
+                    if self._is_valid():
+                        if short_desc:
+                            self.desc_lbl.setText(short_desc)
+                        else:
+                            self.desc_lbl.setText("Brak opisu gry.")
+
+                    if header_image and self._is_valid():
                         await self._load_header_image(client, header_image)
                 else:
-                    self.desc_lbl.setText("Nie udało się pobrać informacji o grze ze Steam.")
+                    if self._is_valid():
+                        self.desc_lbl.setText("Nie udało się pobrać informacji o grze ze Steam.")
+        except RuntimeError:
+            # Qt object already deleted
+            pass
         except Exception as e:
             logger.error(f"Error loading Steam store details: {e}")
-            self.desc_lbl.setText("Błąd podczas ładowania opisu gry.")
-    
+            if self._is_valid():
+                self.desc_lbl.setText("Błąd podczas ładowania opisu gry.")
+
     async def _load_header_image(self, client: httpx.AsyncClient, image_url: str) -> None:
         """Load header image."""
         try:

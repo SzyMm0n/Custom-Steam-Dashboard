@@ -542,6 +542,67 @@ async def get_game_deal(appid: int, request: Request, client_id: str = Depends(r
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/deals/search")
+@limiter.limit("30/minute")
+async def search_game_deals(
+    request: Request,
+    title: str,
+    client_id: str = Depends(require_session_and_signed_request)
+):
+    """
+    Search for game deals by title.
+
+    Args:
+        title: Game title to search for
+
+    Returns:
+        Game information with current deal/price info
+    """
+    try:
+        if not title or len(title.strip()) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail="Title must be at least 2 characters long"
+            )
+
+        # Search for game in ITAD
+        game_info = await deals_client.search_game(title.strip())
+
+        if not game_info:
+            return {
+                "found": False,
+                "message": f"No game found matching '{title}'"
+            }
+
+        # Try to get Steam AppID from the game info
+        steam_appid = None
+        if "assets" in game_info and "steam" in game_info["assets"]:
+            steam_appid_str = game_info["assets"]["steam"]
+            if steam_appid_str and steam_appid_str.startswith("app/"):
+                steam_appid = int(steam_appid_str.split("/")[1])
+
+        # Get price information if we have Steam AppID
+        deal = None
+        if steam_appid:
+            deal = await deals_client.get_game_prices(steam_appid)
+
+        return {
+            "found": True,
+            "game": {
+                "title": game_info.get("title"),
+                "id": game_info.get("id"),
+                "steam_appid": steam_appid
+            },
+            "deal": deal.model_dump() if deal else None
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error searching for game deals: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/player-history/compare")
 @limiter.limit("20/minute")
 async def get_player_history_comparison(
