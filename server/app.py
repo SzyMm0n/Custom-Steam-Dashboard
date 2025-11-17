@@ -574,12 +574,18 @@ async def search_game_deals(
                 "message": f"No game found matching '{title}'"
             }
 
-        # Try to get Steam AppID from the game info
-        steam_appid = None
-        if "assets" in game_info and "steam" in game_info["assets"]:
-            steam_appid_str = game_info["assets"]["steam"]
-            if steam_appid_str and steam_appid_str.startswith("app/"):
-                steam_appid = int(steam_appid_str.split("/")[1])
+        # Get ITAD game ID from search result
+        game_id = game_info.get("id")
+        
+        # Get full game info to retrieve Steam AppID
+        info_url = f"{deals_client.base_url}/games/info/v2"
+        params = {
+            "key": deals_client.api_key,
+            "id": game_id
+        }
+        
+        full_info = await deals_client._get_json(info_url, params=params)
+        steam_appid = full_info.get("appid") if full_info else None
 
         # Get price information if we have Steam AppID
         deal = None
@@ -590,7 +596,7 @@ async def search_game_deals(
             "found": True,
             "game": {
                 "title": game_info.get("title"),
-                "id": game_info.get("id"),
+                "id": game_id,
                 "steam_appid": steam_appid
             },
             "deal": deal.model_dump() if deal else None
