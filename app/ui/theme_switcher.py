@@ -20,6 +20,10 @@ class ThemeSwitcher(QWidget):
         """Initialize the theme switcher widget."""
         super().__init__(parent)
         self._theme_manager = ThemeManager()
+
+        # Connect to theme changes to update UI
+        self._theme_manager.theme_changed.connect(self._on_theme_changed_external)
+
         self._init_ui()
 
     def _init_ui(self):
@@ -72,4 +76,18 @@ class ThemeSwitcher(QWidget):
         palette_value = self._palette_combo.itemData(index)
         palette = ColorPalette(palette_value)
         self._theme_manager.set_palette(palette)
+
+    def _on_theme_changed_external(self, mode: str, palette: str):
+        """Handle external theme changes (from other ThemeSwitcher instances or code)."""
+        # Update mode button text
+        self._update_mode_button_text()
+
+        # Update palette combo box selection
+        current_palette = self._theme_manager.palette
+        index = self._palette_combo.findData(current_palette.value)
+        if index >= 0 and index != self._palette_combo.currentIndex():
+            # Block signals to avoid triggering another change
+            self._palette_combo.blockSignals(True)
+            self._palette_combo.setCurrentIndex(index)
+            self._palette_combo.blockSignals(False)
 

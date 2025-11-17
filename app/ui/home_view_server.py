@@ -20,7 +20,6 @@ from app.core.services.server_client import ServerClient
 from app.ui.components_server import NumberValidator, GameDetailDialog, GameDetailPanel
 from app.ui.styles import apply_style, refresh_style
 from app.ui.theme_manager import ThemeManager
-from app.ui.theme_switcher import ThemeSwitcher
 
 
 logger = logging.getLogger(__name__)
@@ -71,7 +70,7 @@ class HomeView(QWidget):
         # Game detail panel (temporary section)
         self._detail_panel: Optional[GameDetailPanel] = None
 
-        # Theme manager
+        # Theme manager - connect BEFORE init_ui to ensure proper initial styling
         self._theme_manager = ThemeManager()
         self._theme_manager.theme_changed.connect(self._on_theme_changed)
 
@@ -82,6 +81,10 @@ class HomeView(QWidget):
 
         # Initialize UI
         self._init_ui()
+
+        # Force apply current theme state immediately after UI is built
+        colors = self._theme_manager.get_colors()
+        self._on_theme_changed(self._theme_manager.mode.value, self._theme_manager.palette.value)
 
         # Setup automatic refresh timer (5 minutes)
         # Use QTimer.singleShot() to avoid asyncio event loop conflicts
@@ -112,14 +115,12 @@ class HomeView(QWidget):
         Initialize the user interface layout.
         Creates left panel with game list and right panel with filters.
         """
-        # Title and theme switcher
+        # Title
         title_layout = QHBoxLayout()
         self.top_live_title = QLabel("Live Games Count")
         self.top_live_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 5px;")
         title_layout.addWidget(self.top_live_title)
         title_layout.addStretch()
-        theme_switcher = ThemeSwitcher()
-        title_layout.addWidget(theme_switcher)
 
         # Left column - Live games list
         left_column = QVBoxLayout()

@@ -19,6 +19,7 @@ import httpx
 
 from app.ui.styles import apply_style
 from app.core.services.server_client import ServerClient
+from app.ui.theme_manager import ThemeManager
 
 logger = logging.getLogger(__name__)
 
@@ -595,21 +596,18 @@ class GameDetailPanel(QFrame):
             server_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self._server_client = ServerClient(base_url=server_url)
         
+        # Theme manager
+        self._theme_manager = ThemeManager()
+        self._theme_manager.theme_changed.connect(self._on_theme_changed)
+
         # Parse game data
         self._parse_game_data(game_data)
         
-        # Setup frame style
+        # Setup frame style (theme-aware)
         self.setFrameStyle(QFrame.Shape.StyledPanel | QFrame.Shadow.Raised)
         self.setLineWidth(2)
-        self.setStyleSheet("""
-            GameDetailPanel {
-                background-color: #1e1e1e;
-                border: 2px solid #667eea;
-                border-radius: 8px;
-                padding: 10px;
-            }
-        """)
-        
+        # We'll apply theme below after building key widgets
+
         # Create layout
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 15, 15, 15)
@@ -620,6 +618,9 @@ class GameDetailPanel(QFrame):
         self._create_details_section(layout)
         self._create_buttons_section(layout)
         
+        # Apply theme-aware styling now that widgets exist
+        self._apply_theme()
+
         # Load async data
         self._load_async_data()
     
@@ -672,40 +673,22 @@ class GameDetailPanel(QFrame):
         header_layout.addWidget(title_lbl, 1)
         
         # Close button
-        close_btn = QPushButton("✕")
-        close_btn.setMaximumSize(32, 32)
-        close_btn.setMinimumSize(32, 32)
-        close_btn.setToolTip("Zamknij panel")
-        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        close_btn.clicked.connect(self._on_close)
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
-                color: white;
-                border: none;
-                border-radius: 16px;
-                font-size: 18px;
-                font-weight: bold;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background-color: #c0392b;
-            }
-            QPushButton:pressed {
-                background-color: #a93226;
-            }
-        """)
-        header_layout.addWidget(close_btn)
-        
+        self._close_btn = QPushButton("✕")
+        self._close_btn.setMaximumSize(32, 32)
+        self._close_btn.setMinimumSize(32, 32)
+        self._close_btn.setToolTip("Zamknij panel")
+        self._close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._close_btn.clicked.connect(self._on_close)
+        header_layout.addWidget(self._close_btn)
+
         layout.addLayout(header_layout)
         
         # Separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("background-color: #667eea;")
-        separator.setFixedHeight(2)
-        layout.addWidget(separator)
-    
+        self._separator = QFrame()
+        self._separator.setFrameShape(QFrame.Shape.HLine)
+        self._separator.setFixedHeight(2)
+        layout.addWidget(self._separator)
+
     def _create_content_section(self, layout: QVBoxLayout) -> None:
         """Create the content section with image and description."""
         content_layout = QHBoxLayout()
@@ -714,7 +697,6 @@ class GameDetailPanel(QFrame):
         self.header_image_lbl = QLabel()
         self.header_image_lbl.setFixedSize(300, 140)
         self.header_image_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.header_image_lbl.setStyleSheet("border: 1px solid #555; background-color: #2b2b2b;")
         content_layout.addWidget(self.header_image_lbl)
         
         # Right side - description (scrollable)
@@ -1053,3 +1035,45 @@ class GameDetailPanel(QFrame):
         except Exception as e:
             logger.error(f"Error opening store page: {e}")
 
+    def _apply_theme(self) -> None:
+        """Apply theme-aware styles to the panel and its key widgets."""
+        colors = self._theme_manager.get_colors()
+        # Panel background and border using group colors
+        self.setStyleSheet(
+            f"""
+            QFrame {{
+                background-color: {colors['background_group']};
+                border: 2px solid {colors['border_group']};
+                border-radius: 8px;
+            }}
+            """
+        )
+        # Separator and header image border/background
+        self._separator.setStyleSheet(f"background-color: {colors['border_group']};")
+        self.header_image_lbl.setStyleSheet(
+            f"border: 1px solid {colors['border']}; background-color: {colors['background_panel']};"
+        )
+        # Close button uses danger palette
+        self._close_btn.setStyleSheet(
+            f"""
+            QPushButton {{
+                background-color: {colors['danger']};
+                color: white;
+                border: none;
+                border-radius: 16px;
+                font-size: 18px;
+                font-weight: bold;
+                padding: 0px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['danger_hover']};
+            }}
+            QPushButton:pressed {{
+                background-color: {colors['danger_pressed']};
+            }}
+            """
+        )
+
+    def _on_theme_changed(self, mode: str, palette: str) -> None:
+        """Reapply theme styles when the app theme changes."""
+        self._apply_theme()

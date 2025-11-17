@@ -17,7 +17,6 @@ from PySide6.QtGui import QDesktopServices
 from app.core.services.server_client import ServerClient
 from app.ui.styles import apply_style, refresh_style
 from app.ui.theme_manager import ThemeManager
-from app.ui.theme_switcher import ThemeSwitcher
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +46,7 @@ class DealsView(QWidget):
         self._best_deals = []
         self._search_results = None
         
-        # Theme manager
+        # Theme manager - connect BEFORE init_ui to ensure proper initial styling
         self._theme_manager = ThemeManager()
         self._theme_manager.theme_changed.connect(self._on_theme_changed)
 
@@ -60,24 +59,19 @@ class DealsView(QWidget):
         
         # Initial data load
         asyncio.create_task(self._load_initial_data())
-    
+
+        # Force apply current theme state immediately after UI is built
+        self._on_theme_changed(self._theme_manager.mode.value, self._theme_manager.palette.value)
+
     def _init_ui(self):
         """Initialize the user interface."""
         layout = QVBoxLayout(self)
         
-        # Title and theme switcher
-        title_layout = QHBoxLayout()
-
+        # Title
         title = QLabel("Promocje i okazje")
         title.setStyleSheet("font-size: 18pt; font-weight: bold; margin: 10px;")
-        title_layout.addWidget(title)
-
-        title_layout.addStretch()
-
-        theme_switcher = ThemeSwitcher()
-        title_layout.addWidget(theme_switcher)
-
-        layout.addLayout(title_layout)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
 
         # Search section
         search_group = self._create_search_section()

@@ -21,7 +21,6 @@ import matplotlib.dates as mdates
 from app.core.services.server_client import ServerClient
 from app.ui.styles import apply_style, refresh_style
 from app.ui.theme_manager import ThemeManager
-from app.ui.theme_switcher import ThemeSwitcher
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,7 @@ class ComparisonView(QWidget):
         self._history_data = {}
         self._selected_time_range = "7d"  # Default time range
 
-        # Theme manager
+        # Theme manager - connect BEFORE init_ui to ensure proper initial styling
         self._theme_manager = ThemeManager()
         self._theme_manager.theme_changed.connect(self._on_theme_changed)
 
@@ -66,25 +65,19 @@ class ComparisonView(QWidget):
         
         # Initial data load
         asyncio.create_task(self._load_games())
-    
+
+        # Force apply current theme state immediately after UI is built
+        self._on_theme_changed(self._theme_manager.mode.value, self._theme_manager.palette.value)
+
     def _init_ui(self):
         """Initialize the user interface."""
         layout = QVBoxLayout(self)
         
-        # Title and theme switcher
-        title_layout = QHBoxLayout()
-
+        # Title
         title = QLabel("Porównanie danych graczy")
         title.setStyleSheet("font-size: 18pt; font-weight: bold; margin: 10px;")
-        title_layout.addWidget(title)
-
-        title_layout.addStretch()
-
-        # Theme switcher
-        theme_switcher = ThemeSwitcher()
-        title_layout.addWidget(theme_switcher)
-
-        layout.addLayout(title_layout)
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
 
         # Control panel
         control_panel = self._create_control_panel()

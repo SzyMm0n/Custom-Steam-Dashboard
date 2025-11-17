@@ -27,7 +27,6 @@ import httpx
 from app.core.services.server_client import ServerClient
 from app.ui.styles import apply_style, refresh_style
 from app.ui.theme_manager import ThemeManager
-from app.ui.theme_switcher import ThemeSwitcher
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +66,14 @@ class LibraryView(QWidget):
             2: Qt.SortOrder.DescendingOrder   # Last 2 weeks
         }
         
-        # Theme manager
+        # Theme manager - connect BEFORE init_ui to ensure proper initial styling
         self._theme_manager = ThemeManager()
         self._theme_manager.theme_changed.connect(self._on_theme_changed)
 
         self._init_ui()
+
+        # Force apply current theme state immediately after UI is built
+        self._on_theme_changed(self._theme_manager.mode.value, self._theme_manager.palette.value)
 
     # ===== UI Initialization =====
 
@@ -82,18 +84,13 @@ class LibraryView(QWidget):
         """
         layout = QVBoxLayout(self)
 
-        # Title section with theme switcher
-        title_layout = QHBoxLayout()
+        # Title section
         title = QLabel("Biblioteka gier")
         f = title.font()
         f.setPointSize(f.pointSize() + 2)
         f.setBold(True)
         title.setFont(f)
-        title_layout.addWidget(title)
-        title_layout.addStretch()
-        theme_switcher = ThemeSwitcher()
-        title_layout.addWidget(theme_switcher)
-        layout.addLayout(title_layout)
+        layout.addWidget(title)
 
         # Profile header with avatar and username
         profile_row = QHBoxLayout()
@@ -135,20 +132,62 @@ class LibraryView(QWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        
-        # Enable sorting by clicking headers
-        self.table.setSortingEnabled(False)  # We'll handle sorting manually for better control
+
+        self.table.setSortingEnabled(False)
         header.sectionClicked.connect(self._on_header_clicked)
-        header.setCursor(Qt.CursorShape.PointingHandCursor)  # Show clickable cursor
+        header.setCursor(Qt.CursorShape.PointingHandCursor)
         
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
         layout.addWidget(self.table, 1)
 
-        # Apply common dark theme styling
         apply_style(self)
         title.setProperty("role", "title")
+
+        # Apply per-table palette-aware colors (background + alternate rows)
+        self._apply_table_colors()
+
+    # ===== Internal helpers =====
+
+    def _apply_table_colors(self) -> None:
+        """Apply palette-aware colors to the library table (background and alternate rows)."""
+        colors = self._theme_manager.get_colors()
+        table_style = f"""
+        QTableWidget {{
+          background-color: {colors['background_panel']};
+          color: {colors['foreground']};
+          border: 1px solid {colors['border']};
+          gridline-color: {colors['border']};
+          alternate-background-color: {colors['background_light']};
+        }}
+        QTableWidget::item {{
+          background-color: {colors['background_panel']};
+          color: {colors['foreground']};
+        }}
+        QTableWidget::item:alternate {{
+          background-color: {colors['background_light']};
+        }}
+        QTableWidget::item:selected {{
+          background-color: {colors['accent']};
+          color: #ffffff;
+        }}
+        QHeaderView::section {{
+          background-color: {colors['background_group']};
+          color: {colors['foreground']};
+          border: none;
+          border-bottom: 1px solid {colors['border_group']};
+          padding: 6px;
+          font-weight: 600;
+        }}
+        QTableCornerButton::section {{
+          background-color: {colors['background_group']};
+          border: none;
+          border-bottom: 1px solid {colors['border_group']};
+          border-right: 1px solid {colors['border_group']};
+        }}
+        """
+        self.table.setStyleSheet(table_style)
 
     # ===== Event Handlers =====
 
@@ -164,35 +203,33 @@ class LibraryView(QWidget):
         """
         if not self._games_data:
             return
-        
-        # Toggle sort order for this column
+
         current_order = self._sort_orders.get(logical_index, Qt.SortOrder.AscendingOrder)
         new_order = Qt.SortOrder.DescendingOrder if current_order == Qt.SortOrder.AscendingOrder else Qt.SortOrder.AscendingOrder
         self._sort_orders[logical_index] = new_order
-        
-        # Sort based on clicked column
-        if logical_index == 0:  # Name column
+
+        if logical_index == 0:
             sorted_games = sorted(
                 self._games_data,
                 key=lambda g: g.get('name', '').lower(),
                 reverse=(new_order == Qt.SortOrder.DescendingOrder)
             )
-        elif logical_index == 1:  # Total hours
+        elif logical_index == 1:
             sorted_games = sorted(
                 self._games_data,
                 key=lambda g: g.get('playtime_forever', 0),
                 reverse=(new_order == Qt.SortOrder.DescendingOrder)
             )
-        else:  # logical_index == 2, Last 2 weeks
+        else:
             sorted_games = sorted(
                 self._games_data,
                 key=lambda g: g.get('playtime_2weeks', 0),
                 reverse=(new_order == Qt.SortOrder.DescendingOrder)
             )
-        
+
         # Update table with sorted data
         self._populate_table(sorted_games)
-        
+
         # Update header to show sort indicator
         header = self.table.horizontalHeader()
         header.setSortIndicator(logical_index, new_order)
@@ -303,12 +340,18 @@ class LibraryView(QWidget):
         Args:
             games_list: List of game dictionaries with name, playtime_forever, playtime_2weeks
         """
+        # Get current theme colors
+        from PySide6.QtGui import QColor
+        colors = self._theme_manager.get_colors()
+        text_color = QColor(colors['foreground'])
+
         self.table.setRowCount(len(games_list))
         for row, game in enumerate(games_list):
             # Game name
             name = game.get('name', f"AppID {game.get('appid', 'Unknown')}")
             name_item = QTableWidgetItem(name)
-            
+            name_item.setForeground(text_color)
+
             # Total playtime
             total_min = game.get('playtime_forever', 0)
             last2w_min = game.get('playtime_2weeks', 0)
@@ -322,6 +365,10 @@ class LibraryView(QWidget):
             total_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             last_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             
+            # Set text color for all items
+            total_item.setForeground(text_color)
+            last_item.setForeground(text_color)
+
             self.table.setItem(row, 0, name_item)
             self.table.setItem(row, 1, total_item)
             self.table.setItem(row, 2, last_item)
@@ -369,4 +416,24 @@ class LibraryView(QWidget):
         """Handle theme change event."""
         # Refresh widget style
         refresh_style(self)
+
+        # Re-apply table palette-aware colors
+        self._apply_table_colors()
+
+        # Refresh table with current data to update colors
+        if self._games_data:
+            # Re-populate table with current sorted data
+            current_games = []
+            for row in range(self.table.rowCount()):
+                name_item = self.table.item(row, 0)
+                if name_item:
+                    name = name_item.text()
+                    # Find game in _games_data by name
+                    for game in self._games_data:
+                        if game.get('name') == name:
+                            current_games.append(game)
+                            break
+
+            if current_games:
+                self._populate_table(current_games)
 

@@ -7,7 +7,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Optional
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QToolBar
+from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QToolBar, QSizePolicy
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QSize
 from .ui.home_view_server import HomeView
@@ -16,6 +16,7 @@ from .ui.comparison_view_server import ComparisonView
 from .ui.deals_view_server import DealsView
 from .ui.styles import apply_style, refresh_style
 from .ui.theme_manager import ThemeManager
+from .ui.theme_switcher import ThemeSwitcher
 
 
 class MainWindow(QMainWindow):
@@ -47,7 +48,7 @@ class MainWindow(QMainWindow):
             server_url = os.getenv("SERVER_URL", "http://localhost:8000")
         self._server_url = server_url
 
-        # Initialize theme manager
+        # Initialize theme manager FIRST - this ensures singleton is created with default values
         self._theme_manager = ThemeManager()
         self._theme_manager.theme_changed.connect(self._on_theme_changed)
 
@@ -60,7 +61,7 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         layout.addWidget(self.stack)
 
-        # Initialize views
+        # Initialize views - they will all use the same ThemeManager singleton
         self.home_view = HomeView(server_url=self._server_url)
         self.stack.addWidget(self.home_view)
 
@@ -76,7 +77,7 @@ class MainWindow(QMainWindow):
         # Initialize toolbar
         self._init_toolbar()
 
-        # Apply initial theme
+        # Apply initial theme to main window
         apply_style(self)
 
     # ===== UI Initialization =====
@@ -141,6 +142,18 @@ class MainWindow(QMainWindow):
         refresh_action = QAction("Odśwież", self)
         refresh_action.triggered.connect(self.refresh_current_view)
         toolbar.addAction(refresh_action)
+
+        # Add separator and spacer to push theme switcher to the right
+        toolbar.addSeparator()
+
+        # Spacer widget to push theme switcher to the right
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        toolbar.addWidget(spacer)
+
+        # Theme switcher in the toolbar (right side)
+        self._theme_switcher = ThemeSwitcher()
+        toolbar.addWidget(self._theme_switcher)
 
     # ===== Navigation Methods =====
 
