@@ -1,7 +1,7 @@
 # Dokumentacja API Endpoints
 
-**Data aktualizacji:** 2025-11-13  
-**Wersja:** 2.0
+**Data aktualizacji:** 2025-11-17  
+**Wersja:** 3.0
 
 ## Spis Treści
 
@@ -401,26 +401,156 @@ Pobierz wszystkie unikalne kategorie gier.
 
 ### 💰 **Promocje (IsThereAnyDeal)**
 
-#### GET /api/deals
+#### GET /api/deals/best
 
-Pobierz najlepsze promocje na gry.
+Pobierz najlepsze promocje na gry z watchlist.
 
 **Query Parameters:**
-- `limit` (int, optional) - Maksymalna liczba wyników (domyślnie: 20)
+- `limit` (int, optional) - Maksymalna liczba wyników (domyślnie: 20, max: 50)
+- `min_discount` (int, optional) - Minimalna zniżka w procentach (domyślnie: 20)
 
 **Response:** `200 OK`
 ```json
 {
   "deals": [
     {
-      "title": "Game Name",
-      "normal_price": "$29.99",
-      "sale_price": "$9.99",
-      "savings": "67%",
-      "store": "Steam",
-      "url": "https://store.steampowered.com/..."
+      "game_name": "Counter-Strike 2",
+      "appid": 730,
+      "discount_percent": 80,
+      "price_new": 9.99,
+      "price_old": 49.99,
+      "shop_name": "Steam",
+      "url": "https://store.steampowered.com/app/730"
     }
-  ]
+  ],
+  "count": 1
+}
+```
+
+**Rate Limit:** 20/minutę
+
+---
+
+#### GET /api/deals/game/{appid}
+
+Pobierz informacje o promocjach dla konkretnej gry.
+
+**Path Parameters:**
+- `appid` (int) - Steam Application ID
+
+**Response:** `200 OK`
+```json
+{
+  "game": {
+    "appid": 730,
+    "name": "Counter-Strike 2",
+    "current_players": 1234567
+  },
+  "deal": {
+    "game_name": "Counter-Strike 2",
+    "discount_percent": 0,
+    "price_new": 0,
+    "price_old": 0,
+    "shop_name": "Steam",
+    "url": "https://store.steampowered.com/app/730"
+  },
+  "message": "No active deals found for this game"
+}
+```
+
+**Rate Limit:** 30/minutę
+
+---
+
+#### GET /api/deals/search
+
+Wyszukaj promocje dla gry po tytule.
+
+**Query Parameters:**
+- `title` (str) - Tytuł gry do wyszukania (min. 2 znaki)
+
+**Response:** `200 OK`
+```json
+{
+  "found": true,
+  "game": {
+    "title": "Counter-Strike 2",
+    "id": "counterstrike2",
+    "steam_appid": 730
+  },
+  "deal": {
+    "game_name": "Counter-Strike 2",
+    "discount_percent": 0,
+    "price_new": 0,
+    "price_old": 0,
+    "shop_name": "Steam",
+    "url": "https://store.steampowered.com/app/730"
+  }
+}
+```
+
+**Response (nie znaleziono):** `200 OK`
+```json
+{
+  "found": false,
+  "message": "No game found matching 'xyz'"
+}
+```
+
+**Rate Limit:** 30/minutę
+
+---
+
+### 📊 **Historia i Porównywanie**
+
+#### POST /api/player-history/compare
+
+Pobierz historię liczby graczy dla wielu gier do porównania.
+
+**Request Body:**
+```json
+{
+  "appids": [730, 570, 440]
+}
+```
+
+**Query Parameters:**
+- `days` (float, optional) - Liczba dni historii (domyślnie: 7, zakres: 0.04-30)
+  - 0.04 = 1 godzina
+  - 0.125 = 3 godziny
+  - 0.25 = 6 godzin
+  - 0.5 = 12 godzin
+  - 1 = 1 dzień
+  - 7 = 7 dni (domyślnie)
+- `limit` (int, optional) - Max rekordów na grę (domyślnie: 1000, zakres: 10-5000)
+
+**Response:** `200 OK`
+```json
+{
+  "games": {
+    "730": {
+      "name": "Counter-Strike 2",
+      "history": [
+        {
+          "time_stamp": 1699876543,
+          "player_count": 1234567
+        },
+        {
+          "time_stamp": 1699880143,
+          "player_count": 1240000
+        }
+      ]
+    },
+    "570": {
+      "name": "Dota 2",
+      "history": [
+        {
+          "time_stamp": 1699876543,
+          "player_count": 567890
+        }
+      ]
+    }
+  }
 }
 ```
 

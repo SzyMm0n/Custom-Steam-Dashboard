@@ -171,6 +171,8 @@ Custom-Steam-Dashboard/
 │   │   ├── __init__.py
 │   │   ├── home_view_server.py      # Widok główny (statystyki)
 │   │   ├── library_view_server.py   # Widok biblioteki
+│   │   ├── comparison_view_server.py # Widok porównawczy (wykresy)
+│   │   ├── deals_view_server.py     # Widok promocji
 │   │   ├── components_server.py     # Reużywalne komponenty
 │   │   ├── user_info_dialog_server.py # Dialog użytkownika
 │   │   └── styles.py                # Style Qt
@@ -249,6 +251,9 @@ Custom-Steam-Dashboard/
 │       ├── UI_COMPONENTS.md
 │       ├── UI_HOME_VIEW.md
 │       ├── UI_LIBRARY_VIEW.md
+│       ├── UI_COMPARISON_VIEW.md
+│       ├── UI_DEALS_VIEW.md
+│       ├── UI_USER_INFO_DIALOG.md
 │       ├── UI_MAIN_WINDOW.md
 │       ├── UI_AUTHENTICATION.md
 │       └── UI_STYLING.md
@@ -568,6 +573,9 @@ Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 | 📱 [UI_COMPONENTS.md](docs/ui/UI_COMPONENTS.md) | Komponenty i widgety reużywalne |
 | 🏠 [UI_HOME_VIEW.md](docs/ui/UI_HOME_VIEW.md) | Widok główny - statystyki i filtry |
 | 📚 [UI_LIBRARY_VIEW.md](docs/ui/UI_LIBRARY_VIEW.md) | Przeglądarka biblioteki Steam |
+| 📊 [UI_COMPARISON_VIEW.md](docs/ui/UI_COMPARISON_VIEW.md) | Widok porównawczy z wykresami matplotlib |
+| 💰 [UI_DEALS_VIEW.md](docs/ui/UI_DEALS_VIEW.md) | Widok promocji i wyszukiwania okazji |
+| 👤 [UI_USER_INFO_DIALOG.md](docs/ui/UI_USER_INFO_DIALOG.md) | Dialog profilu użytkownika Steam |
 | 🪟 [UI_MAIN_WINDOW.md](docs/ui/UI_MAIN_WINDOW.md) | Główne okno i nawigacja |
 | 🔐 [UI_AUTHENTICATION.md](docs/ui/UI_AUTHENTICATION.md) | System uwierzytelniania JWT |
 | 🎨 [UI_STYLING.md](docs/ui/UI_STYLING.md) | Style Qt i ciemny motyw |
@@ -668,14 +676,21 @@ Przed wdrożeniem w środowisku produkcyjnym:
 
 ## 🔮 Rozwój
 
+### Zrealizowane Funkcjonalności
+
+- ✅ **Wykresy i wizualizacje** - interaktywne wykresy liczby graczy (matplotlib)
+- ✅ **Porównywanie gier** - analiza wielu gier jednocześnie z statystykami
+- ✅ **System promocji** - przeglądanie i wyszukiwanie okazji na gry
+- ✅ **Multi-view navigation** - 4 główne widoki (Home, Library, Comparison, Deals)
+
 ### Planowane Funkcjonalności
 
-- [ ] **Wykresy i wizualizacje** - interaktywne wykresy liczby graczy (matplotlib/pyqtgraph)
 - [ ] **Heatmapa aktywności** - wizualizacja godzin szczytu
 - [ ] **Multi-user support** - obsługa wielu profili Steam
-- [ ] **Motywy** - ciemny/jasny motyw interfejsu
-- [ ] **Rozszerzone filtry** - więcej opcji filtrowania
+- [ ] **Motywy** - jasny motyw interfejsu (obecnie tylko ciemny)
+- [ ] **Rozszerzone filtry** - więcej opcji filtrowania w widokach
 - [ ] **PWA/Web UI** - interfejs webowy obok GUI
+- [ ] **Notyfikacje** - powiadomienia o promocjach ulubionych gier
 
 ### Architektura Docelowa
 

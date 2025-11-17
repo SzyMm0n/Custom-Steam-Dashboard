@@ -1,7 +1,7 @@
 # Dokumentacja UI - Przegląd
 
-**Data aktualizacji:** 2025-11-13  
-**Wersja:** 2.0
+**Data aktualizacji:** 2025-11-17  
+**Wersja:** 3.0
 
 ## Spis Treści
 
@@ -21,8 +21,11 @@
 
 - 🏠 **Home View** - Statystyki graczy, promocje, nadchodzące premiery
 - 📚 **Library View** - Przeglądarka biblioteki Steam użytkownika
+- 📊 **Comparison View** - Porównywanie liczby graczy między grami z wykresami
+- 💰 **Deals View** - Przeglądanie i wyszukiwanie promocji na gry
+- 👤 **User Info Dialog** - Szczegóły profilu Steam i biblioteki użytkownika
 - 🔐 **Automatyczne uwierzytelnianie** - JWT + HMAC z serwerem
-- 🔄 **Automatyczne odświeżanie** - Co 5 minut (konfigurowalny timer)
+- 🔄 **Automatyczne odświeżanie** - Co 5-10 minut (konfigurowalny timer)
 - 🎨 **Nowoczesny UI** - Responsywny interfejs Qt
 - ⚡ **Asynchroniczne** - Płynne działanie dzięki qasync
 
@@ -42,13 +45,26 @@
 │  │  │              │  │    Widget    │                │  │
 │  │  │ • Home       │  │              │                │  │
 │  │  │ • Library    │  │ ┌──────────┐ │                │  │
-│  │  │ • Refresh    │  │ │ HomeView │ │                │  │
-│  │  └──────────────┘  │ └──────────┘ │                │  │
+│  │  │ • Comparison │  │ │ HomeView │ │                │  │
+│  │  │ • Deals      │  │ └──────────┘ │                │  │
+│  │  │ • Refresh    │  │ ┌──────────┐ │                │  │
+│  │  └──────────────┘  │ │ Library  │ │                │  │
+│  │                    │ │   View   │ │                │  │
+│  │                    │ └──────────┘ │                │  │
 │  │                    │ ┌──────────┐ │                │  │
-│  │                    │ │ Library  │ │                │  │
+│  │                    │ │Comparison│ │                │  │
+│  │                    │ │   View   │ │                │  │
+│  │                    │ └──────────┘ │                │  │
+│  │                    │ ┌──────────┐ │                │  │
+│  │                    │ │  Deals   │ │                │  │
 │  │                    │ │   View   │ │                │  │
 │  │                    │ └──────────┘ │                │  │
 │  │                    └──────────────┘                │  │
+│  │                                                    │  │
+│  │  ┌────────────────────────────────────────────┐    │  │
+│  │  │  Dialogs (Modal)                           │    │  │
+│  │  │  • SteamUserInfoDialog                     │    │  │
+│  │  └────────────────────────────────────────────┘    │  │
 │  └────────────────────────────────────────────────────┘  │
 │                          │                               │
 │                          ▼                               │
@@ -76,25 +92,27 @@
 
 ```
 app/
-├── main_server.py               # 🚀 Punkt wejścia aplikacji
-├── main_window.py               # 🪟 Główne okno (toolbar + navigation)
+├── main_server.py                   # 🚀 Punkt wejścia aplikacji
+├── main_window.py                   # 🪟 Główne okno (toolbar + navigation)
 │
-├── ui/                          # 🎨 Komponenty UI
+├── ui/                              # 🎨 Komponenty UI
 │   ├── __init__.py
-│   ├── home_view_server.py      # 🏠 Widok główny
-│   ├── library_view_server.py   # 📚 Widok biblioteki
-│   ├── components_server.py     # 🧩 Reużywalne komponenty
-│   ├── user_info_dialog_server.py # 💬 Dialog informacji użytkownika
-│   └── styles.py                # 🎨 Style Qt (CSS)
+│   ├── home_view_server.py          # 🏠 Widok główny
+│   ├── library_view_server.py       # 📚 Widok biblioteki
+│   ├── comparison_view_server.py    # 📊 Widok porównawczy (wykresy)
+│   ├── deals_view_server.py         # 💰 Widok promocji
+│   ├── components_server.py         # 🧩 Reużywalne komponenty
+│   ├── user_info_dialog_server.py   # 💬 Dialog informacji użytkownika
+│   └── styles.py                    # 🎨 Style Qt (CSS)
 │
-├── core/                        # 🔧 Logika biznesowa
+├── core/                            # 🔧 Logika biznesowa
 │   └── services/
-│       ├── server_client.py     # 🌐 Klient HTTP do serwera
-│       └── deals_client.py      # 💰 Klient IsThereAnyDeal (deprecated)
+│       ├── server_client.py         # 🌐 Klient HTTP do serwera
+│       └── deals_client.py          # 💰 Klient IsThereAnyDeal (deprecated)
 │
-└── helpers/                     # 🛠️ Narzędzia pomocnicze
-    ├── api_client.py            # 🔐 Authenticated API client
-    └── signing.py               # ✍️ HMAC signature generation
+└── helpers/                         # 🛠️ Narzędzia pomocnicze
+    ├── api_client.py                # 🔐 Authenticated API client
+    └── signing.py                   # ✍️ HMAC signature generation
 ```
 
 ---
@@ -181,6 +199,9 @@ Pełna dokumentacja podzielona na moduły:
 | [📱 UI_COMPONENTS.md](UI_COMPONENTS.md) | Komponenty i widgety (NumberValidator, GameDetailDialog) |
 | [🏠 UI_HOME_VIEW.md](UI_HOME_VIEW.md) | Widok główny (statystyki, filtry, promocje) |
 | [📚 UI_LIBRARY_VIEW.md](UI_LIBRARY_VIEW.md) | Widok biblioteki Steam użytkownika |
+| [📊 UI_COMPARISON_VIEW.md](UI_COMPARISON_VIEW.md) | Widok porównawczy z wykresami matplotlib |
+| [💰 UI_DEALS_VIEW.md](UI_DEALS_VIEW.md) | Widok promocji i wyszukiwania okazji |
+| [👤 UI_USER_INFO_DIALOG.md](UI_USER_INFO_DIALOG.md) | Dialog profilu użytkownika Steam |
 | [🪟 UI_MAIN_WINDOW.md](UI_MAIN_WINDOW.md) | Główne okno aplikacji (toolbar, nawigacja) |
 | [🔐 UI_AUTHENTICATION.md](UI_AUTHENTICATION.md) | System uwierzytelniania (JWT + HMAC) |
 | [🎨 UI_STYLING.md](UI_STYLING.md) | Style i motywy Qt (ciemny motyw) |
@@ -212,20 +233,34 @@ MainWindow
 ├─> Toolbar Actions
 │   ├─> "Home" → navigate_to_home()
 │   ├─> "Biblioteka gier" → navigate_to_library()
+│   ├─> "Porównanie" → navigate_to_comparison()
+│   ├─> "Promocje" → navigate_to_deals()
 │   └─> "Odśwież" → refresh_current_view()
 │
 └─> QStackedWidget
     ├─> HomeView (index 0)
     │   ├─> refresh_data() co 5 minut
     │   ├─> Fetch /api/current-players
-    │   ├─> Fetch /api/deals
+    │   ├─> Fetch /api/deals/best
     │   └─> Fetch /api/coming-soon
     │
-    └─> LibraryView (index 1)
-        ├─> Resolve Steam ID
-        ├─> Fetch /api/player-summary/{steamid}
-        ├─> Fetch /api/owned-games/{steamid}
-        └─> Wyświetl tabelę gier
+    ├─> LibraryView (index 1)
+    │   ├─> Resolve Steam ID
+    │   ├─> Fetch /api/player-summary/{steamid}
+    │   ├─> Fetch /api/owned-games/{steamid}
+    │   └─> Wyświetl tabelę gier
+    │
+    ├─> ComparisonView (index 2)
+    │   ├─> refresh_data() co 5 minut
+    │   ├─> Fetch /api/current-players (lista gier)
+    │   ├─> POST /api/player-history/compare (dane historyczne)
+    │   ├─> Rysuj wykres matplotlib
+    │   └─> Oblicz statystyki (min, max, średnia)
+    │
+    └─> DealsView (index 3)
+        ├─> refresh_data() co 10 minut
+        ├─> Fetch /api/deals/best (najlepsze okazje)
+        └─> GET /api/deals/search?title={query} (wyszukiwanie)
 ```
 
 ---
@@ -354,7 +389,10 @@ QMessageBox.critical(
 1. **Komponenty UI**: [UI_COMPONENTS.md](UI_COMPONENTS.md)
 2. **Home View**: [UI_HOME_VIEW.md](UI_HOME_VIEW.md)
 3. **Library View**: [UI_LIBRARY_VIEW.md](UI_LIBRARY_VIEW.md)
-4. **Main Window**: [UI_MAIN_WINDOW.md](UI_MAIN_WINDOW.md)
+4. **Comparison View**: [UI_COMPARISON_VIEW.md](UI_COMPARISON_VIEW.md)
+5. **Deals View**: [UI_DEALS_VIEW.md](UI_DEALS_VIEW.md)
+6. **User Info Dialog**: [UI_USER_INFO_DIALOG.md](UI_USER_INFO_DIALOG.md)
+7. **Main Window**: [UI_MAIN_WINDOW.md](UI_MAIN_WINDOW.md)
 
 ---
 
