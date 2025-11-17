@@ -6,7 +6,6 @@ import asyncio
 import logging
 from typing import Optional
 from datetime import datetime
-import math
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
@@ -45,7 +44,7 @@ class ComparisonView(QWidget):
             parent: Parent widget
         """
         super().__init__(parent)
-        
+
         self._server_client = ServerClient(server_url)
         self._all_games = []
         self._selected_appids = []
@@ -77,24 +76,13 @@ class ComparisonView(QWidget):
         layout.addWidget(control_panel)
         
         # Chart area
-        self._chart_group = QGroupBox("Wykres liczby graczy (7 dni)")
+        self._chart_group = QGroupBox("Wykres liczby graczy")
         chart_layout = QVBoxLayout()
         
         self._figure = Figure(figsize=(10, 6))
         self._canvas = FigureCanvas(self._figure)
         self._canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._ax = self._figure.add_subplot(111)
-        # --- Hover annotation setup ---
-        self._hover_annotation = self._ax.annotate(
-            "",
-            xy=(0, 0),
-            xytext=(15, 15),
-            textcoords="offset points",
-            bbox=dict(boxstyle="round", fc="white", alpha=0.85, edgecolor="#444"),
-            arrowprops=dict(arrowstyle="->", color="#333")
-        )
-        self._hover_annotation.set_visible(False)
-        self._cid_motion = None  # Matplotlib connection id for motion event
 
         chart_layout.addWidget(self._canvas)
         self._chart_group.setLayout(chart_layout)
@@ -217,7 +205,7 @@ class ComparisonView(QWidget):
         """Handle time range selection change."""
         self._selected_time_range = time_range
         # Update chart group title
-        self._chart_group.setTitle(f"Wykres liczby graczy ({time_range})")
+        self._chart_group.setTitle(f"Wykres liczby graczy")
         # Reload comparison if games are already selected
         if self._selected_appids and self._history_data:
             asyncio.create_task(self._load_comparison())
@@ -356,57 +344,7 @@ class ComparisonView(QWidget):
         
         self._figure.tight_layout()
         self._canvas.draw()
-        # Setup hover after drawing if not already
-        if self._cid_motion is None:
-            self._cid_motion = self._canvas.mpl_connect("motion_notify_event", self._on_motion)
 
-    def _on_motion(self, event):
-        """Handle mouse movement over the canvas to display nearest point info."""
-        if event.inaxes != self._ax:
-            if self._hover_annotation.get_visible():
-                self._hover_annotation.set_visible(False)
-                self._canvas.draw_idle()
-            return
-        nearest_line = None
-        nearest_x = None
-        nearest_y = None
-        nearest_dist = math.inf
-        # Iterate over lines to find nearest data point to cursor x position
-        for line in self._ax.get_lines():
-            xdata = line.get_xdata()
-            ydata = line.get_ydata()
-            if not len(xdata):
-                continue
-            # Convert event.xdata (float) compare to xdata (datetime -> float via mdates)
-            x_numeric = [mdates.date2num(x) for x in xdata]
-            # Find index of closest x
-            try:
-                cursor_x = event.xdata
-                diffs = [abs(cursor_x - xv) for xv in x_numeric]
-            except Exception:
-                continue
-            min_idx = diffs.index(min(diffs))
-            dist = diffs[min_idx]
-            # Threshold: ignore if too far (adjustable)
-            if dist < nearest_dist and dist < 0.15:  # ~0.15 day (~3.6h) resolution threshold
-                nearest_dist = dist
-                nearest_line = line
-                nearest_x = xdata[min_idx]
-                nearest_y = ydata[min_idx]
-        if nearest_line is None:
-            if self._hover_annotation.get_visible():
-                self._hover_annotation.set_visible(False)
-                self._canvas.draw_idle()
-            return
-        # Update annotation
-        self._hover_annotation.xy = (nearest_x, nearest_y)
-        # Format timestamp and count
-        ts_str = nearest_x.strftime('%d.%m %H:%M') if isinstance(nearest_x, datetime) else str(nearest_x)
-        count_str = f"{int(nearest_y):,}".replace(',', ' ')  # Use space as thousands sep for PL locale feel
-        label = nearest_line.get_label()
-        self._hover_annotation.set_text(f"{label}\n{ts_str}\nGraczy: {count_str}")
-        self._hover_annotation.set_visible(True)
-        self._canvas.draw_idle()
 
     def _update_stats_table(self):
         """Update the statistics table."""
