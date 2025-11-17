@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
 """
 Home view module for Custom Steam Dashboard.
-Displays current player counts, game filters, deals, and upcoming releases.
+Displays current player counts, game filters, and upcoming releases.
 Fetches data from the backend server.
 """
 import asyncio
@@ -16,7 +17,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QTimer, Qt, QLocale
 
 from app.core.services.server_client import ServerClient
-from app.ui.components_server import NumberValidator, GameDetailDialog
+from app.ui.components_server import NumberValidator, GameDetailDialog, GameDetailPanel
 from app.ui.styles import apply_style
 
 
@@ -27,13 +28,12 @@ logger = logging.getLogger(__name__)
 
 class HomeView(QWidget):
     """
-    Main home view displaying live game statistics and deals.
+    Main home view displaying live game statistics and upcoming releases.
     Fetches data from the backend server.
 
     Shows:
     - Live player counts for watched games from server
     - Filtering by player count and game tags
-    - Best deals from game stores
     - Upcoming game releases from server
     """
 
@@ -52,6 +52,7 @@ class HomeView(QWidget):
         # Server client for data fetching
         if server_url is None:
             server_url = os.getenv("SERVER_URL", "http://localhost:8000")
+            server_url = os.getenv("SERVER_URL", "https://custom-steam-dashboard.pl.eu.org")
         self._server_client = ServerClient(base_url=server_url)
         self._server_url = server_url  # Store for passing to dialogs
 
@@ -64,6 +65,9 @@ class HomeView(QWidget):
         self._min_players: int = 0
         self._max_players: int = self.MAX_PLAYERS_SLIDER
         self._search_term: str = ""  # Current search term
+        
+        # Game detail panel (temporary section)
+        self._detail_panel: Optional[GameDetailPanel] = None
 
         # UI components
         self.layout = QVBoxLayout(self)
@@ -74,16 +78,26 @@ class HomeView(QWidget):
         self._init_ui()
 
         # Setup automatic refresh timer (5 minutes)
+        # Use QTimer.singleShot() to avoid asyncio event loop conflicts
         self._timer = QTimer(self)
         self._timer.timeout.connect(lambda: asyncio.create_task(self.refresh_data()))
         self._timer.start(300000)
+        self._timer.timeout.connect(self._schedule_refresh)
+        self._timer.start(300000)  # 5 minutes
 
         # Load initial data
         QTimer.singleShot(0, self._start_initial_load)
 
     def _start_initial_load(self):
         """Start the initial data load asynchronously."""
+        # Use QTimer.singleShot to defer task creation
         asyncio.create_task(self.refresh_data())
+    
+    def _schedule_refresh(self):
+        """Schedule data refresh using QTimer to avoid event loop conflicts."""
+        # Use QTimer.singleShot(0, ...) to schedule task in next event loop iteration
+        # This prevents "Cannot enter into task while another task is being executed" error
+        QTimer.singleShot(0, lambda: asyncio.create_task(self.refresh_data()))
 
     # ===== UI Initialization =====
 
@@ -125,6 +139,7 @@ class HomeView(QWidget):
         """)
         self.search_info_label.setVisible(False)
         
+        # Game list
         self.top_live_list = QListWidget()
         self.top_live_list.setMinimumWidth(500)
         self.top_live_list.itemClicked.connect(self._on_live_item_clicked)
@@ -231,29 +246,17 @@ class HomeView(QWidget):
         apply_style(self)
         self.top_live_title.setProperty("role", "section")
 
-        # Additional content sections
-        self._create_additional_sections()
-
-    def _create_additional_sections(self):
-        """Create additional sections for deals and upcoming releases."""
-        # Separator before deals
-        self.separator_1 = QFrame()
-        self.separator_1.setFrameShape(QFrame.Shape.HLine)
-        self.separator_1.setFrameShadow(QFrame.Shadow.Sunken)
-
-        # Best Deals section
-        self.trending_title = QLabel("Best Deals")
-        self.trending_title.setProperty("role", "section")
-        self.trending_title.setStyleSheet("font-size: 18px; font-weight: bold; margin-top: 10px;")
-        self.trending_list = QListWidget()
-        self.trending_list.setMinimumHeight(120)
-        self.trending_list.setMaximumHeight(240)
-        self.trending_list.itemClicked.connect(self._on_deal_item_clicked)
+        # Additional content sections (detail panel and upcoming releases)
+        # Game detail panel container (initially hidden)
+        self.detail_panel_container = QFrame()
+        self.detail_panel_layout = QVBoxLayout(self.detail_panel_container)
+        self.detail_panel_layout.setContentsMargins(0, 10, 0, 10)
+        self.detail_panel_container.setVisible(False)  # Hidden by default
 
         # Separator before upcoming
-        self.separator_2 = QFrame()
-        self.separator_2.setFrameShape(QFrame.Shape.HLine)
-        self.separator_2.setFrameShadow(QFrame.Shadow.Sunken)
+        self.separator_upcoming = QFrame()
+        self.separator_upcoming.setFrameShape(QFrame.Shape.HLine)
+        self.separator_upcoming.setFrameShadow(QFrame.Shadow.Sunken)
 
         # Upcoming Releases section
         self.upcoming_title = QLabel("Best Upcoming Releases")
@@ -264,14 +267,31 @@ class HomeView(QWidget):
         self.upcoming_list.setMaximumHeight(240)
         self.upcoming_list.itemClicked.connect(self._on_upcoming_item_clicked)
 
-        # Add all sections to main layout
+        # Add sections to main layout
         self.layout.addLayout(self.main_h_layout)
-        self.layout.addWidget(self.separator_1)
-        self.layout.addWidget(self.trending_title)
-        self.layout.addWidget(self.trending_list)
-        self.layout.addWidget(self.separator_2)
+        self.layout.addWidget(self.detail_panel_container)  # Panel szczegółów
+        self.layout.addWidget(self.separator_upcoming)
         self.layout.addWidget(self.upcoming_title)
         self.layout.addWidget(self.upcoming_list)
+
+    # ===== Event Handlers - Search Bar =====
+
+    def _on_search_changed(self, text: str):
+        """Handle search input change - filter games by name or App ID."""
+        self._search_term = text.strip().lower()
+        
+        # Show/hide clear button
+        self.clear_search_btn.setVisible(len(self._search_term) > 0)
+        
+        # Update the view
+        self._update_list_view()
+
+    def _on_clear_search(self):
+        """Clear the search box and reset filtering."""
+        self.search_input.clear()
+        self._search_term = ""
+        self.clear_search_btn.setVisible(False)
+        self._update_list_view()
 
     # ===== Event Handlers - Slider and Input =====
 
@@ -419,35 +439,6 @@ class HomeView(QWidget):
         """Format player count with Polish locale thousands separator."""
         return self._locale.toString(float(value), 'f', 0)
 
-    def _format_deal_price(self, value: Optional[float]) -> Optional[str]:
-        """Format deal price in USD."""
-        if value is None:
-            return None
-        try:
-            v = float(value)
-        except Exception:
-            return None
-        return f"${v:,.2f}"
-
-    def _format_deal_line(self, title: str, sale: Optional[float], normal: Optional[float]) -> str:
-        """Format deal information line with price and discount."""
-        sale_str = self._format_deal_price(sale)
-        normal_str = self._format_deal_price(normal)
-        if sale_str and normal_str and (normal or 0) > 0:
-            try:
-                disc = int(round(100 - (float(sale) / float(normal)) * 100))
-                if disc < 0:
-                    disc = 0
-            except Exception:
-                disc = None
-            if disc is not None and disc > 0:
-                return f"{title} — {sale_str} (z {normal_str}, -{disc}%)"
-            else:
-                return f"{title} — {sale_str} (z {normal_str})"
-        if sale_str:
-            return f"{title} — {sale_str}"
-        return title
-
     # ===== Data Management =====
 
     async def _populate_tag_checkboxes(self):
@@ -479,7 +470,6 @@ class HomeView(QWidget):
         self.tags_list_widget.updateGeometry()
 
     def _update_list_view(self):
-        """Update the game list view based on current filters."""
         """Update the game list view based on current filters and search."""
         self.top_live_list.clear()
         
@@ -541,17 +531,9 @@ class HomeView(QWidget):
         else:
             for item in filtered_results:
                 players_formatted = self._format_players(item["players"])
-                lw_item = QListWidgetItem(f"{players_formatted} - {item['name']}")
-                
-                # Highlight search term in name (simple bold)
                 name = item['name']
-                if self._search_term and self._search_term in name.lower():
-                    # Simple highlighting - you can make it more sophisticated
-                    display_name = name
-                else:
-                    display_name = name
                 
-                lw_item = QListWidgetItem(f"{players_formatted} - {display_name}")
+                lw_item = QListWidgetItem(f"{players_formatted} - {name}")
                 lw_item.setData(Qt.ItemDataRole.UserRole, item)
                 self.top_live_list.addItem(lw_item)
 
@@ -562,14 +544,11 @@ class HomeView(QWidget):
         Fetches:
         - Current player counts for watchlist games
         - Game tags (genres, categories)
-        - Best deals from game stores
         - Upcoming game releases
         """
         # Update titles to show loading state
         self.top_live_title.setText("Live Games Count — Ładowanie...")
-        self.trending_title.setText("Best Deals — Ładowanie...")
         self.upcoming_title.setText("Best Upcoming Releases — Ładowanie...")
-        self.trending_list.clear()
         self.upcoming_list.clear()
         
         # Fetch watchlist games from server
@@ -579,7 +558,6 @@ class HomeView(QWidget):
             self.top_live_title.setText("Live Games Count")
             if self.tags_list_widget.count() == 0:
                 await self._populate_tag_checkboxes()
-            self.trending_title.setText("Best Deals")
             self.upcoming_title.setText("Best Upcoming Releases")
             self.top_live_list.addItem("Brak danych z serwera. Upewnij się, że serwer działa.")
             return
@@ -605,7 +583,7 @@ class HomeView(QWidget):
 
         # Fetch tags for ALL games in ONE batch request
         try:
-            tags_batch = await self._server_client.get_game_tags_batch(appids_to_fetch[:100]) # Nie więcej niż 100 na raz, inaczej serwer zwróci błąd
+            tags_batch = await self._server_client.get_game_tags_batch(appids_to_fetch[:100])
         except Exception as e:
             logger.error(f"Error fetching tags batch: {e}")
             tags_batch = {}
@@ -633,98 +611,11 @@ class HomeView(QWidget):
         self._update_list_view()
         self.top_live_title.setText("Live Games Count")
         
-        # Fetch deals (still from DealsAPI)
-        await self._fetch_deals()
-        
-        # Fetch upcoming games from server
+        # Fetch upcoming releases
         await self._fetch_upcoming()
-        
-        # Reset titles
-        self.trending_title.setText("Best Deals")
-        self.upcoming_title.setText("Best Upcoming Releases")
-
-    async def _fetch_deals(self):
-        """Fetch and display best deals from IsThereAnyDeal via backend."""
-        deals = []
-        server_error = False
-
-        try:
-            # Use ServerClient (already authenticated) instead of DealsClient
-            deals = await self._server_client.get_best_deals(limit=10, min_discount=20)
-        except Exception as e:
-            logger.error(f"Error fetching deals: {e}")
-            deals = []
-            server_error = True
-
-        self.trending_list.clear()
-        if server_error:
-            self.trending_list.addItem("Nie można połączyć się z serwerem.")
-            self.trending_list.addItem("   Upewnij się że serwer działa na " + self._server_url)
-            return
-
-        if not deals:
-            self.trending_list.addItem("ℹ️ Brak aktywnych promocji dla monitorowanych gier.")
-            self.trending_list.addItem("   (Sprawdź ponownie podczas Steam Sale!)")
-            return
-        
-        for d in deals:
-            try:
-                # Extract deal data from IsThereAnyDeal format
-                game_title = d.get('game_title', 'Unknown Game')
-                current_price = d.get('current_price', 0.0)
-                regular_price = d.get('regular_price', 0.0)
-                discount_percent = d.get('discount_percent', 0)
-                store_name = d.get('store_name', 'Unknown Store')
-                store_url = d.get('store_url', '')
-                appid = d.get('steam_appid')
-                currency = d.get('currency', 'USD')
-
-                # Format price display
-                if currency == 'USD':
-                    currency_symbol = '$'
-                elif currency == 'EUR':
-                    currency_symbol = '€'
-                elif currency == 'GBP':
-                    currency_symbol = '£'
-                elif currency == 'PLN':
-                    currency_symbol = 'zł'
-                else:
-                    currency_symbol = currency + ' '
-
-                # Create display text (in Polish)
-                if discount_percent > 0:
-                    # Format based on currency convention (PLN goes after, others before)
-                    if currency == 'PLN':
-                        text = (f"{game_title} — {current_price:.2f} {currency_symbol} "
-                               f"(było {regular_price:.2f} {currency_symbol}, -{discount_percent}%) "
-                               f"— {store_name}")
-                    else:
-                        text = (f"{game_title} — {currency_symbol}{current_price:.2f} "
-                               f"(było {currency_symbol}{regular_price:.2f}, -{discount_percent}%) "
-                               f"— {store_name}")
-                else:
-                    if currency == 'PLN':
-                        text = f"{game_title} — {current_price:.2f} {currency_symbol} — {store_name}"
-                    else:
-                        text = f"{game_title} — {currency_symbol}{current_price:.2f} — {store_name}"
-
-                item = QListWidgetItem(text)
-                item.setData(Qt.ItemDataRole.UserRole, {
-                    "name": game_title,
-                    "appid": appid,
-                    "deal_url": store_url,
-                    "store_name": store_name,
-                    "current_price": current_price,
-                    "regular_price": regular_price,
-                    "discount_percent": discount_percent,
-                })
-                self.trending_list.addItem(item)
-            except Exception as e:
-                logger.error(f"Error processing deal: {e}")
-                self.trending_list.addItem(str(d))
 
     async def _fetch_upcoming(self):
-        """Fetch and display upcoming releases from server."""
+        """Fetch and display upcoming releases from server with content filtering."""
         try:
             upcoming = await self._server_client.get_coming_soon_games()
         except Exception as e:
@@ -732,11 +623,37 @@ class HomeView(QWidget):
             upcoming = []
         
         self.upcoming_list.clear()
+        self.upcoming_title.setText("Best Upcoming Releases")
+        
         if not upcoming:
             self.upcoming_list.addItem("Brak nadchodzących premier.")
             return
         
+        # Content filter - słowa kluczowe do wykluczenia (case-insensitive)
+        blocked_keywords = [
+            'adult', 'sex', 'hentai', 'nsfw', 'porn', 'erotic', 'xxx',
+            'sexual', 'nude', 'nudity', 'ecchi', '18+', 'mature content',
+            'adult only', 'adults only', 'sexual content'
+        ]
+        
+        # Filter out inappropriate content
+        filtered_upcoming = []
         for item in upcoming:
+            name = item.get('name', 'Unknown').lower()
+            
+            # Check if game name contains blocked keywords
+            is_blocked = False
+            for keyword in blocked_keywords:
+                if keyword in name:
+                    is_blocked = True
+                    logger.debug(f"Filtered out game: {item.get('name')} (matched keyword: {keyword})")
+                    break
+            
+            if not is_blocked:
+                filtered_upcoming.append(item)
+        
+        # Display filtered results
+        for item in filtered_upcoming:
             name = item.get('name', 'Unknown')
             appid = item.get('appid') or item.get('id')
             
@@ -768,42 +685,30 @@ class HomeView(QWidget):
             lw = QListWidgetItem(display)
             lw.setData(Qt.ItemDataRole.UserRole, {"name": name, "appid": appid_int})
             self.upcoming_list.addItem(lw)
+        
+        # Log filtering statistics
+        filtered_count = len(upcoming) - len(filtered_upcoming)
+        if filtered_count > 0:
+            logger.info(f"Filtered out {filtered_count} inappropriate game(s) from upcoming releases")
 
     # ===== Event Handlers - Item Clicks =====
 
     def _on_live_item_clicked(self, item: QListWidgetItem):
-        """Handle click on live games list item."""
+        """Handle click on live games list item - show detail panel."""
         try:
             data = item.data(Qt.ItemDataRole.UserRole)
         except Exception:
             data = None
 
-        if isinstance(data, dict):
-            dialog = GameDetailDialog(data, server_url=self._server_url, parent=self)
-        else:
-            dialog = GameDetailDialog(
-                item.text() if item is not None else "Nieznana gra",
-                server_url=self._server_url,
-                parent=self
-            )
-        dialog.exec()
-
-    def _on_deal_item_clicked(self, item: QListWidgetItem):
-        """Handle click on deals list item."""
-        if not item:
-            return
-        data = None
-        try:
-            data = item.data(Qt.ItemDataRole.UserRole)
-        except Exception:
-            pass
-        if isinstance(data, dict):
-            GameDetailDialog(data, server_url=self._server_url, parent=self).exec()
-        else:
-            GameDetailDialog(item.text(), server_url=self._server_url, parent=self).exec()
+        if not data:
+            data = item.text() if item is not None else "Nieznana gra"
+        
+        self._show_game_detail_panel(data)
+        # Use QTimer.singleShot to avoid event loop conflicts
+        QTimer.singleShot(0, lambda: self._show_game_detail_panel(data))
 
     def _on_upcoming_item_clicked(self, item: QListWidgetItem):
-        """Handle click on upcoming list item."""
+        """Handle click on upcoming list item - show detail panel."""
         if not item:
             return
         data = None
@@ -811,27 +716,47 @@ class HomeView(QWidget):
             data = item.data(Qt.ItemDataRole.UserRole)
         except Exception:
             pass
-        if isinstance(data, dict):
-            GameDetailDialog(data, server_url=self._server_url, parent=self).exec()
-        else:
-            GameDetailDialog(item.text(), server_url=self._server_url, parent=self).exec()
-
-    # ===== Event Handlers - Search Bar =====
-
-    def _on_search_changed(self, text: str):
-        """Handle search input change - filter games by name or App ID."""
-        self._search_term = text.strip().lower()
         
-        # Show/hide clear button
-        self.clear_search_btn.setVisible(len(self._search_term) > 0)
+        if not data:
+            data = item.text()
         
-        # Update the view
-        self._update_list_view()
-
-    def _on_clear_search(self):
-        """Clear the search box and reset filtering."""
-        self.search_input.clear()
-        self._search_term = ""
-        self.clear_search_btn.setVisible(False)
-        self._update_list_view()
-
+        self._show_game_detail_panel(data)
+        # Use QTimer.singleShot to avoid event loop conflicts
+        QTimer.singleShot(0, lambda: self._show_game_detail_panel(data))
+    
+    def _show_game_detail_panel(self, game_data: Any) -> None:
+        """
+        Show game detail panel in the temporary section.
+        
+        Args:
+            game_data: Game data (dict or string)
+        """
+        # Close existing panel if any
+        if self._detail_panel is not None:
+            self._detail_panel.setVisible(False)
+            self._detail_panel.deleteLater()
+            self._detail_panel = None
+        
+        # Create new panel
+        self._detail_panel = GameDetailPanel(game_data, server_url=self._server_url, parent=self)
+        self._detail_panel.closed.connect(self._on_detail_panel_closed)
+        
+        # Add to container
+        self.detail_panel_layout.addWidget(self._detail_panel)
+        self.detail_panel_container.setVisible(True)
+    
+    def _on_detail_panel_closed(self) -> None:
+        """Handle detail panel close event."""
+        self._detail_panel = None
+        self.detail_panel_container.setVisible(False)
+    
+    def _on_deal_item_clicked(self, item: QListWidgetItem) -> None:
+        """
+        Handle click on deal item (placeholder method).
+        Note: Deals functionality is handled in separate deals_view module.
+        
+        Args:
+            item: Clicked list widget item
+        """
+        logger.debug("Deal item clicked (placeholder method - use deals_view for full functionality)")
+        pass
