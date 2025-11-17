@@ -75,6 +75,9 @@ class LibraryView(QWidget):
         # Force apply current theme state immediately after UI is built
         self._on_theme_changed(self._theme_manager.mode.value, self._theme_manager.palette.value)
 
+        # Auto-load last library if available
+        self._auto_load_last_library()
+
     # ===== UI Initialization =====
 
     def _init_ui(self) -> None:
@@ -279,7 +282,8 @@ class LibraryView(QWidget):
 
         # Update profile header with user information
         if summary:
-            self.persona_lbl.setText(summary.get('personaname', steamid))
+            persona_name = summary.get('personaname', steamid)
+            self.persona_lbl.setText(persona_name)
             avatar_url = (
                 summary.get('avatarfull') or 
                 summary.get('avatarmedium') or 
@@ -287,6 +291,11 @@ class LibraryView(QWidget):
             )
             if avatar_url:
                 await self._load_avatar(avatar_url)
+
+            from app.core.user_data_manager import UserDataManager
+            data_manager = UserDataManager()
+            data_manager.save_last_library(steamid, persona_name, avatar_url)
+            logger.info(f"Saved last library: {steamid} ({persona_name})")
         else:
             self.persona_lbl.setText("(brak danych profilu)")
 
@@ -416,7 +425,7 @@ class LibraryView(QWidget):
         """Handle theme change event."""
         # Refresh widget style
         refresh_style(self)
-
+        
         # Re-apply table palette-aware colors
         self._apply_table_colors()
 
@@ -436,4 +445,33 @@ class LibraryView(QWidget):
 
             if current_games:
                 self._populate_table(current_games)
+    
+    def _auto_load_last_library(self):
+        """Auto-load the last opened library if available."""
+        try:
+            from app.core.user_data_manager import UserDataManager
+            data_manager = UserDataManager()
+            last_lib = data_manager.get_last_library()
+            
+            if last_lib and last_lib.get('steam_id'):
+                steam_id = last_lib['steam_id']
+                persona_name = last_lib.get('persona_name')
+                
+                # Set the input field
+                self.id_input.setText(steam_id)
+                
+                # Display saved info immediately
+                if persona_name:
+                    self.persona_lbl.setText(f"{persona_name} (ładowanie...)")
+                    self.status.setText(f"Automatyczne ładowanie biblioteki: {persona_name}")
+                else:
+                    self.status.setText(f"Automatyczne ładowanie ostatniej biblioteki...")
+                
+                # Trigger load
+                asyncio.create_task(self._on_fetch())
+                
+                logger.info(f"Auto-loading last library: {steam_id}")
+        except Exception as e:
+            logger.error(f"Error auto-loading last library: {e}")
+            # Silently fail - not critical
 

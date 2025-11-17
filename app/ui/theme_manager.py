@@ -20,6 +20,7 @@ class ColorPalette(Enum):
     BLUE = "blue"
     PURPLE = "purple"
     ORANGE = "orange"
+    CUSTOM = "custom"
 
 
 class ThemeManager(QObject):
@@ -42,8 +43,39 @@ class ThemeManager(QObject):
         if self._initialized:
             return
         super().__init__()
-        self._mode = ThemeMode.DARK
-        self._palette = ColorPalette.GREEN
+
+        # Load saved preferences
+        from app.core.user_data_manager import UserDataManager
+        data_manager = UserDataManager()
+        saved_mode, saved_palette = data_manager.get_theme_preference()
+
+        # Set initial mode from saved preferences
+        try:
+            self._mode = ThemeMode(saved_mode)
+        except ValueError:
+            self._mode = ThemeMode.DARK
+
+        self._custom_dark_colors = None
+        self._custom_light_colors = None
+
+        # Check if saved palette is a custom theme
+        if saved_palette and saved_palette.startswith("custom:"):
+            theme_name = saved_palette[7:]  # Remove "custom:" prefix
+            theme = data_manager.get_custom_theme(theme_name)
+            if theme:
+                self._custom_dark_colors = theme['dark_colors']
+                self._custom_light_colors = theme['light_colors']
+                self._palette = ColorPalette.CUSTOM
+            else:
+                # Theme not found, fallback to green
+                self._palette = ColorPalette.GREEN
+        else:
+            # Standard palette
+            try:
+                self._palette = ColorPalette(saved_palette) if saved_palette else ColorPalette.GREEN
+            except ValueError:
+                self._palette = ColorPalette.GREEN
+
         self._initialized = True
     
     @property
@@ -57,24 +89,83 @@ class ThemeManager(QObject):
         return self._palette
     
     def set_mode(self, mode: ThemeMode):
-        """Set theme mode and emit signal."""
+        """Set theme mode (dark/light)."""
         if self._mode != mode:
             self._mode = mode
-            self.theme_changed.emit(mode.value, self._palette.value)
+            self._save_preference()
+            self.theme_changed.emit(self._mode.value, self._palette.value)
     
     def set_palette(self, palette: ColorPalette):
-        """Set color palette and emit signal."""
+        """Set color palette."""
         if self._palette != palette:
             self._palette = palette
-            self.theme_changed.emit(self._mode.value, palette.value)
+            self._save_preference()
+            self.theme_changed.emit(self._mode.value, self._palette.value)
     
+    def _save_preference(self):
+        """Save current theme preference to persistent storage."""
+        from app.core.user_data_manager import UserDataManager
+        data_manager = UserDataManager()
+        # Don't save palette.value for CUSTOM, as it should be saved via _save_custom_theme_name
+        if self._palette != ColorPalette.CUSTOM:
+            data_manager.save_theme_preference(self._mode.value, self._palette.value)
+
     def toggle_mode(self):
         """Toggle between dark and light mode."""
         new_mode = ThemeMode.LIGHT if self._mode == ThemeMode.DARK else ThemeMode.DARK
         self.set_mode(new_mode)
     
+    def set_custom_colors(self, dark_colors: dict, light_colors: dict):
+        """
+        Set custom color palettes for dark and light modes.
+
+        Args:
+            dark_colors: Dictionary of colors for dark mode
+            light_colors: Dictionary of colors for light mode
+        """
+        self._custom_dark_colors = dark_colors
+        self._custom_light_colors = light_colors
+        self.set_palette(ColorPalette.CUSTOM)
+
+    def _save_custom_theme_name(self, theme_name: str):
+        """Save the active custom theme name for restoration on restart."""
+        from app.core.user_data_manager import UserDataManager
+        data_manager = UserDataManager()
+        # Save as special palette value
+        data_manager.save_theme_preference(self._mode.value, f"custom:{theme_name}")
+
     def get_colors(self) -> Dict[str, str]:
         """Get current theme colors based on mode and palette."""
+        # Use custom colors if CUSTOM palette is selected
+        if self._palette == ColorPalette.CUSTOM:
+            if self._mode == ThemeMode.DARK and self._custom_dark_colors:
+                # Validate that custom colors have all required keys
+                required_keys = {'background', 'background_light', 'background_panel', 'background_group',
+                                'foreground', 'foreground_dim', 'border', 'border_group',
+                                'accent', 'accent_hover', 'accent_pressed', 'accent_light',
+                                'danger', 'danger_hover', 'danger_pressed',
+                                'chart_bg', 'chart_plot', 'chart_grid', 'chart_text'}
+                if all(key in self._custom_dark_colors for key in required_keys):
+                    return self._custom_dark_colors
+                else:
+                    print(f"⚠ Custom dark colors incomplete, using fallback")
+                    return DARK_COLORS[ColorPalette.GREEN]
+            elif self._mode == ThemeMode.LIGHT and self._custom_light_colors:
+                # Validate that custom colors have all required keys
+                required_keys = {'background', 'background_light', 'background_panel', 'background_group',
+                                'foreground', 'foreground_dim', 'border', 'border_group',
+                                'accent', 'accent_hover', 'accent_pressed', 'accent_light',
+                                'danger', 'danger_hover', 'danger_pressed',
+                                'chart_bg', 'chart_plot', 'chart_grid', 'chart_text'}
+                if all(key in self._custom_light_colors for key in required_keys):
+                    return self._custom_light_colors
+                else:
+                    print(f"⚠ Custom light colors incomplete, using fallback")
+                    return LIGHT_COLORS[ColorPalette.GREEN]
+            # Fallback to GREEN if custom colors not set
+            return DARK_COLORS[ColorPalette.GREEN] if self._mode == ThemeMode.DARK else LIGHT_COLORS[ColorPalette.GREEN]
+
+        # Use predefined palettes
         if self._mode == ThemeMode.DARK:
             return DARK_COLORS[self._palette]
         else:

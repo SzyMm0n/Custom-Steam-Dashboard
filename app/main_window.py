@@ -182,3 +182,35 @@ class MainWindow(QMainWindow):
         """Handle theme change event."""
         # Refresh main window style
         refresh_style(self)
+    
+    def _load_window_geometry(self):
+        """Load saved window geometry."""
+        try:
+            from app.core.user_data_manager import UserDataManager
+            data_manager = UserDataManager()
+            geometry = data_manager.get_window_geometry()
+            
+            if geometry['size']:
+                width, height = geometry['size']
+                self.resize(width, height)
+            
+            if geometry['position']:
+                x, y = geometry['position']
+                self.move(x, y)
+        except Exception as e:
+            print(f"Could not load window geometry: {e}")
+    
+    def closeEvent(self, event):
+        """Save window geometry on close."""
+        try:
+            from app.core.user_data_manager import UserDataManager
+            data_manager = UserDataManager()
+            
+            # Save window size and position
+            size = (self.width(), self.height())
+            position = (self.x(), self.y())
+            data_manager.save_window_geometry(size, position)
+        except Exception as e:
+            print(f"Could not save window geometry: {e}")
+        
+        event.accept()

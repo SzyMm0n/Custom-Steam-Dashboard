@@ -9,15 +9,28 @@ from .theme_manager import (
     get_stylesheet,
 )
 
-# Initialize theme manager singleton
-_theme_manager = ThemeManager()
+# Lazy initialization to avoid circular imports
+_theme_manager = None
+
+
+def _get_theme_manager():
+    """Get or create theme manager singleton."""
+    global _theme_manager
+    if _theme_manager is None:
+        _theme_manager = ThemeManager()
+    return _theme_manager
+
 
 # Backward compatibility - expose current colors
 def _get_current_colors():
     """Get current theme colors."""
-    return _theme_manager.get_colors()
+    return _get_theme_manager().get_colors()
 
-COLORS = _get_current_colors()
+
+def get_colors():
+    """Get current theme colors (public API)."""
+    return _get_current_colors()
+
 
 
 def get_common_style() -> str:
@@ -27,12 +40,9 @@ def get_common_style() -> str:
     Returns:
         str: CSS stylesheet for current theme
     """
-    colors = _theme_manager.get_colors()
+    colors = _get_theme_manager().get_colors()
     return get_stylesheet(colors)
 
-
-# Backward compatibility
-COMMON_STYLE = get_common_style()
 
 
 def apply_style(widget):
@@ -42,7 +52,7 @@ def apply_style(widget):
     Args:
         widget: QWidget to apply styling to
     """
-    colors = _theme_manager.get_colors()
+    colors = _get_theme_manager().get_colors()
     stylesheet = get_stylesheet(colors)
     widget.setStyleSheet(stylesheet)
 
@@ -67,7 +77,7 @@ def get_color(color_name: str) -> str:
     Returns:
         str: Hex color code
     """
-    colors = _theme_manager.get_colors()
+    colors = _get_theme_manager().get_colors()
     return colors.get(color_name, '#FFFFFF')
 
 
