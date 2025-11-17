@@ -307,18 +307,15 @@ class ComparisonView(QWidget):
             history = game_data.get('history', [])
             if not history:
                 continue
-            
-            # Sort by timestamp
+
             history = sorted(history, key=lambda x: x.get('time_stamp', 0))
-            
-            # Extract timestamps and player counts
+
             timestamps = [datetime.fromtimestamp(record.get('time_stamp', 0)) for record in history]
             counts = [record.get('count', 0) for record in history]
-            
-            # Plot line with brighter color
+
             color = colors[idx % len(colors)]
             name = game_data.get('name', f'Game {appid}')
-            self._ax.plot(timestamps, counts, label=name, color=color, linewidth=2.5, marker='o', markersize=4)
+            self._ax.plot(timestamps, counts, label=name, color=color, linewidth=2.5)
 
         # Format chart with light colors for dark theme
         self._ax.set_xlabel('Data', fontsize=10, color='white')
@@ -341,11 +338,8 @@ class ComparisonView(QWidget):
         days = self._time_range_to_days(self._selected_time_range)
         if days <= 1:  # For 1 day or less, show hours
             self._ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-            self._ax.xaxis.set_major_locator(mdates.HourLocator(interval=max(1, int(days * 24 / 6))))
-        elif days <= 3:  # For 1-3 days, show day and hour
-            self._ax.xaxis.set_major_formatter(mdates.DateFormatter('%d.%m %H:%M'))
-            self._ax.xaxis.set_major_locator(mdates.HourLocator(interval=6))
-        else:  # For longer periods, show only dates
+            self._ax.xaxis.set_major_locator(mdates.HourLocator(interval=max(1, int(days * 24 / 8))))
+        else:
             self._ax.xaxis.set_major_formatter(mdates.DateFormatter('%d.%m'))
             self._ax.xaxis.set_major_locator(mdates.DayLocator())
         self._figure.autofmt_xdate()
