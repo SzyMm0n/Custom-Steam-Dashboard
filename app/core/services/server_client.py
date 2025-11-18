@@ -3,10 +3,10 @@ Server client module for Custom Steam Dashboard.
 Handles communication with the backend server API.
 """
 import logging
-import os
 from typing import List, Dict, Any, Optional
 import httpx
 
+from app.config import get_server_url
 from app.helpers.api_client import AuthenticatedAPIClient
 
 logger = logging.getLogger(__name__)
@@ -29,10 +29,10 @@ class ServerClient:
         Initialize the server client.
         
         Args:
-            base_url: Base URL of the server API (defaults to SERVER_URL from environment)
+            base_url: Base URL of the server API (defaults to configured SERVER_URL)
         """
         if base_url is None:
-            base_url = os.getenv("SERVER_URL", "http://localhost:8000")
+            base_url = get_server_url()
         self.base_url = base_url.rstrip('/')
         self.timeout = httpx.Timeout(30.0, connect=10.0)
 
@@ -287,21 +287,40 @@ class ServerClient:
     async def get_best_deals(
         self,
         limit: int = 20,
-        min_discount: int = 20
+        min_discount: int = 20,
+        min_price: float = 0.0,
+        shops: Optional[List[int]] = None,
+        mature: bool = False,
+        sort: str = "-cut"
     ) -> List[Dict[str, Any]]:
         """
         Get the best current game deals from the server.
 
         Args:
-            limit: Maximum number of deals to return (1-50, default: 20)
+            limit: Maximum number of deals to return (1-1000, default: 20)
             min_discount: Minimum discount percentage (0-100, default: 20)
+            min_price: Minimum price in currency (default: 0.0)
+            shops: List of shop IDs (e.g., [61, 35, 88, 82])
+            mature: Include mature content (default: False)
+            sort: Sort order (default: "-cut" for highest discount)
 
         Returns:
             List of deal dictionaries
         """
         try:
+            params = f"limit={limit}&min_discount={min_discount}"
+            if min_price > 0:
+                params += f"&min_price={min_price}"
+            if shops:
+                shops_str = ",".join(str(s) for s in shops)
+                params += f"&shops={shops_str}"
+            if mature:
+                params += "&mature=true"
+            if sort != "-cut":
+                params += f"&sort={sort}"
+
             data = await self._api_client.get(
-                f"/api/deals/best?limit={limit}&min_discount={min_discount}"
+                f"/api/deals/best?{params}"
             )
             if data:
                 return data.get("deals", [])

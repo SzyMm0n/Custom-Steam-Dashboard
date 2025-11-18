@@ -2,7 +2,6 @@
 Request signing utilities for Custom Steam Dashboard client.
 Handles HMAC-SHA256 signature generation for authenticated requests.
 """
-import os
 import hmac
 import hashlib
 import time
@@ -10,20 +9,19 @@ import secrets
 import base64
 from typing import Dict, Optional
 
+from app.config import get_client_id, get_client_secret
+
 
 def get_client_credentials() -> tuple[str, str]:
     """
-    Get client credentials from environment.
-    
+    Get client credentials from configuration.
+
     Returns:
         Tuple of (client_id, client_secret)
     """
-    client_id = os.getenv("CLIENT_ID", "desktop-main")
-    client_secret = os.getenv("CLIENT_SECRET", "change-me-in-production")
-    
-    if client_secret == "change-me-in-production":
-        print("WARNING: Using default CLIENT_SECRET. Set CLIENT_ID and CLIENT_SECRET environment variables!")
-    
+    client_id = get_client_id()
+    client_secret = get_client_secret()
+
     return client_id, client_secret
 
 

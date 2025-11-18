@@ -423,49 +423,92 @@ async def get_all_categories(request: Request, client_id: str = Depends(require_
 async def get_best_deals(
     request: Request,
     limit: int = 20,
-    min_discount: int = 20,
+    min_discount: int = 0,
+    min_price: float = 0.0,
+    shops: Optional[str] = None,
+    mature: bool = False,
+    sort: str = "-cut",
+    use_watchlist: bool = False,
     client_id: str = Depends(require_session_and_signed_request)
 ):
     """
     Get best current game deals from IsThereAnyDeal.
 
-    Checks prices for games in the watchlist database.
+    By default, fetches popular/trending deals from ITAD.
+    Can optionally filter to only watchlist games.
 
     Args:
-        limit: Maximum number of deals to return (default: 20, max: 50)
-        min_discount: Minimum discount percentage (default: 20)
+        limit: Maximum number of deals to return (default: 20, max: 1000)
+        min_discount: Minimum discount percentage (default: 0, for filtering on frontend)
+        min_price: Minimum price in currency (default: 0.0, for filtering on frontend)
+        shops: Comma-separated shop IDs (e.g., "61,35,88,82" for Steam,GOG,Epic,Humble)
+        mature: Include mature content (default: False)
+        sort: Sort order (default: "-cut" for highest discount)
+        use_watchlist: If True, only check games from watchlist (default: False)
 
     Returns:
         List of best deals with price and store information
     """
     try:
         # Validate parameters
-        limit = min(max(1, limit), 50)  # Between 1 and 50
+        limit = min(max(1, limit), 1000)  # Between 1 and 1000
         min_discount = min(max(0, min_discount), 100)  # Between 0 and 100
+        min_price = max(0.0, min_price)  # Must be non-negative
 
-        # Get list of games from watchlist to check for deals
-        watchlist = await db.get_watchlist()
-        game_appids = [game['appid'] for game in watchlist if 'appid' in game]
+        # Parse shops parameter
+        shops_list = None
+        if shops:
+            try:
+                shops_list = [int(s.strip()) for s in shops.split(',') if s.strip()]
+            except ValueError:
+                logger.warning(f"Invalid shops parameter: {shops}")
+                shops_list = None
 
-        # Create mapping of appid to game name for display
-        game_names = {game['appid']: game['name'] for game in watchlist if 'appid' in game and 'name' in game}
+        game_appids = None
+        game_names = None
 
+        # If use_watchlist is True, get games from watchlist
+        if use_watchlist:
+            watchlist = await db.get_watchlist()
+            game_appids = [game['appid'] for game in watchlist if 'appid' in game]
+            game_names = {game['appid']: game['name'] for game in watchlist if 'appid' in game and 'name' in game}
+
+            if not game_appids:
+                return {
+                    "deals": [],
+                    "count": 0,
+                    "message": "No games in watchlist to check for deals"
+                }
+
+            logger.info(f"Checking deals for {len(game_appids)} games from watchlist")
+            game_appids = game_appids[:100]  # Limit to first 100 games for watchlist check
+
+        # Get deals (popular if no watchlist, or watchlist games)
+        # Pass filter parameters to get_popular_deals
         if not game_appids:
-            return {
-                "deals": [],
-                "count": 0,
-                "message": "No games in watchlist to check for deals"
-            }
+            all_deals = await deals_client.get_popular_deals(
+                limit=limit,
+                country="PL",
+                shops=shops_list,
+                mature=mature,
+                sort=sort
+            )
+        else:
+            all_deals = await deals_client.get_best_deals(
+                limit=limit,
+                min_discount=min_discount,
+                game_appids=game_appids,
+                game_names=game_names
+            )
 
-        logger.info(f"Checking deals for {len(game_appids)} games from watchlist")
-
-        # Get deals for watchlist games
-        deals = await deals_client.get_best_deals(
-            limit=limit,
-            min_discount=min_discount,
-            game_appids=game_appids[:100],  # Limit to first 100 games
-            game_names=game_names
-        )
+        # Filter by minimum price if specified
+        if min_price > 0:
+            deals = [
+                deal for deal in all_deals
+                if deal.current_price >= min_price
+            ]
+        else:
+            deals = all_deals
 
         return {
             "deals": [deal.model_dump() for deal in deals],
@@ -654,4 +697,3 @@ if __name__ == "__main__":
     import uvicorn
     import os
     uvicorn.run(app, host=os.getenv("HOST","0.0.0.0"), port=os.getenv("PORT",8000))
-

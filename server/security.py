@@ -141,7 +141,7 @@ def verify_jwt(token: str) -> Dict[str, Any]:
             token,
             JWT_SECRET,
             algorithms=[JWT_ALGORITHM],
-            leeway=timedelta(minutes=5)
+            leeway=timedelta(minutes=2)
         )
 
         # Debug logging for time differences
@@ -152,7 +152,7 @@ def verify_jwt(token: str) -> Dict[str, Any]:
 
             logger.debug(f"Token issued at: {token_iat}, Server time: {server_time}, Diff: {time_diff:.2f}s")
 
-            if abs(time_diff) > 300:  # More than 5 minutes
+            if abs(time_diff) > 120:
                 logger.warning(f"Large time difference detected: {time_diff:.2f}s")
 
         return payload
