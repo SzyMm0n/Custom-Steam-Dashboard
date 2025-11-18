@@ -4,12 +4,12 @@ Handles JWT authentication and request signing with HMAC.
 """
 import logging
 import json
-import os
 from typing import Optional, Dict, Any
 from urllib.parse import urljoin
 import httpx
 
-from .signing import sign_request, get_client_credentials
+from app.config import get_server_url
+from app.helpers.signing import sign_request, get_client_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +30,10 @@ class AuthenticatedAPIClient:
         Initialize the authenticated API client.
         
         Args:
-            base_url: Base URL of the server API (defaults to SERVER_URL from environment)
+            base_url: Base URL of the server API (defaults to configured SERVER_URL)
         """
         if base_url is None:
-            base_url = os.getenv("SERVER_URL", "http://localhost:8000")
+            base_url = get_server_url()
         self.base_url = base_url.rstrip('/')
         self.timeout = httpx.Timeout(30.0, connect=10.0)
         

@@ -597,6 +597,136 @@ class IsThereAnyDealClient(BaseAsyncService, IDealsService):
 
         return result
 
+    async def get_popular_deals(
+        self,
+        limit: int = 1000,
+        country: str = "PL",
+        shops: Optional[List[int]] = None,
+        mature: bool = False,
+        sort: str = "-cut"
+    ) -> List[DealInfo]:
+        """
+        Get current best deals from IsThereAnyDeal.
+
+        Uses the /deals/v2 endpoint which returns a curated list of current deals,
+        similar to what's displayed on the ITAD website.
+
+        Args:
+            limit: Maximum number of deals to return (default: 1000, max: 1000)
+            country: Two letter country code (default: "PL" for Poland)
+            shops: List of shop IDs to filter (default: None = all shops)
+                   Steam=61, GOG=35, Epic=88, Humble=82
+            mature: Include mature content (default: False)
+            sort: Sort order (default: "-cut" = highest discount)
+                  Options: "-cut", "price", "-price", "title", "-title"
+
+        Returns:
+            List of DealInfo objects with current deals
+        """
+        logger.info(f"Fetching popular deals (limit={limit}, country={country}, shops={shops}, mature={mature}, sort={sort})")
+
+        try:
+            # Cap the maximum number of deals we'll fetch in total
+            target_total = min(max(1, limit), 1000)
+
+            deals_url = f"{self.base_url}/deals/v2"
+
+            # Build base parameters
+            params_base = {
+                "key": self.api_key,
+                "country": country,
+                "sort": sort,
+                "mature": mature
+            }
+
+            # Add shops filter if specified
+            if shops:
+                params_base["shops"] = ",".join(str(s) for s in shops)
+            else:
+                # Default: Steam, GOG, Epic, Humble
+                params_base["shops"] = "61,35,88,82"
+
+            # Fetch in pages of up to 200 until we reach target_total or no more results
+            collected_items: list[dict] = []
+            offset = 0
+            has_more = True
+
+            while has_more and len(collected_items) < target_total:
+                page_limit = min(200, target_total - len(collected_items))
+                params = dict(params_base)
+                params.update({
+                    "limit": page_limit,
+                    "offset": offset
+                })
+
+                response = await self._client.get(deals_url, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                if not data or not isinstance(data, dict):
+                    logger.warning("Invalid response from deals endpoint")
+                    break
+
+                page_list = data.get("list", []) or []
+                collected_items.extend(page_list)
+
+                has_more = bool(data.get("hasMore"))
+                # Prefer nextOffset if provided, otherwise increment by page size
+                offset = int(data.get("nextOffset", offset + page_limit))
+
+                logger.info(
+                    f"Fetched {len(page_list)} deals (total {len(collected_items)}/{target_total}), "
+                    f"has_more={has_more}, next_offset={offset}"
+                )
+
+                # Safety break to avoid infinite loops if API misbehaves
+                if page_limit <= 0:
+                    break
+
+            if not collected_items:
+                logger.info("No deals found")
+                return []
+
+            # Convert to DealInfo objects
+            deal_objects: list[DealInfo] = []
+            for item in collected_items:
+                try:
+                    game_title = item.get("title", "Unknown")
+                    deal_data = item.get("deal", {})
+                    if not deal_data:
+                        continue
+
+                    shop = deal_data.get("shop", {})
+                    price_data = deal_data.get("price", {})
+                    regular_data = deal_data.get("regular", {})
+                    discount = deal_data.get("cut", 0)
+
+                    drm_list = deal_data.get("drm", [])
+                    drm_name = drm_list[0].get("name", "Unknown") if drm_list else "Unknown"
+
+                    deal_info = DealInfo(
+                        steam_appid=0,  # Not available from this endpoint
+                        game_title=game_title,
+                        store_name=shop.get("name", "Unknown Store"),
+                        store_url=deal_data.get("url", ""),
+                        current_price=price_data.get("amount", 0.0),
+                        regular_price=regular_data.get("amount", 0.0),
+                        discount_percent=discount,
+                        currency=price_data.get("currency", "USD"),
+                        drm=drm_name,
+                    )
+                    deal_objects.append(deal_info)
+                except Exception as e:
+                    logger.warning(f"Error processing deal item: {e}")
+                    continue
+
+            logger.info(f"Processed {len(deal_objects)} deals successfully")
+            return deal_objects
+
+        except Exception as e:
+            logger.error(f"Error fetching popular deals: {e}")
+            return []
+
     async def get_best_deals(
         self,
         limit: int = 20,
@@ -607,22 +737,31 @@ class IsThereAnyDealClient(BaseAsyncService, IDealsService):
         """
         Get best current deals from IsThereAnyDeal.
 
-        Note: IsThereAnyDeal API v2 requires game IDs to check prices.
-        This method needs a list of game AppIDs to check (typically from database watchlist).
+        If game_appids is provided, checks only those games.
+        Otherwise, fetches popular/trending deals from ITAD waitlist.
 
         Args:
             limit: Maximum number of deals to return (default: 20)
             min_discount: Minimum discount percentage (default: 20)
-            game_appids: List of Steam AppIDs to check for deals (required)
+            game_appids: Optional list of Steam AppIDs to check for deals
             game_names: Optional dictionary mapping appid to game name (for display)
 
         Returns:
             List of DealInfo objects with best current deals
         """
+        # If no specific games provided, get popular deals
         if not game_appids:
-            logger.warning("No game AppIDs provided, cannot fetch deals")
-            return []
+            logger.info(f"No game list provided, fetching popular deals")
+            all_deals = await self.get_popular_deals(limit=200, country="PL")
 
+            # Filter by minimum discount
+            filtered_deals = [d for d in all_deals if d.discount_percent >= min_discount]
+
+            # Sort by discount and limit
+            filtered_deals.sort(key=lambda d: d.discount_percent, reverse=True)
+            return filtered_deals[:limit]
+
+        # Otherwise, check specific games
         logger.info(f"Fetching best deals for {len(game_appids)} games (limit={limit}, min_discount={min_discount}%)")
 
         try:

@@ -1,29 +1,11 @@
 import sys
 import asyncio
-import os
 from pathlib import Path
 from PySide6.QtWidgets import QApplication, QMessageBox
 from PySide6.QtGui import QIcon
-from dotenv import load_dotenv
 
-# Load environment variables before any other imports that use them
-# For PyInstaller executable, look for .env next to the executable
-if getattr(sys, 'frozen', False):
-    # Running as compiled executable
-    application_path = Path(sys.executable).parent
-else:
-    # Running as script
-    application_path = Path(__file__).parent.parent
-
-# Try to load .env from multiple locations
-env_file = application_path / '.env'
-if env_file.exists():
-    load_dotenv(env_file)
-else:
-    # Fallback: try current directory
-    load_dotenv()
-
-from app.main_window import MainWindow 
+from app.config import get_server_url
+from app.main_window import MainWindow
 from app.core.services.server_client import ServerClient
 from qasync import QEventLoop
 
@@ -68,7 +50,7 @@ async def main_coro(app, server_url: str):
         msg.setInformativeText(
             f"Please ensure:\n"
             f"1. The server is running at {server_url}\n"
-            f"2. CLIENT_ID and CLIENT_SECRET are set correctly in environment\n"
+            f"2. Client credentials in app/config.py are set correctly\n"
             f"3. Server security configuration matches client credentials"
         )
         msg.exec()
@@ -131,8 +113,8 @@ def main():
     
     The application requires authentication with the backend server.
     Make sure:
-    1. The server is running and accessible (configure via SERVER_URL environment variable)
-    2. CLIENT_ID and CLIENT_SECRET environment variables are set
+    1. The server is running and accessible (configure in app/config.py)
+    2. Client credentials in app/config.py match server configuration
     3. Server CLIENTS_JSON configuration includes your client credentials
     """
     # 1. Initialize Qt application
@@ -145,9 +127,8 @@ def main():
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
-    # 3. Server URL (can be customized via environment variable)
-    import os
-    server_url = os.getenv("SERVER_URL", "http://localhost:8000")
+    # 3. Get server URL from configuration
+    server_url = get_server_url()
 
     # 4. Authenticate and run main coroutine
     with loop:
@@ -163,4 +144,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

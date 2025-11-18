@@ -17,6 +17,7 @@ from PySide6.QtCore import Qt, QLocale, QRegularExpression, QUrl, Signal
 from PySide6.QtGui import QFont, QRegularExpressionValidator, QPixmap, QDesktopServices
 import httpx
 
+from app.config import get_server_url
 from app.ui.styles import apply_style
 from app.core.services.server_client import ServerClient
 from app.ui.theme_manager import ThemeManager
@@ -68,13 +69,12 @@ class GameDetailDialog(QDialog):
         Args:
             game_data: Either a string (game title) or dict with game information
                       (name, appid, players, tags, deal_url, deal_id, store_id, store_name)
-            server_url: URL of the backend server (defaults to SERVER_URL from environment)
+            server_url: URL of the backend server (defaults to configured SERVER_URL)
             parent: Parent widget
         """
         super().__init__(parent)
         if server_url is None:
-            import os
-            server_url = os.getenv("SERVER_URL", "http://localhost:8000")
+            server_url = get_server_url()
         self._server_client = ServerClient(base_url=server_url)
         self.setWindowTitle("Szczegóły gry")
         self.setMinimumWidth(420)
@@ -592,8 +592,7 @@ class GameDetailPanel(QFrame):
         """
         super().__init__(parent)
         if server_url is None:
-            import os
-            server_url = os.getenv("SERVER_URL", "http://localhost:8000")
+            server_url = get_server_url()
         self._server_client = ServerClient(base_url=server_url)
         
         # Theme manager

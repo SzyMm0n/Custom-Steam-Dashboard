@@ -9,7 +9,7 @@ from typing import Dict, Any, Optional
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QListWidget, QListWidgetItem, QGroupBox, QLineEdit,
-    QFrame, QScrollArea
+    QFrame, QScrollArea, QComboBox
 )
 from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices
@@ -44,8 +44,23 @@ class DealsView(QWidget):
         
         self._server_client = ServerClient(server_url)
         self._best_deals = []
+        self._all_best_deals = []  # Store all deals for frontend filtering
         self._search_results = None
         
+        # Pagination state for best deals
+        self._page_size = 100
+        self._current_page = 1
+        self._total_pages = 1
+
+        # Filters state
+        self._filters = {
+            'min_discount': 0,
+            'min_price': 0.0,
+            'shops': [61, 35, 88, 82],  # All shops by default
+            'mature': False,
+            'sort': '-cut'
+        }
+
         # Store current search state for theme refresh
         self._current_search_result = None
         self._current_search_term = None
@@ -78,14 +93,10 @@ class DealsView(QWidget):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
 
-        # Search section
-        search_group = self._create_search_section()
-        layout.addWidget(search_group)
-        
         # Main content area with two columns
         content_layout = QHBoxLayout()
         
-        # Left column - Best deals
+        # Left column - Best deals with filters
         best_deals_group = self._create_best_deals_section()
         content_layout.addWidget(best_deals_group, stretch=1)
         
@@ -97,98 +108,39 @@ class DealsView(QWidget):
         
         apply_style(self)
     
-    def _create_search_section(self) -> QWidget:
-        """Create search bar section."""
-        search_group = QGroupBox("Wyszukaj promocje")
-        search_layout = QVBoxLayout()
-        
-        # Search input and button
-        input_layout = QHBoxLayout()
-        
-        self._search_input = QLineEdit()
-        self._search_input.setPlaceholderText("Wpisz tytuł gry...")
-        self._search_input.returnPressed.connect(lambda: asyncio.create_task(self._search_deals()))
-        input_layout.addWidget(self._search_input)
-        
-        self._search_btn = QPushButton("Szukaj")
-        self._search_btn.clicked.connect(lambda: asyncio.create_task(self._search_deals()))
-        input_layout.addWidget(self._search_btn)
-        
-        search_layout.addLayout(input_layout)
-
-        # Minimum discount selector
-        discount_layout = QHBoxLayout()
-        discount_layout.addWidget(QLabel("Min. zniżka w wyszukiwaniu:"))
-
-        from PySide6.QtWidgets import QSlider, QSpinBox
-        self._search_discount_slider = QSlider(Qt.Orientation.Horizontal)
-        self._search_discount_slider.setMinimum(0)
-        self._search_discount_slider.setMaximum(100)
-        self._search_discount_slider.setValue(0)
-        self._search_discount_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self._search_discount_slider.setTickInterval(10)
-
-        self._search_discount_spinbox = QSpinBox()
-        self._search_discount_spinbox.setMinimum(0)
-        self._search_discount_spinbox.setMaximum(100)
-        self._search_discount_spinbox.setValue(0)
-        self._search_discount_spinbox.setSuffix("%")
-
-        # Connect slider and spinbox
-        self._search_discount_slider.valueChanged.connect(self._search_discount_spinbox.setValue)
-        self._search_discount_spinbox.valueChanged.connect(self._search_discount_slider.setValue)
-
-        discount_layout.addWidget(self._search_discount_slider)
-        discount_layout.addWidget(self._search_discount_spinbox)
-
-        search_layout.addLayout(discount_layout)
-        search_group.setLayout(search_layout)
-        
-        return search_group
-    
     def _create_best_deals_section(self) -> QWidget:
         """Create best deals list section."""
         group = QGroupBox("Najlepsze okazje")
         layout = QVBoxLayout()
         
-        # Control buttons
+        # Control buttons and filter info
         controls_layout = QHBoxLayout()
         
         self._refresh_best_btn = QPushButton("Odśwież")
         self._refresh_best_btn.clicked.connect(lambda: asyncio.create_task(self._load_best_deals()))
         controls_layout.addWidget(self._refresh_best_btn)
         
+        # Filters button
+        self._filters_btn = QPushButton("⚙ Filtry")
+        self._filters_btn.clicked.connect(self._open_filters_dialog)
+        controls_layout.addWidget(self._filters_btn)
+
         controls_layout.addStretch()
         
-        # Min discount slider
-        from PySide6.QtWidgets import QSlider, QSpinBox
-        controls_layout.addWidget(QLabel("Min. zniżka:"))
+        # Filter status label
+        self._filter_status_label = QLabel("Brak aktywnych filtrów")
+        self._filter_status_label.setStyleSheet("color: gray; font-style: italic;")
+        controls_layout.addWidget(self._filter_status_label)
 
-        self._best_discount_slider = QSlider(Qt.Orientation.Horizontal)
-        self._best_discount_slider.setMinimum(0)
-        self._best_discount_slider.setMaximum(100)
-        self._best_discount_slider.setValue(20)
-        self._best_discount_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self._best_discount_slider.setTickInterval(10)
-        self._best_discount_slider.setMaximumWidth(150)
+        controls_layout.addSpacing(10)
 
-        self._best_discount_spinbox = QSpinBox()
-        self._best_discount_spinbox.setMinimum(0)
-        self._best_discount_spinbox.setMaximum(100)
-        self._best_discount_spinbox.setValue(20)
-        self._best_discount_spinbox.setSuffix("%")
-
-        # Connect slider and spinbox
-        self._best_discount_slider.valueChanged.connect(self._best_discount_spinbox.setValue)
-        self._best_discount_spinbox.valueChanged.connect(self._best_discount_slider.setValue)
-
-        # Auto-refresh on discount change
-        self._best_discount_spinbox.valueChanged.connect(
-            lambda: asyncio.create_task(self._load_best_deals())
-        )
-
-        controls_layout.addWidget(self._best_discount_slider)
-        controls_layout.addWidget(self._best_discount_spinbox)
+        # Page size selector
+        controls_layout.addWidget(QLabel("Na stronę:"))
+        self._page_size_combo = QComboBox()
+        self._page_size_combo.addItems(["50", "100", "150", "200"])
+        self._page_size_combo.setCurrentText("100")
+        self._page_size_combo.currentTextChanged.connect(self._on_page_size_changed)
+        controls_layout.addWidget(self._page_size_combo)
 
         layout.addLayout(controls_layout)
         
@@ -199,6 +151,37 @@ class DealsView(QWidget):
         self._best_deals_list.itemClicked.connect(self._on_deal_clicked)
         layout.addWidget(self._best_deals_list)
         
+        # Pagination controls
+        pagination_layout = QHBoxLayout()
+        self._first_page_btn = QPushButton("⏮ Pierwsza")
+        self._prev_page_btn = QPushButton("◀ Poprzednia")
+        self._next_page_btn = QPushButton("Następna ▶")
+        self._last_page_btn = QPushButton("Ostatnia ⏭")
+
+        self._first_page_btn.clicked.connect(lambda: self._go_to_page(1))
+        self._prev_page_btn.clicked.connect(lambda: self._go_to_page(self._current_page - 1))
+        self._next_page_btn.clicked.connect(lambda: self._go_to_page(self._current_page + 1))
+        self._last_page_btn.clicked.connect(lambda: self._go_to_page(self._total_pages))
+
+        pagination_layout.addWidget(self._first_page_btn)
+        pagination_layout.addWidget(self._prev_page_btn)
+
+        # Current page display and jump
+        pagination_layout.addStretch()
+        self._page_info_label = QLabel("Strona 1/1")
+        pagination_layout.addWidget(self._page_info_label)
+
+        pagination_layout.addStretch()
+        self._jump_page_input = QLineEdit()
+        self._jump_page_input.setPlaceholderText("Idź do strony...")
+        self._jump_page_input.setFixedWidth(120)
+        self._jump_page_input.returnPressed.connect(self._on_jump_to_page)
+        pagination_layout.addWidget(self._jump_page_input)
+
+        pagination_layout.addWidget(self._next_page_btn)
+        pagination_layout.addWidget(self._last_page_btn)
+        layout.addLayout(pagination_layout)
+
         # Status label
         self._best_deals_status = QLabel("Ładowanie...")
         self._best_deals_status.setStyleSheet("color: gray; font-style: italic;")
@@ -210,10 +193,24 @@ class DealsView(QWidget):
     
     def _create_search_results_section(self) -> QWidget:
         """Create search results section."""
-        group = QGroupBox("Wyniki wyszukiwania")
+        group = QGroupBox("Wyszukiwanie gry")
         layout = QVBoxLayout()
-        
-        # Status label at the top (persistent)
+
+        # Search input and button
+        search_layout = QHBoxLayout()
+
+        self._search_input = QLineEdit()
+        self._search_input.setPlaceholderText("Wpisz tytuł gry...")
+        self._search_input.returnPressed.connect(lambda: asyncio.create_task(self._search_deals()))
+        search_layout.addWidget(self._search_input)
+
+        self._search_btn = QPushButton("Szukaj")
+        self._search_btn.clicked.connect(lambda: asyncio.create_task(self._search_deals()))
+        search_layout.addWidget(self._search_btn)
+
+        layout.addLayout(search_layout)
+
+        # Status label
         self._search_status_label = QLabel("Wpisz tytuł gry i kliknij 'Szukaj'")
         self._search_status_label.setStyleSheet("color: gray; font-style: italic;")
         self._search_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -233,7 +230,149 @@ class DealsView(QWidget):
 
         group.setLayout(layout)
         return group
-    
+
+    def _on_page_size_changed(self, text: str):
+        try:
+            size = int(text)
+        except ValueError:
+            size = 100
+        self._page_size = max(1, min(200, size))
+        # Reset to first page on page size change
+        self._current_page = 1
+        # Re-apply filtering and pagination
+        self._filter_and_display_best_deals()
+
+    def _open_filters_dialog(self):
+        """Open the advanced filters dialog."""
+        from app.ui.deals_filter_dialog import DealsFilterDialog
+
+        dialog = DealsFilterDialog(self._filters, self)
+        dialog.filters_applied.connect(self._on_filters_applied)
+        dialog.exec()
+
+    def _on_filters_applied(self, filters: Dict[str, Any]):
+        """Handle filters being applied from the dialog."""
+        self._filters = filters
+        self._update_filter_status()
+        # Reload deals with new filters
+        asyncio.create_task(self._load_best_deals())
+
+    def _update_filter_status(self):
+        """Update the filter status label."""
+        from app.ui.deals_filter_dialog import DealsFilterDialog
+
+        if DealsFilterDialog.is_default_filters(self._filters):
+            self._filter_status_label.setText("Brak aktywnych filtrów")
+            self._filter_status_label.setStyleSheet("color: gray; font-style: italic;")
+            self._filters_btn.setStyleSheet("")  # Default style
+        else:
+            summary = DealsFilterDialog.get_filter_summary(self._filters)
+            self._filter_status_label.setText(summary)
+            self._filter_status_label.setStyleSheet("color: #4CAF50; font-weight: bold;")
+            self._filters_btn.setStyleSheet("font-weight: bold; background-color: #4CAF50; color: white;")
+
+    def _on_best_discount_filter_changed(self):
+        """Handle slider value change - filter locally without server request."""
+        # Only filter if we have deals loaded
+        if hasattr(self, '_all_best_deals') and self._all_best_deals:
+            self._filter_and_display_best_deals()
+
+    def _on_min_price_changed(self):
+        """Handle min price change - filter locally without server request."""
+        # Only filter if we have deals loaded
+        if hasattr(self, '_all_best_deals') and self._all_best_deals:
+            self._filter_and_display_best_deals()
+        text = self._jump_page_input.text().strip()
+        if not text:
+            return
+        try:
+            page = int(text)
+        except ValueError:
+            return
+        self._go_to_page(page)
+
+
+    def _update_pagination_controls(self):
+        # Update page info label and button states
+        self._page_info_label.setText(f"Strona {self._current_page}/{self._total_pages}")
+        self._first_page_btn.setEnabled(self._current_page > 1)
+        self._prev_page_btn.setEnabled(self._current_page > 1)
+        self._next_page_btn.setEnabled(self._current_page < self._total_pages)
+        self._last_page_btn.setEnabled(self._current_page < self._total_pages)
+
+    def _on_jump_to_page(self):
+        """Handle jump to page from input field."""
+        text = self._jump_page_input.text().strip()
+        if not text:
+            return
+        try:
+            page = int(text)
+        except ValueError:
+            return
+        self._go_to_page(page)
+
+    def _go_to_page(self, page: int):
+        """Go to specified page."""
+        if self._total_pages <= 0:
+            return
+        page = max(1, min(self._total_pages, page))
+        if page == self._current_page:
+            return
+        self._current_page = page
+
+        # Recalculate which deals to show for this page
+        start = (self._current_page - 1) * self._page_size
+        end = start + self._page_size
+        self._best_deals = self._all_best_deals[start:end]
+
+        # Update UI
+        self._update_best_deals_list()
+        self._update_pagination_controls()
+
+    async def _load_best_deals(self):
+        """Load best deals from server."""
+        try:
+            self._best_deals_status.setText("Ładowanie...")
+            self._refresh_best_btn.setEnabled(False)
+            
+            # Get filter values from stored filters
+            min_discount = self._filters.get('min_discount', 0)
+            min_price = self._filters.get('min_price', 0.0)
+            shops = self._filters.get('shops', [61, 35, 88, 82])
+            mature = self._filters.get('mature', False)
+            sort_order = self._filters.get('sort', '-cut')
+
+            # Fetch deals from backend with filters
+            # Note: min_discount is NOT sent to backend - filtering by discount
+            # should be done on frontend after receiving data from ITAD API
+            deals = await self._server_client.get_best_deals(
+                limit=1000,
+                min_discount=0,  # Don't filter by discount on backend
+                min_price=min_price,
+                shops=shops,
+                mature=mature,
+                sort=sort_order
+            )
+
+            # Filter by minimum discount on frontend (if specified in filters)
+            if min_discount > 0:
+                deals = [d for d in deals if d.get('discount_percent', 0) >= min_discount]
+
+            # Store all deals for pagination
+            self._all_best_deals = deals
+
+            # Reset to first page on fresh load
+            self._current_page = 1
+
+            # Apply pagination and update display
+            self._filter_and_display_best_deals()
+
+        except Exception as e:
+            logger.error(f"DealsView: Error loading best deals: {e}")
+            self._best_deals_status.setText("❌ Błąd ładowania promocji")
+        finally:
+            self._refresh_best_btn.setEnabled(True)
+
     async def _load_initial_data(self):
         """Load initial data (best deals)."""
         try:
@@ -243,39 +382,40 @@ class DealsView(QWidget):
                 logger.error("DealsView: Failed to authenticate with server")
                 self._best_deals_status.setText("❌ Błąd uwierzytelniania")
                 return
-            
+
             await self._load_best_deals()
         except Exception as e:
             logger.error(f"DealsView: Error loading initial data: {e}")
             self._best_deals_status.setText("❌ Błąd ładowania danych")
-    
-    async def _load_best_deals(self):
-        """Load best deals from server."""
-        try:
-            self._best_deals_status.setText("Ładowanie...")
-            self._refresh_best_btn.setEnabled(False)
-            
-            # Get minimum discount from slider
-            min_discount = self._best_discount_spinbox.value()
 
-            deals = await self._server_client.get_best_deals(limit=30, min_discount=min_discount)
-            self._best_deals = deals
-            
-            self._update_best_deals_list()
-            
-            if deals:
-                self._best_deals_status.setText(f"Znaleziono {len(deals)} promocji (min. {min_discount}%)")
-            else:
-                self._best_deals_status.setText(f"Brak promocji z min. {min_discount}% zniżki")
+    def _filter_and_display_best_deals(self):
+        """Apply pagination and update display."""
+        # Get deals (already filtered by backend)
+        filtered_deals = self._all_best_deals
 
-        except Exception as e:
-            logger.error(f"DealsView: Error loading best deals: {e}")
-            self._best_deals_status.setText("❌ Błąd ładowania promocji")
-        finally:
-            self._refresh_best_btn.setEnabled(True)
-    
+        # Pagination math
+        total_items = len(filtered_deals)
+        self._total_pages = max(1, (total_items + self._page_size - 1) // self._page_size)
+        # Clamp current page
+        self._current_page = max(1, min(self._current_page, self._total_pages))
+        start = (self._current_page - 1) * self._page_size
+        end = start + self._page_size
+
+        # Update displayed deals (current page slice)
+        self._best_deals = filtered_deals[start:end]
+        self._update_best_deals_list()
+        self._update_pagination_controls()
+
+        # Update status message
+        if total_items:
+            self._best_deals_status.setText(
+                f"Znaleziono {total_items} promocji"
+            )
+        else:
+            self._best_deals_status.setText("Brak promocji spełniających kryteria filtrów")
+
     def _update_best_deals_list(self):
-        """Update the best deals list widget."""
+        """Update the best deals list widget for the current page."""
         self._best_deals_list.clear()
         
         for deal in self._best_deals:
@@ -347,8 +487,8 @@ class DealsView(QWidget):
             self._search_status_label.setText(f"Szukam: {search_term}...")
             self._search_btn.setEnabled(False)
             
-            # Get minimum discount from slider
-            min_discount = self._search_discount_spinbox.value()
+            # Use filters from dialog for minimum discount
+            min_discount = self._filters.get('min_discount', 0)
 
             result = await self._server_client.search_game_deals(
                 search_term,
@@ -519,4 +659,3 @@ class DealsView(QWidget):
                 self._current_search_term,
                 self._current_search_min_discount
             )
-

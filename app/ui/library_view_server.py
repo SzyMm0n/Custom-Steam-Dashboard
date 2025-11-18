@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from typing import Optional
 
 from PySide6.QtCore import Qt
@@ -24,6 +23,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap
 
 import httpx
+from app.config import get_server_url
 from app.core.services.server_client import ServerClient
 from app.ui.styles import apply_style, refresh_style
 from app.ui.theme_manager import ThemeManager
@@ -48,12 +48,12 @@ class LibraryView(QWidget):
         Initialize the library view.
 
         Args:
-            server_url: URL of the backend server (defaults to SERVER_URL from environment)
+            server_url: URL of the backend server (defaults to configured SERVER_URL)
             parent: Parent widget
         """
         super().__init__(parent)
         if server_url is None:
-            server_url = os.getenv("SERVER_URL", "http://localhost:8000")
+            server_url = get_server_url()
         self._server_client = ServerClient(base_url=server_url)
         
         # Store games data for sorting

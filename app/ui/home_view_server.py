@@ -6,7 +6,6 @@ Fetches data from the backend server.
 """
 import asyncio
 import logging
-import os
 from typing import List, Dict, Any, Optional, Set
 
 from PySide6.QtWidgets import (
@@ -16,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import QTimer, Qt, QLocale
 
+from app.config import get_server_url
 from app.core.services.server_client import ServerClient
 from app.ui.components_server import NumberValidator, GameDetailDialog, GameDetailPanel
 from app.ui.styles import apply_style, refresh_style
@@ -45,15 +45,14 @@ class HomeView(QWidget):
         Initialize the home view.
 
         Args:
-            server_url: URL of the backend server (defaults to SERVER_URL from environment)
+            server_url: URL of the backend server (defaults to configured SERVER_URL)
             parent: Parent widget
         """
         super().__init__(parent)
 
         # Server client for data fetching
         if server_url is None:
-            server_url = os.getenv("SERVER_URL", "http://localhost:8000")
-            server_url = os.getenv("SERVER_URL", "https://custom-steam-dashboard.pl.eu.org")
+            server_url = get_server_url()
         self._server_client = ServerClient(base_url=server_url)
         self._server_url = server_url  # Store for passing to dialogs
 
