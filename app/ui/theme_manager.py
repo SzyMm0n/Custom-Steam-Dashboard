@@ -125,7 +125,17 @@ class ThemeManager(QObject):
         """
         self._custom_dark_colors = dark_colors
         self._custom_light_colors = light_colors
-        self.set_palette(ColorPalette.CUSTOM)
+
+        # Always emit theme_changed signal, even if already on CUSTOM palette
+        # This ensures UI updates when switching between different custom themes
+        was_already_custom = (self._palette == ColorPalette.CUSTOM)
+        self._palette = ColorPalette.CUSTOM
+
+        if not was_already_custom:
+            self._save_preference()
+
+        # Always emit signal to update UI with new colors
+        self.theme_changed.emit(self._mode.value, self._palette.value)
 
     def _save_custom_theme_name(self, theme_name: str):
         """Save the active custom theme name for restoration on restart."""

@@ -452,11 +452,29 @@ class CustomThemeDialog(QDialog):
             if not name:
                 name = f"Własny {self._base_color.name().upper()}"
             
+            # Check for duplicate names
+            from app.core.user_data_manager import UserDataManager
+            from PySide6.QtWidgets import QMessageBox
+
+            data_manager = UserDataManager()
+            existing_theme = data_manager.get_custom_theme(name)
+
+            if existing_theme:
+                # Ask user if they want to overwrite
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Icon.Question)
+                msg.setWindowTitle("Motyw już istnieje")
+                msg.setText(f"Motyw o nazwie '{name}' już istnieje.")
+                msg.setInformativeText("Czy chcesz go zastąpić?")
+                msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                msg.setDefaultButton(QMessageBox.StandardButton.No)
+
+                if msg.exec() != QMessageBox.StandardButton.Yes:
+                    # User cancelled, don't save
+                    return
+
             theme_name = name
 
-            # Import here to avoid circular dependency
-            from app.core.user_data_manager import UserDataManager
-            data_manager = UserDataManager()
             success = data_manager.save_custom_theme(
                 name=name,
                 dark_colors=dark_colors,

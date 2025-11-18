@@ -3,7 +3,7 @@ Theme switcher widget for Custom Steam Dashboard.
 Provides UI controls for switching themes and color palettes.
 """
 
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QComboBox, QLabel
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QComboBox, QLabel, QMessageBox
 from .theme_manager import ThemeManager, ThemeMode, ColorPalette
 
 
@@ -49,6 +49,15 @@ class ThemeSwitcher(QWidget):
 
         self._palette_combo.currentIndexChanged.connect(self._on_palette_changed)
         layout.addWidget(self._palette_combo)
+
+        # Delete custom theme button
+        self._delete_button = QPushButton("🗑️")
+        self._delete_button.setObjectName("clearButton")
+        self._delete_button.setToolTip("Usuń wybrany własny motyw")
+        self._delete_button.setMaximumWidth(40)
+        self._delete_button.clicked.connect(self._delete_current_theme)
+        self._delete_button.setVisible(False)  # Hidden by default
+        layout.addWidget(self._delete_button)
 
     def _populate_palette_combo(self):
         """Populate the palette combo box with predefined and saved themes."""
@@ -116,15 +125,65 @@ class ThemeSwitcher(QWidget):
             theme_name = palette_value[7:]  # Remove "custom:" prefix
 
             if theme_name == "new":
+                # Hide delete button for "Create new"
+                self._delete_button.setVisible(False)
                 # Open dialog to create new theme
                 self._open_custom_theme_dialog()
             else:
+                # Show delete button for existing custom themes
+                self._delete_button.setVisible(True)
                 # Load existing custom theme
                 self._load_custom_theme(theme_name)
         else:
+            # Hide delete button for standard palettes
+            self._delete_button.setVisible(False)
             # Standard palette
             palette = ColorPalette(palette_value)
             self._theme_manager.set_palette(palette)
+
+    def _delete_current_theme(self):
+        """Delete the currently selected custom theme."""
+        current_index = self._palette_combo.currentIndex()
+        palette_value = self._palette_combo.itemData(current_index)
+
+        if not palette_value or not palette_value.startswith("custom:"):
+            return
+
+        theme_name = palette_value[7:]  # Remove "custom:" prefix
+
+        if theme_name == "new":
+            return  # Can't delete "Create new"
+
+        # Confirm deletion
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Icon.Question)
+        msg.setWindowTitle("Usuń motyw")
+        msg.setText(f"Czy na pewno chcesz usunąć motyw '{theme_name}'?")
+        msg.setInformativeText("Ta operacja jest nieodwracalna.")
+        msg.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        msg.setDefaultButton(QMessageBox.StandardButton.No)
+
+        if msg.exec() != QMessageBox.StandardButton.Yes:
+            return
+
+        # Delete the theme
+        from app.core.user_data_manager import UserDataManager
+        data_manager = UserDataManager()
+        success = data_manager.delete_custom_theme(theme_name)
+
+        if success:
+            print(f"✓ Deleted custom theme: {theme_name}")
+
+            # Switch to default palette before deleting
+            self._theme_manager.set_palette(ColorPalette.GREEN)
+
+            # Refresh combo box
+            self._populate_palette_combo()
+
+            # Hide delete button
+            self._delete_button.setVisible(False)
+        else:
+            print(f"✗ Failed to delete theme: {theme_name}")
 
     def _open_custom_theme_dialog(self):
         """Open custom theme creator dialog."""
