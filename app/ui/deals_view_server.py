@@ -46,6 +46,11 @@ class DealsView(QWidget):
         self._best_deals = []
         self._search_results = None
         
+        # Store current search state for theme refresh
+        self._current_search_result = None
+        self._current_search_term = None
+        self._current_search_min_discount = 0
+
         # Theme manager - connect BEFORE init_ui to ensure proper initial styling
         self._theme_manager = ThemeManager()
         self._theme_manager.theme_changed.connect(self._on_theme_changed)
@@ -365,6 +370,11 @@ class DealsView(QWidget):
     
     def _display_search_results(self, result: Dict[str, Any], search_term: str, min_discount: int):
         """Display search results in the results panel."""
+        # Store current search state for theme refresh
+        self._current_search_result = result
+        self._current_search_term = search_term
+        self._current_search_min_discount = min_discount
+
         # Clear previous results (but not the status label which is separate)
         while self._search_results_layout.count():
             child = self._search_results_layout.takeAt(0)
@@ -501,4 +511,12 @@ class DealsView(QWidget):
         # Reload deal items to update their colors
         if self._best_deals:
             self._update_best_deals_list()
+
+        # Refresh search results if they exist
+        if self._current_search_result is not None:
+            self._display_search_results(
+                self._current_search_result,
+                self._current_search_term,
+                self._current_search_min_discount
+            )
 
