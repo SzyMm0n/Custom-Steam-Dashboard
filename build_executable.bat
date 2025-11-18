@@ -1,10 +1,49 @@
 @echo off
-REM Build script for Custom Steam Dashboard executable (Windows)
-REM This script creates a standalone executable for the desktop application
+REM Build script for Custom Steam Dashboard Desktop Application
+REM Creates a standalone executable using PyInstaller
 
-echo ==========================================
+echo ============================================
 echo Custom Steam Dashboard - Build Executable
-echo ==========================================
+echo ============================================
+echo.
+
+REM Load environment variables from .env file if it exists
+if exist .env (
+    echo Loading configuration from .env file...
+    for /f "usebackq tokens=*" %%a in (.env) do (
+        echo %%a | findstr /r "^SERVER_URL=" >nul && set %%a
+        echo %%a | findstr /r "^CLIENT_ID=" >nul && set %%a
+        echo %%a | findstr /r "^CLIENT_SECRET=" >nul && set %%a
+    )
+    echo Configuration loaded
+) else (
+    echo Warning: .env file not found!
+    echo   Build will use default values (localhost^)
+    echo   For production build, create .env with:
+    echo     SERVER_URL=https://your-server.com
+    echo     CLIENT_ID=your-client-id
+    echo     CLIENT_SECRET=your-secret
+    echo.
+)
+
+REM Display configuration (hide secret)
+echo.
+echo Build configuration:
+if defined SERVER_URL (
+    echo   SERVER_URL: %SERVER_URL%
+) else (
+    echo   SERVER_URL: http://localhost:8000 (default^)
+)
+if defined CLIENT_ID (
+    echo   CLIENT_ID: %CLIENT_ID%
+) else (
+    echo   CLIENT_ID: desktop-main (default^)
+)
+if defined CLIENT_SECRET (
+    echo   CLIENT_SECRET: ***hidden***
+) else (
+    echo   CLIENT_SECRET: NOT SET
+)
 echo.
 
 REM Check if we're in the correct directory
@@ -16,14 +55,14 @@ if not exist "steam_dashboard.spec" (
 )
 
 REM Clean previous builds
-echo [1/4] Cleaning previous builds...
+echo [1/5] Cleaning previous builds...
 if exist "build" rmdir /s /q build
 if exist "dist" rmdir /s /q dist
 echo ✓ Clean complete
 echo.
 
 REM Check dependencies
-echo [2/4] Checking dependencies...
+echo [2/5] Checking dependencies...
 python -c "import PyInstaller" 2>nul
 if errorlevel 1 (
     echo PyInstaller not found. Installing...
@@ -32,25 +71,40 @@ if errorlevel 1 (
 echo ✓ Dependencies OK
 echo.
 
+REM Generate config.py with embedded values
+echo [3/5] Generating config.py with embedded values...
+python generate_config.py
+if errorlevel 1 (
+    echo ✗ Failed to generate config.py
+    pause
+    exit /b 1
+)
+echo.
+
 REM Build executable
-echo [3/4] Building executable...
+echo [4/5] Building executable...
 echo This may take a few minutes...
 echo.
 pyinstaller --clean steam_dashboard.spec
+set BUILD_RESULT=%errorlevel%
 
-if errorlevel 1 (
-    echo.
+REM Restore original config.py
+echo.
+echo [5/5] Restoring original config.py...
+python restore_config.py
+echo.
+
+if %BUILD_RESULT% neq 0 (
     echo ✗ Build failed!
     pause
     exit /b 1
 )
 
-echo.
 echo ✓ Build successful!
 echo.
 
 REM Display results
-echo [4/4] Build complete!
+echo Build complete!
 echo.
 echo ==========================================
 echo Build Summary
@@ -62,39 +116,36 @@ if exist "dist" (
     echo   %CD%\dist\
     echo.
 
-    REM Copy .env.example as .env to dist folder if it doesn't exist
-    if not exist "dist\.env" (
-        if exist ".env.example" (
-            copy .env.example dist\.env >nul
-            echo ✓ Created dist\.env from .env.example
-            echo ⚠ IMPORTANT: Edit dist\.env with your credentials!
-            echo.
-        )
-    )
-
-    REM Copy README_USER.md to dist folder
-    if exist "README_USER.md" (
-        copy README_USER.md dist\ >nul
-        echo ✓ Copied README_USER.md to dist\
-        echo.
-    )
-
     echo Files created:
     dir /b dist
     echo.
-    echo Configuration:
-    echo   1. Edit dist\.env file with your settings:
-    echo      - SERVER_URL ^(backend API URL^)
-    echo      - CLIENT_ID and CLIENT_SECRET ^(authentication^)
-    echo   2. Make sure these match your server configuration
+    echo ✓ Executable is standalone and ready to distribute!
     echo.
-    echo Note:
-    echo   - The .env file must be in the same directory as the executable
-    echo   - Make sure the backend server is running before launching the app
-    echo   - You can distribute the entire 'dist' folder
+    echo Configuration embedded in executable:
+    if defined SERVER_URL (
+        echo   ✓ SERVER_URL: %SERVER_URL%
+    ) else (
+        echo   ✓ SERVER_URL: http://localhost:8000 (default^)
+    )
+    if defined CLIENT_ID (
+        echo   ✓ CLIENT_ID: %CLIENT_ID%
+    ) else (
+        echo   ✓ CLIENT_ID: desktop-main (default^)
+    )
+    echo   ✓ CLIENT_SECRET: embedded (hidden for security^)
     echo.
-    echo To run the application:
+    echo Distribution:
+    echo   ✓ No .env file needed - configuration is embedded!
+    echo   ✓ Distribute only the .exe file
+    echo   ✓ Users can run it immediately - zero configuration
+    echo.
+    echo To test the executable:
     echo   dist\CustomSteamDashboard.exe
+    echo.
+    echo Optional: Override configuration
+    echo   Users can override embedded values with environment variables:
+    echo   set SERVER_URL=http://custom-server.com
+    echo   CustomSteamDashboard.exe
 ) else (
     echo Error: dist directory not found!
     pause

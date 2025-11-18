@@ -79,6 +79,7 @@ credentials.json
 steam_api_key.txt
 token.txt
 *.pem
+*.backup   # Config backups during build
 *.key
 *.crt
 

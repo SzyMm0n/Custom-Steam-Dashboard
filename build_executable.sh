@@ -1,12 +1,38 @@
 #!/bin/bash
-# Build script for Custom Steam Dashboard executable
-# This script creates a standalone executable for the desktop application
+# Build script for Custom Steam Dashboard Desktop Application
+# Creates a standalone executable using PyInstaller
 
 set -e  # Exit on error
 
-echo "=========================================="
+echo "============================================"
 echo "Custom Steam Dashboard - Build Executable"
-echo "=========================================="
+echo "============================================"
+echo ""
+
+# Load environment variables from .env file if it exists
+if [ -f .env ]; then
+    echo "Loading configuration from .env file..."
+    export $(grep -v '^#' .env | grep -E '^(SERVER_URL|CLIENT_ID|CLIENT_SECRET)=' | xargs)
+    echo "✓ Configuration loaded"
+else
+    echo "⚠ Warning: .env file not found!"
+    echo "  Build will use default values (localhost)"
+    echo "  For production build, create .env with:"
+    echo "    SERVER_URL=https://your-server.com"
+    echo "    CLIENT_ID=your-client-id"
+    echo "    CLIENT_SECRET=your-secret"
+    echo ""
+fi
+
+# Display configuration (hide secret)
+echo ""
+echo "Build configuration:"
+echo "  SERVER_URL: ${SERVER_URL:-http://localhost:8000}"
+echo "  CLIENT_ID: ${CLIENT_ID:-desktop-main}"
+echo "  CLIENT_SECRET: ${CLIENT_SECRET:+***hidden***}"
+if [ -z "$CLIENT_SECRET" ]; then
+    echo "  CLIENT_SECRET: ⚠ NOT SET"
+fi
 echo ""
 
 # Colors for output
@@ -41,7 +67,7 @@ echo -e "${GREEN}✓ Clean complete${NC}"
 echo ""
 
 # Check dependencies
-echo -e "${YELLOW}[2/4] Checking dependencies...${NC}"
+echo -e "${YELLOW}[2/5] Checking dependencies...${NC}"
 python3 -c "import PyInstaller" 2>/dev/null || {
     echo -e "${RED}PyInstaller not found. Installing...${NC}"
     pip install pyinstaller>=6.9
@@ -49,24 +75,38 @@ python3 -c "import PyInstaller" 2>/dev/null || {
 echo -e "${GREEN}✓ Dependencies OK${NC}"
 echo ""
 
+# Generate config.py with embedded values
+echo -e "${YELLOW}[3/5] Generating config.py with embedded values...${NC}"
+python3 generate_config.py
+if [ $? -ne 0 ]; then
+    echo -e "${RED}✗ Failed to generate config.py${NC}"
+    exit 1
+fi
+echo ""
+
 # Build executable
-echo -e "${YELLOW}[3/4] Building executable...${NC}"
+echo -e "${YELLOW}[4/5] Building executable...${NC}"
 echo "This may take a few minutes..."
 echo ""
 pyinstaller --clean steam_dashboard.spec
+BUILD_RESULT=$?
 
-if [ $? -eq 0 ]; then
-    echo ""
+# Restore original config.py
+echo ""
+echo -e "${YELLOW}[5/5] Restoring original config.py...${NC}"
+python3 restore_config.py
+echo ""
+
+if [ $BUILD_RESULT -eq 0 ]; then
     echo -e "${GREEN}✓ Build successful!${NC}"
 else
-    echo ""
     echo -e "${RED}✗ Build failed!${NC}"
     exit 1
 fi
 echo ""
 
 # Display results
-echo -e "${YELLOW}[4/4] Build complete!${NC}"
+echo "Build complete!"
 echo ""
 echo "=========================================="
 echo "Build Summary"
@@ -78,43 +118,32 @@ if [ -d "dist" ]; then
     echo "  $(pwd)/dist/"
     echo ""
 
-    # Copy .env.example as .env to dist folder if it doesn't exist
-    if [ ! -f "dist/.env" ]; then
-        if [ -f ".env.example" ]; then
-            cp .env.example dist/.env
-            echo -e "${GREEN}✓ Created dist/.env from .env.example${NC}"
-            echo -e "${YELLOW}⚠ IMPORTANT: Edit dist/.env with your credentials!${NC}"
-            echo ""
-        fi
-    fi
-
-    # Copy README_USER.md to dist folder
-    if [ -f "README_USER.md" ]; then
-        cp README_USER.md dist/
-        echo -e "${GREEN}✓ Copied README_USER.md to dist/${NC}"
-        echo ""
-    fi
-
     echo "Files created:"
     ls -lh dist/
     echo ""
-    echo -e "${YELLOW}Configuration:${NC}"
-    echo "  1. Edit dist/.env file with your settings:"
-    echo "     - SERVER_URL (backend API URL)"
-    echo "     - CLIENT_ID and CLIENT_SECRET (authentication)"
-    echo "  2. Make sure these match your server configuration"
+    echo -e "${GREEN}✓ Executable is standalone and ready to distribute!${NC}"
     echo ""
-    echo -e "${YELLOW}Note:${NC}"
-    echo "  - The .env file must be in the same directory as the executable"
-    echo "  - Make sure the backend server is running before launching the app"
-    echo "  - You can distribute the entire 'dist' folder"
+    echo -e "${YELLOW}Configuration embedded in executable:${NC}"
+    echo "  ✓ SERVER_URL: ${SERVER_URL:-http://localhost:8000}"
+    echo "  ✓ CLIENT_ID: ${CLIENT_ID:-desktop-main}"
+    echo "  ✓ CLIENT_SECRET: embedded (hidden for security)"
     echo ""
-    echo -e "${GREEN}To run the application:${NC}"
+    echo -e "${YELLOW}Distribution:${NC}"
+    echo "  ✓ No .env file needed - configuration is embedded!"
+    echo "  ✓ Distribute only the executable file"
+    echo "  ✓ Users can run it immediately - zero configuration"
+    echo ""
+    echo -e "${GREEN}To test the executable:${NC}"
     if [ "$(uname)" == "Darwin" ]; then
         echo "  open dist/CustomSteamDashboard.app"
     else
         echo "  ./dist/CustomSteamDashboard"
     fi
+    echo ""
+    echo -e "${YELLOW}Optional: Override configuration${NC}"
+    echo "  Users can override embedded values with environment variables:"
+    echo "  export SERVER_URL=\"http://custom-server.com\""
+    echo "  ./CustomSteamDashboard"
 else
     echo -e "${RED}Error: dist directory not found!${NC}"
     exit 1
