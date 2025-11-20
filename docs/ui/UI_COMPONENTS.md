@@ -1,15 +1,16 @@
 # Dokumentacja Komponentów UI
 
-**Data aktualizacji:** 2025-11-13  
-**Wersja:** 2.0
+**Data aktualizacji:** 2025-11-18  
+**Wersja:** 3.0
 
 ## Spis Treści
 
 1. [Przegląd](#przegląd)
 2. [NumberValidator](#numbervalidator)
 3. [GameDetailDialog](#gamedetaildialog)
-4. [Helpers](#helpers)
-5. [Style](#style)
+4. [GameDetailPanel](#gamedetailpanel)
+5. [Helpers](#helpers)
+6. [Style](#style)
 
 ---
 
@@ -72,7 +73,9 @@ line_edit.setValidator(NumberValidator())
 
 **Klasa:** `GameDetailDialog(QDialog)`
 
-Dialog wyświetlający szczegółowe informacje o grze.
+> ⚠️ **Uwaga:** Ten komponent jest **legacy**. W nowych widokach używamy **GameDetailPanel** zamiast dialogu modalnego. GameDetailPanel oferuje lepszą integrację z motywami i umożliwia wbudowanie szczegółów bezpośrednio w widok.
+
+Dialog wyświetlający szczegółowe informacje o grze (modal).
 
 ### Funkcjonalność
 
@@ -300,6 +303,255 @@ app.exec()
 
 ---
 
+## GameDetailPanel
+
+**Klasa:** `GameDetailPanel(QFrame)`
+
+Panel do wyświetlania szczegółowych informacji o grze bezpośrednio w widoku (alternatywa dla dialogu).
+
+### Funkcjonalność
+
+- ✅ Wyświetla tytuł gry i obraz nagłówka
+- ✅ Pokazuje opis ze Steam
+- ✅ Wyświetla statystyki graczy
+- ✅ Pokazuje tagi (gatunki/kategorie)
+- ✅ Linki do Steam Store i promocji
+- ✅ **Wbudowany w widok** (nie modal dialog)
+- ✅ **Integracja z motywami** - automatyczne dostosowanie kolorów
+- ✅ Sygnał `closed` przy zamknięciu
+
+### Inicjalizacja
+
+```python
+def __init__(
+    self, 
+    game_data: Any, 
+    server_url: Optional[str] = None,
+    parent: Optional[QWidget] = None
+):
+    """
+    Inicjalizuje panel szczegółów gry.
+    
+    Args:
+        game_data: Dane gry (string lub dict) - taki sam format jak GameDetailDialog
+        server_url: URL serwera backend
+        parent: Widget rodzica
+    """
+```
+
+### Różnice vs GameDetailDialog
+
+| Cecha | GameDetailDialog | GameDetailPanel |
+|-------|------------------|-----------------|
+| Typ | QDialog (modal) | QFrame (embedded) |
+| Wyświetlanie | exec() / show() | addWidget() do layoutu |
+| Zamknięcie | accept() / reject() | emit closed signal |
+| Użycie | Pojedyncze okno | Wbudowane w widok |
+| Theme-aware | Ograniczone | Pełne wsparcie |
+
+### Format game_data
+
+Identyczny jak w GameDetailDialog:
+
+```python
+game_data = {
+    "name": "Counter-Strike 2",
+    "appid": 730,
+    "current_players": 1000000,
+    "tags": {
+        "genres": ["Action", "Free to Play"],
+        "categories": ["Multi-player"]
+    },
+    "deal_url": "https://isthereanydeal.com/...",  # Opcjonalnie
+}
+```
+
+### Struktura UI
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Counter-Strike 2                 [Close Button]    │  <- Header
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  ┌───────────────────────────────┐                  │
+│  │    [Header Image]             │                  │  <- Image
+│  └───────────────────────────────┘                  │
+│                                                     │
+│  For over two decades, Counter-Strike has...        │  <- Description
+│                                                     │
+│  Obecna liczba graczy: 1,000,000                    │  <- Statistics
+│  Gatunki: Action, Free to Play                      │  <- Tags
+│  Kategorie: Multi-player, Steam Achievements        │
+│                                                     │
+│  [Zobacz w Steam Store]  [Zobacz promocję]          │  <- Buttons
+└─────────────────────────────────────────────────────┘
+```
+
+### Sygnały
+
+#### closed
+
+Emitowany gdy użytkownik zamyka panel przyciskiem [X].
+
+```python
+panel = GameDetailPanel(game_data, server_url)
+panel.closed.connect(self._on_panel_closed)
+
+def _on_panel_closed(self):
+    """Obsłuż zamknięcie panelu."""
+    # Usuń panel z layoutu
+    self.layout().removeWidget(panel)
+    panel.deleteLater()
+```
+
+### Integracja z Motywami
+
+Panel automatycznie reaguje na zmiany motywu:
+
+```python
+def __init__(self, game_data, server_url, parent):
+    # ...existing code...
+    
+    # Theme manager
+    self._theme_manager = ThemeManager()
+    self._theme_manager.theme_changed.connect(self._on_theme_changed)
+    
+    # ... build UI...
+    
+    # Apply current theme
+    self._apply_theme()
+
+def _on_theme_changed(self, mode: str, palette: str):
+    """Handle theme change."""
+    self._apply_theme()
+
+def _apply_theme(self):
+    """Apply current theme colors to panel."""
+    colors = self._theme_manager.get_colors()
+    
+    # Frame border
+    self.setStyleSheet(f"""
+        GameDetailPanel {{
+            background-color: {colors['surface']};
+            border: 2px solid {colors['accent']};
+            border-radius: 8px;
+        }}
+    """)
+    
+    # Update widgets
+    # ... theme-aware styling ...
+```
+
+### Przykład Użycia
+
+#### W widoku głównym
+
+```python
+from app.ui.components_server import GameDetailPanel
+
+class HomeView(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._detail_panel = None  # Przechowuj referencję
+        self._init_ui()
+    
+    def _show_game_details(self, game_data):
+        """Pokaż panel szczegółów gry."""
+        # Zamknij poprzedni panel jeśli istnieje
+        if self._detail_panel:
+            self._detail_panel.closed.emit()
+        
+        # Utwórz nowy panel
+        self._detail_panel = GameDetailPanel(
+            game_data=game_data,
+            server_url=self._server_url,
+            parent=self
+        )
+        self._detail_panel.closed.connect(self._on_panel_closed)
+        
+        # Dodaj do layoutu (np. na górze listy gier)
+        self.main_layout.insertWidget(0, self._detail_panel)
+    
+    def _on_panel_closed(self):
+        """Obsłuż zamknięcie panelu."""
+        if self._detail_panel:
+            self.main_layout.removeWidget(self._detail_panel)
+            self._detail_panel.deleteLater()
+            self._detail_panel = None
+```
+
+#### Alternatywnie: w trybie overlay
+
+```python
+def _show_game_details_overlay(self, game_data):
+    """Pokaż panel jako overlay na środku widoku."""
+    # Utwórz semi-transparent backdrop
+    backdrop = QWidget(self)
+    backdrop.setStyleSheet("background-color: rgba(0, 0, 0, 0.7);")
+    backdrop.setGeometry(self.rect())
+    backdrop.show()
+    
+    # Utwórz panel
+    panel = GameDetailPanel(game_data, self._server_url, backdrop)
+    
+    # Wycentruj panel
+    panel.setFixedSize(600, 500)
+    panel.move(
+        (backdrop.width() - panel.width()) // 2,
+        (backdrop.height() - panel.height()) // 2
+    )
+    
+    # Zamknij backdrop przy zamknięciu panelu
+    def on_close():
+        backdrop.deleteLater()
+    panel.closed.connect(on_close)
+```
+
+### Metody Wewnętrzne
+
+Identyczne z GameDetailDialog:
+
+- `_parse_game_data(game_data)` - Parsowanie danych
+- `_create_header_section(layout)` - Nagłówek z przyciskiem zamknięcia
+- `_create_content_section(layout)` - Obraz i opis
+- `_create_details_section(layout)` - Statystyki i tagi
+- `_create_buttons_section(layout)` - Przyciski akcji
+- `_load_async_data()` - Asynchroniczne ładowanie danych
+- `_apply_theme()` - Zastosowanie aktualnego motywu
+- `_on_theme_changed()` - Obsługa zmiany motywu
+
+### Walidacja
+
+Panel sprawdza czy nie został usunięty przed aktualizacją:
+
+```python
+def _is_valid(self) -> bool:
+    """Check if the panel and its widgets are still valid."""
+    try:
+        _ = self.isVisible()
+        if hasattr(self, 'desc_lbl'):
+            _ = self.desc_lbl.text()
+        return True
+    except RuntimeError:
+        # C++ object has been deleted
+        return False
+```
+
+Używane przed operacjami asynchronicznymi:
+
+```python
+async def _load_async_data(self):
+    # ... fetch data ...
+    
+    if not self._is_valid():
+        return  # Panel został zamknięty, nie aktualizuj
+    
+    # Bezpieczna aktualizacja UI
+    self.desc_lbl.setText(description)
+```
+
+---
+
 ## Helpers
 
 ### Locale Formatting
@@ -492,4 +744,3 @@ widget.setStyleSheet("background-color: red;")  # Niespójne z resztą
 - **Home View**: [UI_HOME_VIEW.md](UI_HOME_VIEW.md)
 - **Library View**: [UI_LIBRARY_VIEW.md](UI_LIBRARY_VIEW.md)
 - **Main Window**: [UI_MAIN_WINDOW.md](UI_MAIN_WINDOW.md)
-
