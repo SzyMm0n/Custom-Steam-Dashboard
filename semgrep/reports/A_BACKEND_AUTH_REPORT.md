@@ -21,7 +21,8 @@ Krótki opis:
 - Komenda bazowa używana w analizie:
 
   ```bash
-  semgrep scan --config=.semgrep.yaml server/app.py server/auth_routes.py server/middleware.py server/security.py server/validation.py
+  semgrep scan --config semgrep/rules_backend_auth.yml server/app.py server/auth_routes.py server/middleware.py server/security.py server/validation.py
+
   ```
 
 - Użyte rulesety:
