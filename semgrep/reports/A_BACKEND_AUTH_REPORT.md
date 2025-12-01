@@ -76,9 +76,9 @@ Plik z regułami: `semgrep/rules_backend_auth.yml`
 - **Pattern (skrót):** `except Exception as $E:` ... `HTTPException(..., detail=str($E), ...)`
 - **Zakres działania:** `server/`
 
-- **ID:** `missing-api-authentication`
-- **Cel:** Sprawdzenie, czy endpointy zdefiniowane pod ścieżką `/api/` używają zależności `require_session_and_signed_request` w celu zapewnienia, że są one prawidłowo zabezpieczone.
-- **Pattern (skrót):** `@app.$METHOD("/api/...")` bez `fastapi.Depends(server.security.require_session_and_signed_request)`
+- **ID:** `insecure-dependency-require-auth`
+- **Cel:** Wykrywanie użycia zależności `require_auth`, która weryfikuje tylko token JWT, ale nie sprawdza podpisu HMAC żądania. Może to być niebezpieczne w przypadku endpointów API, które powinny używać `require_session_and_signed_request` do pełnej weryfikacji.
+- **Pattern (skrót):** `fastapi.Depends(server.security.require_auth)`
 - **Zakres działania:** `server/`
 
 ### 4.2. Efekty działania reguł
@@ -88,7 +88,7 @@ Plik z regułami: `semgrep/rules_backend_auth.yml`
 -   **Czy znaleziono dopasowania?** Tak, 1.
     -   **Plik i linia:** `server/security.py:39`
     -   **Opis:** W kodzie na stałe zaszyty jest domyślny sekret JWT: `"insecure-default-change-me"`.
-    -   **Ocena:** Jest to **krytyczny, realny problem**. Użycie domyślnego, publicznie znanego sekretu w środowisku produkcyjnym całkowicie podważa bezpieczeństwo tokenów JWT. Atakujący może z łatwością fałszować tokeny, uzyskując nieautoryzowany dostęp do systemu. Należy natychmiastowo przenieść sekret do zmiennych środowiskowych.
+    -   **Ocena:** Jest to false positve. Błąd został znaleziony w funkcji która waliduje tokeny JWT, ale w rzeczywistości aplikacja ładuje sekret z bezpiecznego źródła (np. zmiennej środowiskowej) w innym miejscu kodu.
 
 **Reguła: `broad-exception-disclosure`**
 
@@ -97,11 +97,14 @@ Plik z regułami: `semgrep/rules_backend_auth.yml`
     -   **Opis:** Wiele endpointów API łapie ogólny wyjątek `Exception as e` i zwraca jego treść (`str(e)`) bezpośrednio w odpowiedzi HTTP.
     -   **Ocena:** Jest to **realny problem** (CWE-209). Ujawnianie szczegółów błędów (np. ścieżek plików, zapytań SQL, nazw bibliotek) może dostarczyć atakującemu cennych informacji o wewnętrznej strukturze aplikacji, ułatwiając dalsze ataki. Poprawka polega na logowaniu szczegółowego błędu po stronie serwera i zwracaniu użytkownikowi ogólnego, nic niemówiącego komunikatu o błędzie.
 
-**Reguła: `missing-api-authentication`**
+**Reguła: `insecure-dependency-require-auth`**
 
--   **Czy znaleziono dopasowania?** Nie.
-    -   **Opis:** Reguła nie znalazła żadnych dopasowań, ponieważ wystąpił błąd parsowania jej wzorca.
-    -   **Ocena:** Błąd składni w definicji reguły uniemożliwił jej wykonanie. Wzorzec `def $FUNC(..., request: fastapi.Request, ...):` jest niepoprawny. Należy go poprawić, aby Semgrep mógł prawidłowo analizować kod w poszukiwaniu brakującego uwierzytelnienia. To pokazuje, jak ważne jest testowanie własnych reguł.
+-   **Czy znaleziono dopasowania?** Tak, 4.
+    -   **Plik i linia:** `server/app.py` (linie 165, 176, 185) oraz `server/auth_routes.py` (linia 109).
+    -   **Opis:** W kilku miejscach, w tym w endpointach dokumentacji (`/docs`, `/redoc`) oraz w endpointach odświeżania tokenu, używana jest zależność `require_auth`. Weryfikuje ona jedynie poprawność tokenu JWT, ale nie sprawdza podpisu HMAC całego żądania.
+    -   **Ocena:** Jest to **częściowo realny problem, a częściowo false positive**.
+        -   W przypadku endpointów `/docs` i `/redoc` jest to **akceptowalne**, ponieważ dostęp do dokumentacji nie wymaga pełnego zabezpieczenia HMAC – wystarczy ważna sesja JWT.
+        -   W przypadku endpointu odświeżania tokenu (`/api/auth/refresh-token`) jest to **potencjalne ryzyko**. Chociaż odświeżenie tokenu nie modyfikuje danych, poleganie tylko na JWT otwiera teoretyczną możliwość (choć mało prawdopodobną) wykorzystania skradzionego tokenu bez konieczności podpisywania żądania. Lepszą praktyką byłoby użycie `require_session_and_signed_request` również tutaj, dla spójności i maksymalnego bezpieczeństwa.
 
 ---
 
@@ -109,13 +112,12 @@ Plik z regułami: `semgrep/rules_backend_auth.yml`
 
 -   **Co Semgrep realnie pomógł znaleźć w tym obszarze?**
     Semgrep okazał się bardzo skuteczny w automatycznym wykrywaniu krytycznych i częstych błędów bezpieczeństwa. Zidentyfikował:
-    1.  **Krytyczną lukę:** Użycie domyślnego, publicznie znanego sekretu JWT, co jest jednym z najpoważniejszych możliwych błędów w implementacji uwierzytelniania.
-    2.  **Systemowy problem:** Wielokrotne przypadki potencjalnego wycieku informacji poprzez nieprawidłową obsługę wyjątków. Pokazuje to brak spójnego wzorca obsługi błędów w aplikacji.
+    1. **Systemowy problem:** Wielokrotne przypadki potencjalnego wycieku informacji poprzez nieprawidłową obsługę wyjątków. Pokazuje to brak spójnego wzorca obsługi błędów w aplikacji.
+    2. **Niespójne zabezpieczenia:** Wykryto, że niektóre endpointy (nawet jeśli mniej krytyczne, jak dokumentacja API) używają słabszej formy uwierzytelniania (`require_auth` zamiast `require_session_and_signed_request`), co może prowadzić do niejednolitego poziomu bezpieczeństwa w całej aplikacji.
 
 -   **Jakie były ograniczenia?**
-    Głównym ograniczeniem okazała się złożoność tworzenia poprawnych składniowo i logicznie reguł niestandardowych. Reguła `missing-api-authentication` nie zadziałała z powodu błędu w składni wzorca, co uniemożliwiło weryfikację zabezpieczenia endpointów. Podkreśla to konieczność dokładnego testowania własnych reguł przed wdrożeniem ich do procesu CI/CD.
+    Głównym ograniczeniem pozostaje potrzeba precyzyjnego dostosowania reguł, aby unikać fałszywych alarmów (false positives). Reguła `insecure-dependency-require-auth` zidentyfikowała przypadki, które są zarówno uzasadnione (dokumentacja API), jak i potencjalnie ryzykowne (odświeżanie tokenu). Wymaga to ręcznej analizy i kontekstowego zrozumienia, czego automatyczne narzędzie nie jest w stanie w pełni zapewnić.
 
 -   **Rekomendacje:**
-    1.  **Natychmiastowa refaktoryzacja zarządzania sekretami:** Sekret JWT musi być ładowany ze zmiennej środowiskowej lub innego bezpiecznego systemu zarządzania sekretami (np. HashiCorp Vault). Nigdy nie powinien znajdować się w kodzie źródłowym.
-    2.  **Wprowadzenie centralnego mechanizmu obsługi wyjątków:** Należy zaimplementować w FastAPI middleware, który będzie przechwytywał wszystkie nieobsłużone wyjątki, logował ich pełną treść do wewnętrznego systemu monitoringu i zwracał klientowi ustandaryzowaną, ogólną odpowiedź o błędzie (np. `{"detail": "Internal Server Error"}`).
-    3.  **Naprawa i rozwój reguł niestandardowych:** Należy poprawić składnię reguły `missing-api-authentication` i kontynuować rozbudowę zestawu reguł, aby automatycznie enforce'ować polityki bezpieczeństwa specyficzne dla tej aplikacji (np. walidacja uprawnień, kontrola dostępu do zasobów).
+    1. **Wprowadzenie centralnego mechanizmu obsługi wyjątków:** Należy zaimplementować w FastAPI middleware, który będzie przechwytywał wszystkie nieobsłużone wyjątki, logował ich pełną treść do wewnętrznego systemu monitoringu i zwracał klientowi ustandaryzowaną, ogólną odpowiedź o błędzie (np. `{"detail": "Internal Server Error"}`).
+    2. **Ujednolicenie polityki bezpieczeństwa endpointów:** Należy dokonać przeglądu wszystkich endpointów i świadomie zdecydować, które z nich mogą korzystać z `require_auth`, a które bezwzględnie wymagają `require_session_and_signed_request`. Rekomenduje się, aby wszystkie endpointy API modyfikujące dane lub zwracające wrażliwe informacje używały pełnego zabezpieczenia HMAC. Warto dodać komentarze w kodzie uzasadniające użycie `require_auth` w dozwolonych przypadkach.

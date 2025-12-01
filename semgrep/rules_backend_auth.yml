@@ -37,21 +37,18 @@ rules:
       technology:
         - fastapi
 
-  - id: missing-api-authentication
+  - id: insecure-dependency-require-auth
     patterns:
-      - pattern-inside: |
-          @app.$METHOD("/api/...")
-          ...
-          def $FUNC(..., request: fastapi.Request, ...):
-            ...
-      - pattern-not: fastapi.Depends(server.security.require_session_and_signed_request)
+      - pattern: fastapi.Depends(server.security.require_auth)
     message: >-
-      Endpoint API '$FUNC' pod ścieżką '/api/' nie używa zależności 'require_session_and_signed_request'.
-      Wszystkie endpointy API powinny być zabezpieczone w celu weryfikacji zarówno sesji (JWT),
-      jak i podpisu żądania (HMAC).
+      Wykryto użycie zależności 'require_auth', która weryfikuje tylko token JWT,
+      ale nie sprawdza podpisu HMAC żądania. Może to być niebezpieczne w przypadku
+      endpointów API, które powinny używać 'require_session_and_signed_request'
+      do pełnej weryfikacji. Używaj 'require_auth' tylko wtedy, gdy jest to świadoma
+      decyzja (np. dla publicznych endpointów dokumentacji).
     languages:
       - python
-    severity: ERROR
+    severity: WARNING
     metadata:
       category: security
       confidence: MEDIUM
