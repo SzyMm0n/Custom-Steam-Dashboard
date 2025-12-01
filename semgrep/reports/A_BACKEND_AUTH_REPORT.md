@@ -41,23 +41,6 @@ Krótki opis:
 
 - Łączna liczba findings: 0
 
-### 3.1. Najciekawsze przypadki (przykład 1)
-
-1. **ID reguły:** `...`
-2. **Plik i linia:** `server/security.py:NN`
-3. **Opis Semgrepa (skrót):**  
-   (np. "Semgrep wykrył potencjalnie niebezpieczne użycie funkcji X bez Y")
-4. **Ocena:**
-   - [ ] Prawdziwy problem
-   - [ ] False positive / nieistotne
-5. **Komentarz autora:**
-   - Dlaczego jest / nie jest to problem,
-   - ewentualna propozycja poprawki (fragment kodu lub opis słowny).
-
-### 3.2. Najciekawsze przypadki (przykład 2)
-
-*(analogicznie jak wyżej – łącznie 2–3 przypadki wystarczą)*
-
 ---
 
 ## 4. Własne reguły Semgrep – `semgrep/rules_backend_auth.yml`
