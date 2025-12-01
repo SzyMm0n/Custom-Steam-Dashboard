@@ -1,2 +1,61 @@
-rules: []
+rules:
+  - id: hardcoded-jwt-secret
+    patterns:
+      - pattern: '"insecure-default-change-me"'
+    message: >-
+      Wykryto domyślny, niebezpieczny sekret JWT. Należy go zmienić w środowisku produkcyjnym,
+      ustawiając zmienną środowiskową JWT_SECRET.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: HIGH
+      technology:
+        - fastapi
+        - jwt
+
+  - id: broad-exception-disclosure
+    patterns:
+      - pattern-inside: |
+          try:
+            ...
+          except Exception as $E:
+            ...
+      - pattern: fastapi.HTTPException(..., detail=str($E), ...)
+    message: >-
+      Przechwytywanie ogólnego wyjątku `Exception` i zwracanie jego treści w odpowiedzi HTTP
+      może prowadzić do wycieku wrażliwych informacji. Zamiast tego należy logować szczegóły
+      błędu i zwracać ogólny komunikat.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      category: security
+      confidence: HIGH
+      cwe: "CWE-209: Generation of Error Message Containing Sensitive Information"
+      technology:
+        - fastapi
+
+  - id: missing-api-authentication
+    patterns:
+      - pattern-inside: |
+          @app.$METHOD("/api/...")
+          ...
+          def $FUNC(..., request: fastapi.Request, ...):
+            ...
+      - pattern-not: fastapi.Depends(server.security.require_session_and_signed_request)
+    message: >-
+      Endpoint API '$FUNC' pod ścieżką '/api/' nie używa zależności 'require_session_and_signed_request'.
+      Wszystkie endpointy API powinny być zabezpieczone w celu weryfikacji zarówno sesji (JWT),
+      jak i podpisu żądania (HMAC).
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: MEDIUM
+      technology:
+        - fastapi
+
 
