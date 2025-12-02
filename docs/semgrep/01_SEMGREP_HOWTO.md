@@ -201,7 +201,9 @@ pip install semgrep
 semgrep --version
 ```
 
-Powinna pojawić się wersja, np. `1.85.0` lub nowsza.
+Powinna pojawić się wersja, np. `1.144.0` lub nowsza.
+
+**Uwaga:** Ten projekt został przetestowany z Semgrep w wersji `1.144.0`. Jeśli używasz starszej lub nowszej wersji, niektóre opcje lub składnia mogą się różnić.
 
 ### 7.3. Opcjonalnie: środowisko wirtualne
 

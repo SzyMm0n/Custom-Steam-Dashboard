@@ -32,10 +32,12 @@ Krótki opis:
   ```
 
 - Użyte rulesety:
-  - `p/python` (publiczny ruleset dla Pythona)
-  - `p/security-audit` (publiczny ruleset dla bezpieczeństwa)
+  - `p/python` (publiczny ruleset dla Pythona z Semgrep Registry)
+  - `p/security-audit` (publiczny ruleset dla bezpieczeństwa z Semgrep Registry)
   - lokalne:
-    - `semgrep/rules_frontend_client.yml` (gdy będą wypełnione)
+    - `semgrep/rules_frontend_client.yml`
+
+- Wersja Semgrepa: (podaj wersję z `semgrep --version`, np. `1.144.0`)
 
 ## 3. Wyniki z gotowych rulesetów
 

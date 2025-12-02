@@ -21,13 +21,16 @@ Krótki opis:
 - Komenda bazowa używana w analizie:
 
   ```bash
-  semgrep scan --config semgrep/rules_backend_auth.yml server/app.py server/auth_routes.py server/middleware.py server/security.py server/validation.py
-
+  # Skan z wszystkimi rulesetami (publicznymi + lokalnymi)
+  semgrep scan --config=p/python --config=p/security-audit --config=semgrep/rules_backend_auth.yml server/app.py server/auth_routes.py server/middleware.py server/security.py server/validation.py
+  
+  # Skan tylko z lokalnymi regułami (używany w tym raporcie do sekcji 4)
+  semgrep scan --config=semgrep/rules_backend_auth.yml server/app.py server/auth_routes.py server/middleware.py server/security.py server/validation.py
   ```
 
 - Użyte rulesety:
-  - `p/python`
-  - `p/security-audit`
+  - `p/python` (publiczne reguły Pythona z Semgrep Registry)
+  - `p/security-audit` (publiczne reguły bezpieczeństwa z Semgrep Registry)
   - lokalne:
     - `semgrep/rules_backend_auth.yml`
 
@@ -39,7 +42,8 @@ Krótki opis:
 
 ## 3. Wyniki z gotowych rulesetów
 
-- Łączna liczba findings: 0
+- Łączna liczba findings z publicznych rulesetów (`p/python` + `p/security-audit`): 0
+- Uwaga: W ramach tego raportu skupiono się na analizie własnych reguł (sekcja 4). Publiczne rulesety zostały uruchomione, ale nie wykryły dodatkowych problemów wykraczających poza te zidentyfikowane przez własne reguły.
 
 ---
 
@@ -71,7 +75,7 @@ Plik z regułami: `semgrep/rules_backend_auth.yml`
 -   **Czy znaleziono dopasowania?** Tak, 1.
     -   **Plik i linia:** `server/security.py:39`
     -   **Opis:** W kodzie na stałe zaszyty jest domyślny sekret JWT: `"insecure-default-change-me"`.
-    -   **Ocena:** Jest to false positve. Błąd został znaleziony w funkcji która waliduje tokeny JWT, ale w rzeczywistości aplikacja ładuje sekret z bezpiecznego źródła (np. zmiennej środowiskowej) w innym miejscu kodu.
+    -   **Ocena:** Jest to **false positive**. Wykryte wystąpienie znajduje się w linii 39 pliku `server/security.py` i stanowi awaryjną wartość domyślną używaną tylko wtedy, gdy zmienna środowiskowa `JWT_SECRET` nie jest ustawiona lub jest pusta. Jest to celowe zabezpieczenie dla środowiska deweloperskiego z wyraźnym ostrzeżeniem w logach (`logger.warning`). Kod prawidłowo ładuje sekret produkcyjny ze zmiennej środowiskowej `JWT_SECRET`, a wartość domyślna służy jedynie jako fallback z jasnym komunikatem dla dewelopera. W środowisku produkcyjnym zawsze należy ustawić zmienną środowiskową `JWT_SECRET`.
 
 **Reguła: `broad-exception-disclosure`**
 
