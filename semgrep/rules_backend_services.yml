@@ -1,2 +1,81 @@
-rules: []
+rules:
+  - id: backend-services-http-require-timeout
+    patterns:
+      - pattern-either:
+        - patterns:
+            - pattern: $MOD.$METH(...)
+            - metavariable-regex:
+                metavariable: $MOD
+                regex: ^(requests|httpx)$
+            - metavariable-regex:
+                metavariable: $METH
+                regex: ^(get|post|put|delete|head|patch|request)$
+            - pattern-not: $MOD.$METH(..., timeout=..., ...)
+        - patterns:
+            - pattern-either:
+                - pattern: httpx.AsyncClient(...)
+                - pattern: httpx.Client(...)
+            - pattern-not: httpx.AsyncClient(..., timeout=..., ...)
+            - pattern-not: httpx.Client(..., timeout=..., ...)
+    message: >-
+      Wykryto wywolanie HTTP bez ustawionego `timeout`. Ustalaj limit czasu,
+      aby uniknac wieszania sie zadan i blokowania workerow.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      category: reliability
+      confidence: HIGH
+      technology:
+        - requests
+        - httpx
+
+  - id: scheduler-empty-except-blocks
+    patterns:
+      - pattern-either:
+          - pattern: |
+              try:
+                ...
+              except Exception:
+                pass
+          - pattern: |
+              try:
+                ...
+              except:
+                pass
+    message: >-
+      Pusty blok `except` w zadaniu okresowym ukrywa bledy i utrudnia diagnostyke.
+      Zaloguj wyjatek i rozwaz retry/backoff.
+    languages:
+      - python
+    severity: WARNING
+    metadata:
+      category: maintainability
+      confidence: HIGH
+      technology:
+        - scheduler
+
+  - id: database-raw-sql-unparameterized
+    patterns:
+      - pattern-either:
+          - pattern: $CUR.execute("...".format(...))
+          - pattern: $CUR.executemany("...".format(...))
+          - pattern: $CUR.execute("..." + ...)
+          - pattern: $CUR.executemany("..." + ...)
+      - pattern-not: $CUR.execute(..., ...)
+      - pattern-not: $CUR.executemany(..., ...)
+    message: >-
+      Wykryto potencjalnie nieparametryzowane zapytanie SQL. Uzywaj placeholderow (`?`, `%s`)
+      i przekazuj parametry jako drugi argument `execute`/`executemany`.
+    languages:
+      - python
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: MEDIUM
+      cwe: "CWE-89: SQL Injection"
+      technology:
+        - sqlite
+        - psycopg
+
 
