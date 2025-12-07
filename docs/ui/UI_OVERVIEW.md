@@ -1,7 +1,7 @@
 # Dokumentacja UI - Przegląd
 
-**Data aktualizacji:** 2025-11-17  
-**Wersja:** 3.0
+**Data aktualizacji:** 2025-11-18  
+**Wersja:** 4.0
 
 ## Spis Treści
 
@@ -24,9 +24,13 @@
 - 📊 **Comparison View** - Porównywanie liczby graczy między grami z wykresami
 - 💰 **Deals View** - Przeglądanie i wyszukiwanie promocji na gry
 - 👤 **User Info Dialog** - Szczegóły profilu Steam i biblioteki użytkownika
+- 🎨 **Theme System** - Ciemny/Jasny + 4 palety kolorów + własne motywy
+- 🎨 **Custom Theme Creator** - Kreator własnych palet kolorów
+- 🔍 **Deals Filter Dialog** - Zaawansowane filtrowanie promocji
+- 💾 **User Data Persistence** - Automatyczne zapisywanie preferencji
 - 🔐 **Automatyczne uwierzytelnianie** - JWT + HMAC z serwerem
 - 🔄 **Automatyczne odświeżanie** - Co 5-10 minut (konfigurowalny timer)
-- 🎨 **Nowoczesny UI** - Responsywny interfejs Qt
+- 🎨 **Nowoczesny UI** - Responsywny interfejs Qt z pełną obsługą motywów
 - ⚡ **Asynchroniczne** - Płynne działanie dzięki qasync
 
 ---
@@ -62,18 +66,23 @@
 │  │                    └──────────────┘                │  │
 │  │                                                    │  │
 │  │  ┌────────────────────────────────────────────┐    │  │
-│  │  │  Dialogs (Modal)                           │    │  │
+│  │  │  Dialogs & Widgets                         │    │  │
 │  │  │  • SteamUserInfoDialog                     │    │  │
+│  │  │  • DealsFilterDialog                       │    │  │
+│  │  │  • CustomThemeDialog                       │    │  │
+│  │  │  • ThemeSwitcher                           │    │  │
+│  │  │  • GameDetailDialog                        │    │  │
+│  │  │  • GameDetailPanel                         │    │  │
 │  │  └────────────────────────────────────────────┘    │  │
 │  └────────────────────────────────────────────────────┘  │
 │                          │                               │
 │                          ▼                               │
 │  ┌────────────────────────────────────────────────────┐  │
-│  │               ServerClient (HTTP)                  │  │
+│  │           Core Services & Managers                 │  │
 │  │                                                    │  │
-│  │  • AuthenticatedAPIClient                          │  │
-│  │  • HMAC Signing (app/helpers/signing.py)           │  │
-│  │  • JWT Token Management                            │  │
+│  │  • ServerClient (HTTP + JWT + HMAC)                │  │
+│  │  • ThemeManager (Singleton)                        │  │
+│  │  • UserDataManager (Persistence)                   │  │
 │  │  • Automatic Retry Logic                           │  │
 │  └────────────────────────────────────────────────────┘  │
 │                          │                               │
@@ -101,14 +110,19 @@ app/
 │   ├── library_view_server.py       # 📚 Widok biblioteki
 │   ├── comparison_view_server.py    # 📊 Widok porównawczy (wykresy)
 │   ├── deals_view_server.py         # 💰 Widok promocji
-│   ├── components_server.py         # 🧩 Reużywalne komponenty
+│   ├── components_server.py         # 🧩 Reużywalne komponenty (GameDetailDialog, GameDetailPanel)
 │   ├── user_info_dialog_server.py   # 💬 Dialog informacji użytkownika
+│   ├── deals_filter_dialog.py       # 🔍 Dialog filtrów promocji
+│   ├── custom_theme_dialog.py       # 🎨 Kreator własnych motywów
+│   ├── theme_manager.py             # 🎨 Menedżer motywów (Singleton)
+│   ├── theme_switcher.py            # 🔀 Widget przełącznika motywów
 │   └── styles.py                    # 🎨 Style Qt (CSS)
 │
 ├── core/                            # 🔧 Logika biznesowa
+│   ├── user_data_manager.py         # 💾 Manager trwałości danych
 │   └── services/
 │       ├── server_client.py         # 🌐 Klient HTTP do serwera
-│       └── deals_client.py          # 💰 Klient IsThereAnyDeal (deprecated)
+│       └── deals_client.py          # 💰 Klient IsThereAnyDeal
 │
 └── helpers/                         # 🛠️ Narzędzia pomocnicze
     ├── api_client.py                # 🔐 Authenticated API client

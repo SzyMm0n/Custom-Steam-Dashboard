@@ -1,6 +1,30 @@
 # Dystrybucja Aplikacji Custom Steam Dashboard
 
+**Data aktualizacji:** 2025-11-19  
+**Wersja:** 2.0
+
 ## 📦 Budowanie Executable
+
+### Nowy Proces Budowania (z Wbudowaną Konfiguracją)
+
+**Custom Steam Dashboard** używa nowego systemu budowania, który wbudowuje konfigurację bezpośrednio w executable podczas kompilacji. To oznacza **zero konfiguracji dla użytkownika końcowego**.
+
+### Przygotowanie do Budowania
+
+1. **Utwórz plik `.env` z konfiguracją produkcyjną:**
+
+```bash
+# .env - PRODUCTION CONFIGURATION
+SERVER_URL=https://your-production-server.com
+CLIENT_ID=desktop-main
+CLIENT_SECRET=your-production-secret-here
+```
+
+2. **Skrypt automatycznie:**
+   - Wczyta wartości z `.env`
+   - Wygeneruje `app/config.py` z wbudowanymi wartościami
+   - Zbuduje executable z PyInstaller
+   - Przywróci oryginalny `app/config.py`
 
 ### Linux/macOS:
 ```bash
@@ -12,93 +36,195 @@
 build_executable.bat
 ```
 
-Po pomyślnym zbudowaniu, w folderze `dist/` znajdziesz:
+### Co Się Dzieje Podczas Budowania?
+
+```
+┌─────────────────────────────────────────────┐
+│ 1. Wczytaj .env                             │
+│    ✓ SERVER_URL                             │
+│    ✓ CLIENT_ID                              │
+│    ✓ CLIENT_SECRET                          │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│ 2. Generuj app/config.py                    │
+│    (generate_config.py)                     │
+│    ✓ Wartości wbudowane w kod               │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│ 3. Zbuduj executable                        │
+│    (PyInstaller)                            │
+│    ✓ Config wbudowany w binary              │
+└─────────────────────┬───────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────┐
+│ 4. Przywróć app/config.py                   │
+│    (restore_config.py)                      │
+│    ✓ Kod deweloperski zachowany             │
+└─────────────────────────────────────────────┘
+```
+
+### Po Pomyślnym Zbudowaniu
+
+W folderze `dist/` znajdziesz:
 - **Executable** (`CustomSteamDashboard` lub `CustomSteamDashboard.exe`)
-- **Plik .env** (skopiowany z `.env.example`)
-- **Dodatkowe pliki** (biblioteki, ikony)
+- **Żadnych dodatkowych plików konfiguracyjnych!** ✨
 
 ---
 
 ## 🚀 Uruchamianie Zbudowanej Aplikacji
 
-### Wymagania:
-1. **Serwer backend** musi być uruchomiony i dostępny
-2. **Plik .env** musi być skonfigurowany
+### ✨ Zero Konfiguracji!
+
+Aplikacja jest **gotowa do uruchomienia od razu** - wszystkie wartości są wbudowane podczas kompilacji.
+
+### Linux/macOS:
+```bash
+./dist/CustomSteamDashboard
+```
+
+### Windows:
+```cmd
+dist\CustomSteamDashboard.exe
+```
 
 ### Struktura folderów:
 ```
 dist/
-├── CustomSteamDashboard       # Executable
-├── .env                       # Konfiguracja (WYMAGANE!)
-└── [inne pliki...]            # Biblioteki systemowe
+├── CustomSteamDashboard       # Executable (standalone!)
+└── [inne pliki...]            # Biblioteki systemowe (jeśli potrzebne)
 ```
 
-### Konfiguracja .env:
+### Co Jest Wbudowane?
 
-**MUSISZ** edytować plik `dist/.env` przed uruchomieniem aplikacji:
+Podczas budowania, następujące wartości są **hardcoded** w executable:
 
+```python
+# Wbudowane podczas kompilacji z .env
+SERVER_URL = "https://your-production-server.com"
+CLIENT_ID = "desktop-main"
+CLIENT_SECRET = "your-production-secret"
+```
+
+### Opcjonalne: Nadpisywanie Konfiguracji
+
+Jeśli użytkownik **chce** zmienić serwer, może użyć zmiennych środowiskowych:
+
+**Linux/macOS:**
 ```bash
-# ===== WYMAGANE DLA KLIENTA GUI =====
-
-# URL serwera backend (gdzie działa FastAPI)
-SERVER_URL=http://localhost:8000          # Lokalny serwer
-# SERVER_URL=http://192.168.1.100:8000   # Serwer w sieci LAN
-# SERVER_URL=https://api.example.com     # Serwer zdalny
-
-# Dane uwierzytelniające klienta
-CLIENT_ID=desktop-main
-CLIENT_SECRET=Pjad7glZrPeITY-9QQ0vhz2yXKB89R_02CSZQFmekt0
-
-# ===== OPCJONALNE (dla deweloperów) =====
-# STEAM_API_KEY, ITAD_API_KEY, itp. - NIE są potrzebne w kliencie GUI
-# Te zmienne są używane tylko przez serwer backend
+export SERVER_URL=http://custom-server.com
+./CustomSteamDashboard
 ```
 
-### Ważne uwagi:
-
-1. **Plik .env MUSI być w tym samym folderze co executable**
-   - ✅ `dist/CustomSteamDashboard` + `dist/.env`
-   - ❌ `dist/CustomSteamDashboard` + `/home/user/.env`
-
-2. **CLIENT_SECRET musi pasować do konfiguracji serwera**
-   - Wartość `CLIENT_SECRET` w kliencie musi być taka sama jak w `CLIENTS_JSON` na serwerze
-
-3. **SERVER_URL musi wskazywać na działający serwer**
-   - Sprawdź: `curl http://localhost:8000/health` (powinno zwrócić `{"status":"healthy"}`)
+**Windows:**
+```cmd
+set SERVER_URL=http://custom-server.com
+CustomSteamDashboard.exe
+```
 
 ---
 
 ## 🌍 Dystrybucja dla Użytkowników Końcowych
 
-### Opcja 1: Cały folder `dist/`
+### ✅ Nowy Sposób: Pojedynczy Plik
 
-**Najlepsze dla większości przypadków**
+**Najprostszy dla użytkowników!**
+
+Dystrybucja sprowadza się do **jednego pliku executable**:
 
 ```bash
-# Spakuj cały folder
-zip -r SteamDashboard.zip dist/
+# Spakuj tylko executable
+zip SteamDashboard.zip dist/CustomSteamDashboard
 
-# Lub tar.gz
-tar -czf SteamDashboard.tar.gz dist/
+# Lub po prostu skopiuj plik
+cp dist/CustomSteamDashboard /path/to/destination/
 ```
 
 **Instrukcje dla użytkownika:**
-1. Rozpakuj archiwum
-2. Edytuj plik `.env`:
-   - Ustaw `SERVER_URL` (adres serwera backend)
-   - Wpisz `CLIENT_ID` i `CLIENT_SECRET` (otrzymane od administratora)
-3. Uruchom executable
+1. Pobierz plik
+2. Uruchom
+3. Gotowe! 🎉
 
-### Opcja 2: Installer z konfiguratorem
+### Dla Różnych Środowisk
 
-**Dla bardziej profesjonalnej dystrybucji**
+#### Development Build (localhost)
+```bash
+# .env
+SERVER_URL=http://localhost:8000
+CLIENT_ID=desktop-main
+CLIENT_SECRET=dev-secret-123
 
-Możesz stworzyć installer, który:
-- Instaluje aplikację w wybranym katalogu
-- Pyta o `SERVER_URL`, `CLIENT_ID`, `CLIENT_SECRET`
-- Automatycznie tworzy plik `.env`
+./build_executable.sh
+# → Executable działa z localhost
+```
 
-Przykładowe narzędzia:
+#### Production Build (remote server)
+```bash
+# .env
+SERVER_URL=https://api.production.com
+CLIENT_ID=desktop-main
+CLIENT_SECRET=prod-secret-xyz
+
+./build_executable.sh
+# → Executable działa z production server
+```
+
+#### Internal Network Build
+```bash
+# .env
+SERVER_URL=http://192.168.1.100:8000
+CLIENT_ID=desktop-main
+CLIENT_SECRET=internal-secret-abc
+
+./build_executable.sh
+# → Executable działa w sieci LAN
+```
+
+---
+
+## 🔐 Bezpieczeństwo
+
+### ✅ Zalety Nowego Podejścia
+
+1. **Brak wrażliwych plików** - żadnych `.env` do dystrybucji
+2. **Zero konfiguracji** - użytkownik nie widzi sekretów
+3. **Trudniejsze reverse engineering** - wartości w skompilowanym binary
+4. **Jednolita konfiguracja** - wszystkie kopie mają tę samą wersję
+
+### ⚠️ Ważne: Zarządzanie Sekretami
+
+1. **Nigdy nie commituj `.env` z produkcyjnymi sekretami**
+   ```bash
+   # .gitignore zawiera:
+   .env
+   ```
+
+2. **Każde środowisko = osobny build**
+   - Development build → dev secrets
+   - Production build → production secrets
+   - Test build → test secrets
+
+3. **Secure build environment**
+   ```bash
+   # Buduj na bezpiecznej maszynie
+   # Nie buduj na współdzielonych systemach
+   # Usuń .env po zbudowaniu (jeśli zawiera produkcyjne sekrety)
+   ```
+
+### 🔄 Rotacja Sekretów
+
+Jeśli `CLIENT_SECRET` się zmieni:
+1. Zaktualizuj `.env` z nowym sekretem
+2. Przebuduj executable: `./build_executable.sh`
+3. Dystrybuuj nową wersję do użytkowników
+
+---
+
+## 🛠️ Zaawansowane: Build Pipeline
 - **Windows**: Inno Setup, NSIS
 - **macOS**: create-dmg
 - **Linux**: AppImage, .deb/.rpm packages

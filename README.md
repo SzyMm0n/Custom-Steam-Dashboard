@@ -75,8 +75,12 @@ Wydajny serwer **FastAPI** z PostgreSQL, który:
 - ✅ **Filtrowanie po tagach** - znajdź gry według gatunków i kategorii
 - ✅ **Zakres liczby graczy** - filtruj po min/max liczbie aktywnych graczy
 - ✅ **Promocje i okazje** - najlepsze ceny z IsThereAnyDeal API (Steam, GOG, Epic Games, Humble Bundle)
+- ✅ **Zaawansowane filtry promocji** - filtrowanie według % zniżki, ceny, sklepów i treści
 - ✅ **Kalendarz premier** - nie przegap nadchodzących wydań
 - ✅ **Analiza biblioteki** - przegląd Twojej kolekcji Steam z czasem gry
+- ✅ **System motywów** - Ciemny/Jasny tryb + 4 palety kolorów (Zielona, Niebieska, Fioletowa, Pomarańczowa)
+- ✅ **Kreator własnych motywów** - twórz własne palety kolorów dopasowane do Twoich preferencji
+- ✅ **Trwałość preferencji** - automatyczne zapisywanie ustawień motywów i ostatniej biblioteki
 - ✅ **Responsywny interfejs** - płynne działanie dzięki asyncio
 
 ### Dla Deweloperów
@@ -456,6 +460,41 @@ Aplikacja GUI automatycznie połączy się z serwerem i wyświetli główne okno
 
 ---
 
+## 🎨 System Motywów
+
+Aplikacja posiada zaawansowany system motywów z pełną personalizacją:
+
+### Tryby
+- **🌙 Ciemny** (domyślny) - Idealny do pracy w nocy
+- **☀️ Jasny** - Komfortowy w dziennym świetle
+
+### Palety Kolorów
+1. **Zielona** 🟢 (domyślna) - Przyjazna dla oczu
+2. **Niebieska** 🔵 - Profesjonalny wygląd
+3. **Fioletowa** 🟣 - Kreatywny styl
+4. **Pomarańczowa** 🟠 - Energetyczny wygląd
+5. **Własna** 🎨 - Kreator własnych palet!
+
+### Kreator Własnych Motywów
+
+1. Kliknij przełącznik palet → **"Stwórz własny..."**
+2. Wybierz kolor bazowy (color picker)
+3. Podgląd na żywo dla trybu ciemnego i jasnego
+4. Nazwij i zapisz motyw
+5. Motyw jest dostępny natychmiast!
+
+### Automatyczne Zapisywanie
+
+Wszystkie preferencje są automatycznie zapisywane:
+- Wybrany tryb (ciemny/jasny)
+- Wybrana paleta kolorów
+- Własne motywy
+- Ostatnio używana biblioteka Steam
+
+**Szczegóły:** [docs/ui/UI_THEME_SYSTEM.md](docs/ui/UI_THEME_SYSTEM.md)
+
+---
+
 ## 🎮 Użytkowanie
 
 ### Nawigacja w Aplikacji GUI
@@ -478,6 +517,23 @@ Aplikacja GUI automatycznie połączy się z serwerem i wyświetli główne okno
 - Wyświetla Twoją kolekcję gier
 - Pokazuje czas gry i ostatnią aktywność
 
+#### 💰 **Widok Promocji (Deals)**
+- Przeglądaj najlepsze promocje z wielu sklepów (Steam, GOG, Epic, Humble)
+- Wyszukiwarka gier z promocjami
+- **Zaawansowane filtry**:
+  - Minimalny procent zniżki (0-99%)
+  - Zakres cen (min/max)
+  - Wybór sklepów (Steam, GOG, Epic, Humble)
+  - Filtr treści dla dorosłych
+  - Sortowanie (według zniżki, ceny, ocen)
+- Kliknij przycisk **Filtry** aby otworzyć dialog zaawansowanych opcji
+- Szczegóły gry po kliknięciu w pozycję
+
+#### 📊 **Widok Porównawczy (Comparison)**
+- Porównuj liczbę graczy wielu gier jednocześnie
+- Interaktywne wykresy matplotlib
+- Analiza trendów i statystyk
+
 #### 🔄 **Odświeżanie Danych**
 - Przycisk **Refresh** w toolbar
 - Automatyczne odświeżanie co 5 minut (scheduler)
@@ -490,15 +546,25 @@ Aplikacja GUI automatycznie połączy się z serwerem i wyświetli główne okno
 
 ## 📦 Tworzenie Pakietu Wykonywalnego
 
-Możesz zbudować standalone aplikację bez wymagania instalacji Pythona:
+### ✨ Nowy System Budowania (Wbudowana Konfiguracja)
+
+**Custom Steam Dashboard** używa nowoczesnego systemu budowania, który **wbudowuje konfigurację bezpośrednio w executable** podczas kompilacji. Oznacza to **zero konfiguracji dla użytkownika końcowego**!
 
 ### Przygotowanie
-```bash
-# Zainstaluj wszystkie zależności
-pip install -r requirements.txt
 
-# Opcjonalnie: Weryfikacja zależności
-python check_build_deps.py
+1. **Utwórz plik `.env` z konfiguracją produkcyjną:**
+
+```bash
+# .env - PRODUCTION CONFIGURATION
+SERVER_URL=https://your-production-server.com
+CLIENT_ID=desktop-main
+CLIENT_SECRET=your-production-secret-here
+```
+
+2. **Zainstaluj zależności (jeśli jeszcze nie):**
+
+```bash
+pip install -r requirements.txt
 ```
 
 ### Budowanie
@@ -514,26 +580,62 @@ chmod +x build_executable.sh
 build_executable.bat
 ```
 
+### Co Się Dzieje Podczas Budowania?
+
+```
+1. Wczytaj konfigurację z .env
+   ↓
+2. Wygeneruj app/config.py z wbudowanymi wartościami
+   ↓
+3. Zbuduj executable z PyInstaller
+   ↓
+4. Przywróć oryginalny app/config.py (dla dev)
+   ↓
+5. ✨ Gotowy executable z wbudowaną konfiguracją!
+```
+
+### Rezultat
+
 Plik wykonywalny znajdziesz w katalogu `dist/`:
 - 🐧 Linux: `dist/CustomSteamDashboard`
 - 🍎 macOS: `dist/CustomSteamDashboard.app`
-- 🪟 Windows: `dist/CustomSteamDashboard.exe` (z ikoną ICO)
+- 🪟 Windows: `dist/CustomSteamDashboard.exe`
 
-### Konfiguracja i dystrybucja
+### 🎯 Kluczowe Zalety
 
-**Automatycznie tworzone pliki w `dist/`:**
-- `.env` - Plik konfiguracji (skopiowany z `.env.example`)
-- `README_USER.md` - Instrukcja dla użytkownika końcowego
+- ✅ **Zero konfiguracji** - użytkownik po prostu uruchamia plik
+- ✅ **Brak wrażliwych plików** - żadnych `.env` do dystrybucji
+- ✅ **Jednorazowe budowanie** - dla każdego środowiska osobny build
+- ✅ **Bezpieczne** - sekrety wbudowane w binary, trudniejsze do wydobycia
 
-**⚠️ WAŻNE przed dystrybucją:**
+### Dystrybucja
 
-Jeżeli planujesz udostępnić aplikację innym użytkownikom:
-1. Edytuj `dist/.env` i usuń swoje sekrety (zostaw tylko placeholdery)
-2. Użytkownik końcowy musi wypełnić `dist/.env` swoimi danymi:
-   - `SERVER_URL` - adres serwera backend
-   - `CLIENT_ID` i `CLIENT_SECRET` - credentials od administratora
+**Najprościej:**
+```bash
+# Spakuj tylko executable
+zip SteamDashboard.zip dist/CustomSteamDashboard
+```
 
-**Dokumentacja:**
+**Instrukcje dla użytkownika:**
+1. Pobierz plik
+2. Uruchom
+3. Gotowe! 🎉
+
+### Opcjonalne Nadpisywanie
+
+Jeśli użytkownik chce zmienić serwer, może użyć zmiennych środowiskowych:
+
+```bash
+# Linux/macOS
+export SERVER_URL=http://custom-server.com
+./CustomSteamDashboard
+
+# Windows
+set SERVER_URL=http://custom-server.com
+CustomSteamDashboard.exe
+```
+
+**Szczegółowa dokumentacja:**
 - 📦 [DISTRIBUTION.md](docs/general/DISTRIBUTION.md) - Kompletny przewodnik dystrybucji
 - 📖 [README_USER.md](docs/general/README_USER.md) - Instrukcja dla użytkownika końcowego
 
@@ -570,15 +672,19 @@ Szczegółowa dokumentacja dostępna w katalogu `docs/`:
 | Dokument | Opis |
 |----------|------|
 | 📖 **[UI_OVERVIEW.md](docs/ui/UI_OVERVIEW.md)** | **Przegląd, quick start, architektura** |
-| 📱 [UI_COMPONENTS.md](docs/ui/UI_COMPONENTS.md) | Komponenty i widgety reużywalne |
+| 📱 [UI_COMPONENTS.md](docs/ui/UI_COMPONENTS.md) | Komponenty i widgety reużywalne (GameDetailDialog, GameDetailPanel) |
 | 🏠 [UI_HOME_VIEW.md](docs/ui/UI_HOME_VIEW.md) | Widok główny - statystyki i filtry |
 | 📚 [UI_LIBRARY_VIEW.md](docs/ui/UI_LIBRARY_VIEW.md) | Przeglądarka biblioteki Steam |
 | 📊 [UI_COMPARISON_VIEW.md](docs/ui/UI_COMPARISON_VIEW.md) | Widok porównawczy z wykresami matplotlib |
 | 💰 [UI_DEALS_VIEW.md](docs/ui/UI_DEALS_VIEW.md) | Widok promocji i wyszukiwania okazji |
+| 🔍 [UI_DEALS_FILTER_DIALOG.md](docs/ui/UI_DEALS_FILTER_DIALOG.md) | Dialog zaawansowanych filtrów promocji |
 | 👤 [UI_USER_INFO_DIALOG.md](docs/ui/UI_USER_INFO_DIALOG.md) | Dialog profilu użytkownika Steam |
 | 🪟 [UI_MAIN_WINDOW.md](docs/ui/UI_MAIN_WINDOW.md) | Główne okno i nawigacja |
 | 🔐 [UI_AUTHENTICATION.md](docs/ui/UI_AUTHENTICATION.md) | System uwierzytelniania JWT |
-| 🎨 [UI_STYLING.md](docs/ui/UI_STYLING.md) | Style Qt i ciemny motyw |
+| 🎨 [UI_STYLING.md](docs/ui/UI_STYLING.md) | Style Qt i system motywów |
+| 🎨 [UI_THEME_SYSTEM.md](docs/ui/UI_THEME_SYSTEM.md) | System motywów - Ciemny/Jasny + palety |
+| 🖌️ [UI_CUSTOM_THEME_DIALOG.md](docs/ui/UI_CUSTOM_THEME_DIALOG.md) | Kreator własnych motywów kolorystycznych |
+| 💾 [UI_USER_DATA_PERSISTENCE.md](docs/ui/UI_USER_DATA_PERSISTENCE.md) | System trwałości preferencji użytkownika |
 
 ### 🔒 Dokumentacja Bezpieczeństwa
 
@@ -678,6 +784,9 @@ Przed wdrożeniem w środowisku produkcyjnym:
 
 ### Zrealizowane Funkcjonalności
 
+- ✅ **System motywów** - Ciemny/Jasny + 4 palety kolorów + kreator własnych
+- ✅ **Trwałość danych** - automatyczne zapisywanie preferencji użytkownika
+- ✅ **Zaawansowane filtry promocji** - dialog z wieloma opcjami filtrowania
 - ✅ **Wykresy i wizualizacje** - interaktywne wykresy liczby graczy (matplotlib)
 - ✅ **Porównywanie gier** - analiza wielu gier jednocześnie z statystykami
 - ✅ **System promocji** - przeglądanie i wyszukiwanie okazji na gry
@@ -687,10 +796,10 @@ Przed wdrożeniem w środowisku produkcyjnym:
 
 - [ ] **Heatmapa aktywności** - wizualizacja godzin szczytu
 - [ ] **Multi-user support** - obsługa wielu profili Steam
-- [ ] **Motywy** - jasny motyw interfejsu (obecnie tylko ciemny)
 - [ ] **Rozszerzone filtry** - więcej opcji filtrowania w widokach
 - [ ] **PWA/Web UI** - interfejs webowy obok GUI
 - [ ] **Notyfikacje** - powiadomienia o promocjach ulubionych gier
+- [ ] **Eksport danych** - eksport statystyk do CSV/JSON
 
 ### Architektura Docelowa
 

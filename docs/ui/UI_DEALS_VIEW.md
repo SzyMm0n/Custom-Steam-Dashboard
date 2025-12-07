@@ -1,7 +1,7 @@
 # Dokumentacja Deals View
 
-**Data aktualizacji:** 2025-11-17  
-**Wersja:** 1.0
+**Data aktualizacji:** 2025-11-19  
+**Wersja:** 3.0
 
 ## Spis Treści
 
@@ -21,9 +21,13 @@
 **DealsView** to widok do przeglądania i wyszukiwania promocji na gry:
 - 💰 Lista najlepszych aktualnych promocji (z IsThereAnyDeal API)
 - 🔍 Wyszukiwanie promocji po tytule gry
-- 🏷️ Wyświetlanie zniżek i cen
+- 🔧 **Zaawansowane filtry** - DealsFilterDialog (zniżka, cena, sklepy, sorting)
+- 📄 **Paginacja** - obsługa dużej liczby wyników (50-200 na stronę)
+- 🎯 **Frontend filtering** - natychmiastowe filtrowanie bez ponownego zapytania do serwera
+- 🏷️ Wyświetlanie zniżek i cen z kolorowym oznaczeniem
 - 🛒 Bezpośrednie linki do sklepów
 - 🔄 Automatyczne odświeżanie co 10 minut
+- 🎨 Pełna integracja z systemem motywów
 
 Dane są pobierane z serwera backend przez endpointy `/api/deals/*`.
 
@@ -50,8 +54,27 @@ def __init__(self, server_url: Optional[str] = None, parent=None):
     self._server_client = ServerClient(server_url)
     
     # Data storage
-    self._best_deals = []          # Lista najlepszych promocji
-    self._search_results = None    # Wyniki wyszukiwania
+    self._best_deals = []              # Aktualna strona promocji (wyświetlane)
+    self._all_best_deals = []          # Wszystkie pobrane promocje (do filtrowania)
+    self._search_results = None        # Wyniki wyszukiwania
+    
+    # Pagination state
+    self._page_size = 100              # Liczba elementów na stronie
+    self._current_page = 1             # Aktualna strona
+    self._total_pages = 1              # Łączna liczba stron
+    
+    # Filters state (managed by DealsFilterDialog)
+    self._filters = {
+        'min_discount': 0,
+        'min_price': 0.0,
+        'shops': [61, 35, 88, 82],     # Shop IDs (Steam, GOG, Epic, Humble)
+        'mature': False,
+        'sort': '-cut'                  # Sort by discount descending
+    }
+    
+    # Theme manager
+    self._theme_manager = ThemeManager()
+    self._theme_manager.theme_changed.connect(self._on_theme_changed)
     
     self._init_ui()
     
@@ -67,8 +90,24 @@ def __init__(self, server_url: Optional[str] = None, parent=None):
 ### Stałe
 
 ```python
-DEFAULT_MIN_DISCOUNT = 20  # Minimalna zniżka do wyświetlenia (%)
-DEFAULT_LIMIT = 30         # Domyślna liczba wyświetlanych promocji
+# Paginacja
+DEFAULT_PAGE_SIZE = 100        # Domyślna liczba elementów na stronie
+PAGE_SIZE_OPTIONS = [50, 100, 150, 200]  # Dostępne opcje rozmiaru strony
+
+# Shop IDs dla IsThereAnyDeal API
+SHOP_IDS = {
+    'steam': 61,
+    'gog': 35,
+    'epic': 88,
+    'humble': 82
+}
+
+# Sortowanie
+SORT_OPTIONS = {
+    'discount': '-cut',        # Według zniżki (malejąco)
+    'price': 'price:deal',     # Według ceny (rosnąco)
+    'metacritic': '-metacritic' # Według ocen (malejąco)
+}
 ```
 
 ---
@@ -78,36 +117,52 @@ DEFAULT_LIMIT = 30         # Domyślna liczba wyświetlanych promocji
 ### Layout Główny
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  Promocje i okazje                                               │
-├──────────────────────────────────────────────────────────────────┤
-│  ┌────────────────────────────────────────────────────────────┐  │
-│  │  Wyszukaj promocje                                         │  │
-│  │  [Wpisz tytuł gry...________________] [Szukaj]             │  │
-│  └────────────────────────────────────────────────────────────┘  │
-├────────────────────────────┬─────────────────────────────────────┤
-│  LEFT COLUMN (50%)         │  RIGHT COLUMN (50%)                 │
-│                            │                                     │
-│  ┌──────────────────────┐  │  ┌───────────────────────────────┐  │
-│  │  Najlepsze okazje    │  │  │  Wyniki wyszukiwania          │  │
-│  │  [Odśwież] Min:20%   │  │  │                               │  │
-│  ├──────────────────────┤  │  ├───────────────────────────────┤  │
-│  │ 🎮 Game Title 1      │  │  │  Wpisz tytuł gry i kliknij    │  │
-│  │ 💵 -80% | $9.99      │  │  │  'Szukaj'                     │  │
-│  │ 🏪 Steam             │  │  │                               │  │
-│  │ ──────────────────   │  │  │                               │  │
-│  │ 🎮 Game Title 2      │  │  │                               │  │
-│  │ 💵 -75% | $12.49     │  │  │  (lub wyniki wyszukiwania)    │  │
-│  │ 🏪 GOG               │  │  │                               │  │
-│  │ ──────────────────   │  │  │                               │  │
-│  │ 🎮 Game Title 3      │  │  │                               │  │
-│  │ 💵 -70% | $14.99     │  │  │                               │  │
-│  │ 🏪 Epic Games        │  │  │                               │  │
-│  │ ...                  │  │  │                               │  │
-│  └──────────────────────┘  │  └───────────────────────────────┘  │
-│  Znaleziono 30 promocji    │                                     │
-└────────────────────────────┴─────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  Promocje i okazje                              [🌙 Theme Switcher]    │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  ┌───────────────────────────────┬──────────────────────────────────┐  │
+│  │  Najlepsze okazje             │  Wyszukiwanie gry                │  │
+│  ├───────────────────────────────┼──────────────────────────────────┤  │
+│  │  [Odśwież] [⚙ Filtry]         │  [Wpisz tytuł gry...] [Szukaj]   │  │
+│  │  Brak aktywnych filtrów       │                                  │  │
+│  │  Na stronę: [100 ▼]           │  Status: Wpisz tytuł...          │  │
+│  ├───────────────────────────────┼──────────────────────────────────┤  │
+│  │                               │                                  │  │
+│  │  🎮 Game Title 1              │  ┌────────────────────────────┐  │  │
+│  │  💵 -80% | $9.99 ($49.99)     │  │  Search Results Area       │  │  │
+│  │  🏪 Steam                     │  │                            │  │  │
+│  │  ────────────────────         │  │  Wpisz tytuł gry aby       │  │  │
+│  │  🎮 Game Title 2              │  │  wyszukać promocje         │  │  │
+│  │  💵 -75% | $12.49 ($49.99)    │  │                            │  │  │
+│  │  🏪 GOG                       │  │  (Scroll Area)             │  │  │
+│  │  ────────────────────         │  │                            │  │  │
+│  │  🎮 Game Title 3              │  └────────────────────────────┘  │  │
+│  │  💵 -70% | $14.99 ($49.99)    │                                  │  │
+│  │  🏪 Epic Games                │                                  │  │
+│  │  ...                          │                                  │  │
+│  │                               │                                  │  │
+│  ├───────────────────────────────┤                                  │  │
+│  │  [⏮ Pierwsza] [◀ Poprzednia]  │                                  │  │
+│  │  Strona 1/10 [Idź do strony…] │                                  │  │
+│  │  [Następna ▶] [Ostatnia ⏭]    │                                  │  │
+│  ├───────────────────────────────┤                                  │  │
+│  │  Znaleziono 1000 promocji     │                                  │  │
+│  │  (wyświetlono 100)            │                                  │  │
+│  └───────────────────────────────┴──────────────────────────────────┘  │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Kluczowe elementy:**
+- **Dual-column layout** - lista promocji + wyszukiwarka obok siebie
+- **Przycisk Filtrów (⚙)** - otwiera DealsFilterDialog
+- **Status filtrów** - pokazuje aktywne filtry lub "Brak aktywnych filtrów"
+- **Page size selector** - wybór liczby wyników na stronie (50/100/150/200)
+- **Paginacja** - nawigacja między stronami
+- **Jump to page** - szybki skok do konkretnej strony
+- **Color coding** - zniżki >= 75% zielone, 50-74% żółte, 25-49% cyan
+- **Click to open** - kliknięcie otwiera link do sklepu w przeglądarce
 
 ---
 
@@ -328,6 +383,105 @@ async def refresh_data(self):
 
 ---
 
+## Paginacja
+
+DealsView implementuje zaawansowaną paginację dla obsługi dużej liczby wyników promocji.
+
+### Podstawowe Funkcje
+
+```python
+# Pagination state
+self._page_size = 100              # Liczba elementów na stronie
+self._current_page = 1             # Aktualna strona
+self._total_pages = 1              # Łączna liczba stron
+```
+
+### Nawigacja Między Stronami
+
+```python
+def _go_to_page(self, page: int):
+    """
+    Przejdź do określonej strony.
+    
+    Args:
+        page: Numer strony (1-indexed)
+    """
+    if page < 1 or page > self._total_pages:
+        return
+    
+    self._current_page = page
+    self._filter_and_display_best_deals()
+    self._update_pagination_controls()
+```
+
+### Przyciski Nawigacyjne
+
+- **⏮ Pierwsza** - skok do pierwszej strony
+- **◀ Poprzednia** - cofnij o jedną stronę
+- **Następna ▶** - do przodu o jedną stronę  
+- **Ostatnia ⏭** - skok do ostatniej strony
+- **Idź do strony...** - input do bezpośredniego skoku
+
+### Zmiana Rozmiaru Strony
+
+```python
+def _on_page_size_changed(self, text: str):
+    """Zmień rozmiar strony i resetuj do pierwszej."""
+    try:
+        size = int(text)
+    except ValueError:
+        size = 100
+    
+    self._page_size = max(1, min(200, size))
+    self._current_page = 1  # Reset do pierwszej strony
+    self._filter_and_display_best_deals()
+```
+
+**Dostępne rozmiary:** 50, 100, 150, 200 wyników na stronę
+
+### Frontend Filtering
+
+Paginacja działa z **frontend filtering** - wszystkie promocje są pobierane raz, a następnie filtrowane i paginowane lokalnie:
+
+```python
+async def _load_best_deals(self):
+    """Pobierz wszystkie promocje z serwera."""
+    # Pobierz duży zestaw danych (np. 1000 promocji)
+    deals = await self._server_client.get_best_deals(limit=1000)
+    
+    # Zapisz jako _all_best_deals dla filtrowania
+    self._all_best_deals = deals
+    
+    # Zastosuj filtry i paginację lokalnie
+    self._filter_and_display_best_deals()
+
+def _filter_and_display_best_deals(self):
+    """Filtruj i paginuj lokalnie bez zapytania do serwera."""
+    # 1. Zastosuj filtry do _all_best_deals
+    filtered = self._apply_filters(self._all_best_deals)
+    
+    # 2. Oblicz paginację
+    self._total_pages = max(1, -(-len(filtered) // self._page_size))
+    
+    # 3. Wyciągnij aktualną stronę
+    start_idx = (self._current_page - 1) * self._page_size
+    end_idx = start_idx + self._page_size
+    self._best_deals = filtered[start_idx:end_idx]
+    
+    # 4. Zaktualizuj UI
+    self._update_best_deals_list()
+    self._update_pagination_controls()
+```
+
+### Zalety Frontend Filtering
+
+- ✅ **Natychmiastowe filtrowanie** - bez opóźnień sieciowych
+- ✅ **Mniej zapytań do serwera** - jedno zapytanie dla wszystkich danych
+- ✅ **Płynna nawigacja** - zmiana strony jest instant
+- ✅ **Lepsza UX** - użytkownik nie czeka na każdą zmianę filtra
+
+---
+
 ## Integracja z API
 
 ### Endpointy używane przez DealsView
@@ -545,6 +699,116 @@ from app.ui.styles import apply_style
 4. **Link safety** - linki są walidowane przed otwarciem w przeglądarce
 5. **Min discount** - można dostosować minimalną zniżkę (aktualnie 20%)
 6. **External API** - używa IsThereAnyDeal.com API przez serwer backend
+
+---
+
+## Integracja z DealsFilterDialog
+
+DealsView wykorzystuje **DealsFilterDialog** do zaawansowanego filtrowania promocji.
+
+### Przycisk Filtrów
+
+```python
+def _init_filters_ui(self):
+    """Tworzy przycisk filtrów w toolbar."""
+    filters_btn = QPushButton("🔧 Filtry")
+    filters_btn.clicked.connect(self._show_filter_dialog)
+    toolbar.addWidget(filters_btn)
+```
+
+### Wyświetlanie Dialogu
+
+```python
+def _show_filter_dialog(self):
+    """Pokazuje dialog zaawansowanych filtrów."""
+    from app.ui.deals_filter_dialog import DealsFilterDialog
+    
+    dialog = DealsFilterDialog(
+        current_filters=self._current_filters,
+        parent=self
+    )
+    dialog.filters_applied.connect(self._apply_filters)
+    dialog.exec()
+```
+
+### Zastosowanie Filtrów
+
+```python
+async def _apply_filters(self, filters: Dict[str, Any]):
+    """
+    Zastosuj nowe filtry i przeładuj promocje.
+    
+    Args:
+        filters: Słownik z wartościami filtrów
+            - min_discount: int (0-99)
+            - min_price: float
+            - max_price: float
+            - shops: list[str] (["steam", "gog", "epic", "humble"])
+            - include_mature: bool
+            - sort_by: str ("discount", "price", "metacritic")
+    """
+    logger.info(f"Applying filters: {filters}")
+    self._current_filters = filters
+    
+    # Przeładuj promocje z nowymi filtrami
+    await self._load_best_deals_with_filters(filters)
+```
+
+### Pobieranie z Filtrami
+
+```python
+async def _load_best_deals_with_filters(self, filters: Dict):
+    """Pobierz promocje z zastosowanymi filtrami."""
+    try:
+        # Przekaż filtry do serwera
+        deals = await self._server_client.get_best_deals(
+            limit=50,
+            min_discount=filters.get("min_discount", 0),
+            min_price=filters.get("min_price", 0),
+            max_price=filters.get("max_price", 999.99),
+            shops=",".join(filters.get("shops", [])),
+            include_mature=filters.get("include_mature", True),
+            sort_by=filters.get("sort_by", "discount")
+        )
+        
+        self._best_deals = deals
+        self._update_best_deals_list()
+        
+        # Pokaż licznik aktywnych filtrów
+        active_count = self._count_active_filters(filters)
+        if active_count > 0:
+            self._filters_label.setText(f"Aktywne filtry: {active_count}")
+        else:
+            self._filters_label.setText("Brak filtrów")
+            
+    except Exception as e:
+        logger.error(f"Error loading filtered deals: {e}")
+```
+
+### Liczenie Aktywnych Filtrów
+
+```python
+def _count_active_filters(self, filters: Dict) -> int:
+    """Zlicz aktywne filtry (różne od domyślnych)."""
+    count = 0
+    
+    if filters.get("min_discount", 0) > 0:
+        count += 1
+    if filters.get("min_price", 0) > 0:
+        count += 1
+    if filters.get("max_price", 999.99) < 999.99:
+        count += 1
+    if len(filters.get("shops", [])) < 4:  # Nie wszystkie sklepy
+        count += 1
+    if not filters.get("include_mature", True):  # Mature content ukryty
+        count += 1
+    if filters.get("sort_by", "discount") != "discount":  # Inne sortowanie
+        count += 1
+    
+    return count
+```
+
+Szczegóły: [UI_DEALS_FILTER_DIALOG.md](UI_DEALS_FILTER_DIALOG.md)
 
 ---
 
