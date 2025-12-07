@@ -444,7 +444,3 @@ pytest tests/ -m unit
 pytest tests/test_steam_service.py -v
 pytest tests/test_database.py -v
 ```
-
----
-
-MIT License - zgodnie z licencj? g?ównego projektu
