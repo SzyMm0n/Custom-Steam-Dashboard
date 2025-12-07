@@ -1,0 +1,19 @@
+"""
+Test requirements for Custom Steam Dashboard.
+Install with: pip install -r requirements-test.txt
+"""
+
+# Testing frameworks
+pytest>=8.2
+pytest-asyncio>=0.23
+pytest-cov>=4.1
+pytest-mock>=3.12
+
+# Code quality
+ruff>=0.6
+mypy>=1.11
+
+# Additional testing utilities
+faker>=24.0
+freezegun>=1.4
+responses>=0.25
