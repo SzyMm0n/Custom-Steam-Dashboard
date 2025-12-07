@@ -1,58 +1,41 @@
-# ?? Raport z Testów Jednostkowych
-
-## ? Podsumowanie
-
-**Data utworzenia:** 2024
-**Data aktualizacji:** 2024 (Faza 1 - Backend Services)
-**Status:** ? 198/203 testów przechodzi (97.5%)
-**Testy wykonane:** 198 passed, 4 failed, 1 skipped
-**Czas wykonania:** ~21 sekundy
-**Pokrycie kodu Backend:** 48% (1622 linii, 841 nieprzetestowanych)
-**Pokrycie kodu Total (z UI):** 15% (5081 linii ca?kowita, 4300 nieprzetestowanych)
-
-### Post?p pokrycia:
-- **Pocz?tkowe pokrycie:** 10% (63 testy)
-- **Obecne pokrycie:** 15% total / 48% backend (203 testy)
-- **Wzrost:** +5% ca?kowite / +38% backend
-- **Dodano testów:** +140 nowych testów
-
+# ?? Raport z TestÃ³w Jednostkowych
 ---
 
-## ?? Struktura Testów
+## ?? Struktura TestÃ³w
 
 ### Utworzone pliki testowe:
 
-1. **tests/__init__.py** - Inicjalizacja pakietu testów
+1. **tests/__init__.py** - Inicjalizacja pakietu testÃ³w
 2. **tests/conftest.py** - Konfiguracja pytest, fixtures, zmienne ?rodowiskowe
-3. **tests/test_validation.py** - Testy walidacji Steam ID i App ID (16 testów) ?
-4. **tests/test_security.py** - Testy bezpiecze?stwa JWT i HMAC (12 testów) ?
-5. **tests/test_models.py** - Testy modeli Pydantic (13 testów) ?
-6. **tests/test_parse_html.py** - Testy parsowania HTML (11 testów) ?
-7. **tests/test_steam_service.py** - Testy Steam Client (8 testów) ?
+3. **tests/test_validation.py** - Testy walidacji Steam ID i App ID (16 testÃ³w) ?
+4. **tests/test_security.py** - Testy bezpiecze?stwa JWT i HMAC (12 testÃ³w) ?
+5. **tests/test_models.py** - Testy modeli Pydantic (13 testÃ³w) ?
+6. **tests/test_parse_html.py** - Testy parsowania HTML (11 testÃ³w) ?
+7. **tests/test_steam_service.py** - Testy Steam Client (8 testÃ³w) ?
 8. **tests/test_api_integration.py** - Testy integracyjne API (1 skipped) ??
-9. **tests/test_database.py** - Testy operacji bazodanowych (25 testów) ? **NOWE**
-10. **tests/test_deals_service.py** - Testy IsThereAnyDeal API (44 testy) ? **NOWE**
-11. **tests/test_steam_service_extended.py** - Rozszerzone testy Steam API (23 testy) ? **NOWE**
-12. **tests/test_api_endpoints.py** - Testy endpointów FastAPI (49 testów) ? **NOWE**
-13. **tests/test_scheduler.py** - Testy schedulera i zada? cyklicznych (32 testy) ? **NOWE**
+9. **tests/test_database.py** - Testy operacji bazodanowych (25 testÃ³w) ?
+10. **tests/test_deals_service.py** - Testy IsThereAnyDeal API (44 testy) ?
+11. **tests/test_steam_service_extended.py** - Rozszerzone testy Steam API (23 testy) ?
+12. **tests/test_api_endpoints.py** - Testy endpointÃ³w FastAPI (49 testÃ³w) ?
+13. **tests/test_scheduler.py** - Testy schedulera i zada? cyklicznych (32 testy) ?
 
-**Razem:** 234 przypadków testowych (203 faktycznie uruchamiane)
+**Razem:** 234 przypadkÃ³w testowych
 
 ### Pliki konfiguracyjne:
 
 - **pytest.ini** - Konfiguracja pytest
 - **pyproject.toml** - Rozszerzona konfiguracja z opcjami coverage
-- **requirements-test.txt** - Zale?no?ci testowe
+- **requirements-test.txt**
 
 ### Skrypty uruchamiaj?ce:
 
-- **run_tests.py** - Python skrypt do uruchamiania testów
+- **run_tests.py** - Python skrypt do uruchamiania testÃ³w
 - **run_tests.bat** - Windows batch script
 - **run_tests.sh** - Linux/Mac shell script
 
 ---
 
-## ?? Wyniki Testów po Modu?ach
+## ?? Wyniki TestÃ³w po ModuÅ‚ach
 
 ### 1. Test Validation (test_validation.py)
 **Status:** ? 16/16 passed
@@ -189,7 +172,7 @@
 - ? test_get_game_details_not_found
 - ? test_upsert_game_details (b??d walidacji Pydantic)
 
-#### Pozosta?e (12 testów):
+#### Pozosta?e (12 testÃ³w):
 - ? Test configuration validation
 - ? Test error handling
 - ? test_transaction_context_manager (b??d mockowania asyncpg)
@@ -207,7 +190,7 @@
 - ? test_client_reads_credentials_from_env
 - ? test_client_handles_missing_credentials
 
-#### TestOAuth2Authentication (6 testów):
+#### TestOAuth2Authentication (6 testÃ³w):
 - ? test_get_access_token_success
 - ? test_get_access_token_reuses_valid_token
 - ? test_get_access_token_refreshes_expired_token
@@ -309,7 +292,7 @@
 #### TestErrorHandling (3 testy)
 #### TestCORSConfiguration (2 testy)
 #### TestAPIDocumentation (3 testy)
-#### TestLifespanEvents (5 testów)
+#### TestLifespanEvents (5 testÃ³w)
 #### TestConcurrentRequests (2 testy)
 
 **Pokrycie:** server/app.py - **34%** (108 linii pokryte)
@@ -323,7 +306,7 @@
 - ? test_collector_initialization
 - ? test_collector_semaphore_limit
 
-#### TestCollectPlayerCounts (7 testów):
+#### TestCollectPlayerCounts (7 testÃ³w):
 - ? test_collect_player_counts_success
 - ? test_collect_player_counts_empty_watchlist
 - ? test_collect_player_counts_handles_timeout
@@ -366,45 +349,13 @@ server/validation.py                  94     43    54%
 TOTAL (Backend)                     1622    841    48%
 ```
 
-### Podsumowanie pokrycia ca?kowite (z UI):
-```
-TOTAL (All)                         5081   4300    15%
-```
-
-**Dlaczego ca?kowite pokrycie wynosi 15%?**
-
-Aplikacja sk?ada si? z dwóch g?ównych warstw:
-1. **Backend (Server)** - 1,622 linii (32% kodu) - **48% pokryte** ?
-2. **Frontend (UI/App)** - 3,459 linii (68% kodu) - **0% pokryte** ?
-
-### Modu?y z najwy?szym pokryciem (Backend):
-1. ? server/services/models.py - **100%**
-2. ? server/services/parse_html.py - **100%**
-3. ? server/services/_base_http.py - **87%**
-4. ? server/services/steam_service.py - **82%**
-5. ? server/security.py - **65%**
-6. ? server/validation.py - **54%**
-7. ?? server/middleware.py - **45%**
-8. ?? server/database/database.py - **43%**
-9. ?? server/auth_routes.py - **42%**
-10. ?? server/scheduler.py - **37%**
-11. ?? server/services/deals_service.py - **35%**
-12. ?? server/app.py - **34%**
-
-### Modu?y do dalszego testowania:
-- app/* (UI components) - **0%** (wymaga pytest-qt)
-- server/app.py - 34% ? cel 60%
-- server/services/deals_service.py - 35% ? cel 60%
-- server/scheduler.py - 37% ? cel 60%
-- server/database/database.py - 43% ? cel 70%
-
 ---
 
 ## ?? Analiza Pokrycia
 
 ### Co zosta?o przetestowane: ?
 
-**Faza 1 - Krytyczna logika biznesowa (UKO?CZONA):**
+**Faza 1 - Krytyczna logika biznesowa (UKÅƒCZONA):**
 - ? Walidacja danych (Steam ID, App ID) - 54% pokrycia
 - ? Bezpiecze?stwo (JWT, HMAC signatures, nonce) - 65% pokrycia
 - ? Modele danych (Pydantic) - **100% pokrycia** ?
@@ -422,63 +373,30 @@ Aplikacja sk?ada si? z dwóch g?ównych warstw:
 - Wszystkie widoki PyQt6 (Home, Library, Deals, Comparison)
 - Dialogi (Theme, Filters, User Info)
 - Komponenty UI (przyciski, karty, listy)
-- Zarz?dzanie tematami
-- Komunikacja UI ? Server
+- ZarzÄ…dzanie tematami
+- Komunikacja UI -> Server
 
 **Zaawansowana logika serverowa (do poprawy):**
-- Pozosta?e 66% endpointów API
+- PozostaÅ‚e 66% endpointÃ³w API
 - 57% operacji bazodanowych
 - 63% logiki schedulera
 - 65% logiki deals service
-- Niektóre edge cases i error paths
-
-### Osi?gni?cia Fazy 1: ??
-
-1. **+140 nowych testów** (z 63 do 203)
-2. **Pokrycie backend wzros?o z ~20% do 48%** (+28%)
-3. **5 modu?ów z pokryciem >80%**:
-   - models.py: 100%
-   - parse_html.py: 100%
-   - _base_http.py: 87%
-   - steam_service.py: 82%
-   - security.py: 65%
-
-4. **Przetestowane wszystkie kluczowe serwisy**:
-   - Database CRUD operations ?
-   - Steam API integration ?
-   - ITAD Deals API ?
-   - Scheduler & background jobs ?
-   - API endpoints ?
-
-### Dlaczego to doskona?y wynik?
-
-1. **Architektura aplikacji:**
-   - 68% kodu to UI (PyQt6) - trudny do automatycznego testowania
-   - UI jest testowane g?ównie **manualnie** w projektach desktopowych
-   
-2. **Fokus testów:**
-   - Przetestowane zosta?y **wszystkie najwa?niejsze komponenty**: security, validation, models, services
-   - To s? miejsca, gdzie b??dy mog? mie? najwi?ksze konsekwencje
-   
-3. **Standardy bran?owe:**
-   - ? Backend: cel 60-70% pokrycia ? **osi?gni?te 48%** (blisko celu!)
-   - ? Kluczowe modu?y: cel 80%+ ? **5 modu?ów powy?ej 80%**
-   - Frontend/UI: cel 30-50% pokrycia (do osi?gni?cia w przysz?o?ci)
-
+- NiektÃ³re edge cases i error paths
+  
 ---
 
 ## ?? Raport Coverage HTML
 
-Po uruchomieniu testów z coverage, raport HTML jest dost?pny w:
+Po uruchomieniu testÃ³w z coverage, raport HTML jest dostÄ™pny w:
 ```
 htmlcov/index.html
 ```
 
-Otwórz ten plik w przegl?darce, aby zobaczy?:
-- Dok?adne linie kodu, które zosta?y wykonane (zielone)
-- Linie, które nie zosta?y przetestowane (czerwone)
-- Linie cz??ciowo pokryte (?ó?te)
-- Statystyki dla ka?dego pliku z grafami
+OtwÃ³rz ten plik w przeglÄ…darce, aby zobaczyÄ‡:
+- DokÅ‚adne linie kodu, ktÃ³re zosta?y wykonane (zielone)
+- Linie, ktÃ³re nie zosta?y przetestowane (czerwone)
+- Linie czÄ™Å›ciowo pokryte (Å¼Ã³Å‚te)
+- Statystyki dla kaÅ¼dego pliku z grafami
 
 ### Jak wygenerowa? raport:
 ```bash
@@ -489,12 +407,12 @@ pytest tests/ --cov=server --cov=app --cov-report=html --cov-report=term
 
 ## ?? Instrukcje Uruchomienia
 
-### Instalacja zale?no?ci:
+### Instalacja zaleÅ¼noÅ›ci:
 ```bash
 pip install -r requirements-test.txt
 ```
 
-### Uruchomienie wszystkich testów:
+### Uruchomienie wszystkich testÃ³w:
 ```bash
 # Windows
 run_tests.bat
@@ -511,22 +429,17 @@ pytest tests/ -v
 pytest tests/ --cov=server --cov=app --cov-report=html --cov-report=term
 ```
 
-### Uruchomienie tylko nowych testów (Faza 1):
-```bash
-pytest tests/test_database.py tests/test_deals_service.py tests/test_steam_service_extended.py tests/test_api_endpoints.py tests/test_scheduler.py -v
-```
-
-### Uruchomienie szybkich testów:
+### Uruchomienie szybkich testÃ³w:
 ```bash
 python run_tests.py quick
 ```
 
-### Uruchomienie tylko testów jednostkowych:
+### Uruchomienie tylko testÃ³w jednostkowych:
 ```bash
 pytest tests/ -m unit
 ```
 
-### Uruchomienie konkretnego modu?u:
+### Uruchomienie konkretnego moduÅ‚u:
 ```bash
 pytest tests/test_steam_service.py -v
 pytest tests/test_database.py -v
@@ -534,242 +447,4 @@ pytest tests/test_database.py -v
 
 ---
 
-## ?? Plan Dalszego Rozwoju
-
-### ? Faza 1: Backend Services (UKO?CZONA)
-**Status:** ? Zako?czona
-**Rezultat:** 198/203 testy passing, 48% pokrycia backend
-**Czas realizacji:** ~8-12 godzin
-**Utworzone pliki:**
-- ? tests/test_database.py (25 testów)
-- ? tests/test_deals_service.py (44 testy)
-- ? tests/test_steam_service_extended.py (23 testy)
-- ? tests/test_api_endpoints.py (49 testów)
-- ? tests/test_scheduler.py (32 testy)
-
-### ?? Faza 2: Zaawansowane testy backend (DO REALIZACJI)
-
-**Cel:** Zwi?kszy? pokrycie backend z 48% ? 65-70%
-
-**Zadania:**
-```bash
-# Rozszerz istniej?ce testy:
-1. tests/test_api_endpoints.py
-   - Dodaj testy dla pozosta?ych 66% endpointów
-   - Testy autoryzacji dla ka?dego endpoint
-   - Testy rate limiting
-   
-2. tests/test_database.py
-   - Rozszerz testy transakcji
-   - Dodaj testy rollup operations
-   - Testy migracji i schema management
-   
-3. tests/test_scheduler.py
-   - Testy full lifecycle schedulera
-   - Testy rollup zada?
-   - Testy error recovery
-   
-4. tests/test_deals_service.py
-   - Popraw failed testy API responses
-   - Dodaj testy cache'owania
-   - Testy retry logic
-```
-
-**Szacowany czas:** 6-8 godzin
-**Wzrost pokrycia:** z 48% ? 65% backend (+17%)
-**Prioryet:** ?REDNI
-
-### ?? Faza 3: UI Testing z pytest-qt (OPCJONALNIE)
-
-**Cel:** Doda? testy UI, zwi?kszy? total coverage z 15% ? 35-40%
-
-```bash
-pip install pytest-qt
-
-# Utwórz testy dla UI:
-tests/ui/test_main_window.py
-tests/ui/test_home_view.py
-tests/ui/test_library_view.py
-tests/ui/test_deals_view.py
-tests/ui/test_components.py
-```
-
-**Szacowany czas:** 15-20 godzin
-**Wzrost pokrycia:** z 15% ? 35-40% total (+20-25%)
-**Priorytet:** NISKI (opcjonalnie)
-
-### ?? Priorytetowe obszary do poprawy:
-
-1. **API Endpoints** (server/app.py) - **NAJWA?NIEJSZE**
-   - Obecne pokrycie: 34%
-   - Cel: 60%
-   - Dodaj ~30 testów dla pozosta?ych endpoints
-
-2. **Deals Service** (server/services/deals_service.py)
-   - Obecne pokrycie: 35%
-   - Cel: 60%
-   - Popraw failed testy + dodaj edge cases
-
-3. **Scheduler** (server/scheduler.py)
-   - Obecne pokrycie: 37%
-   - Cel: 60%
-   - Dodaj testy full lifecycle + rollup
-
-4. **Database** (server/database/*)
-   - Obecne pokrycie: 43%
-   - Cel: 70%
-   - Dodaj testy transakcji + migracji
-
-5. **Auth Routes** (server/auth_routes.py)
-   - Obecne pokrycie: 42%
-   - Cel: 70%
-   - Dodaj testy OAuth flow + edge cases
-
-### Sugerowane ulepszenia jako?ciowe:
-
-1. **Dodaj testy wydajno?ciowe**
-   - Benchmark krytycznych operacji (player count collection)
-   - Testy load testingu dla API
-   - Testy memory leaks
-
-2. **Dodaj testy end-to-end**
-   - Pe?ne scenariusze u?ytkownika
-   - Testy integracji UI + API + Database
-   - Testy flow'ów: login ? fetch data ? display
-
-3. **Popraw jako?? testów**
-   - Zmniejsz zale?no?ci od mocków
-   - Dodaj testy integracyjne z prawdziw? baz? (testcontainers)
-   - Zwi?ksz pokrycie edge cases i error paths
-
-4. **CI/CD Integration**
-   - GitHub Actions workflow
-   - Automatyczne uruchamianie testów przy PR
-   - Automatyczne raportowanie coverage
-   - Blokada merge przy coverage < 45%
-
----
-
-## ? Checklist Post?pu
-
-### Faza 1 - Backend Services ?
-- [x] Wszystkie kluczowe testy przechodz? (97.5%)
-- [x] Struktura testów rozszerzona o 5 nowych modu?ów
-- [x] Dokumentacja testów zaktualizowana
-- [x] Pokrycie backend zwi?kszone do 48% (+28%)
-- [x] 140 nowych testów jednostkowych
-- [x] Testy dla database, deals, steam, api, scheduler
-
-### Faza 2 - Zaawansowane testy backend ??
-- [ ] Pokrycie backend > 65% (cel)
-- [ ] Wszystkie endpoints przetestowane
-- [ ] Testy error recovery i edge cases
-- [ ] Testy integracyjne mi?dzy modu?ami
-
-### Faza 3 - UI Testing ??
-- [ ] pytest-qt zainstalowane
-- [ ] Testy dla g?ównych widoków
-- [ ] Pokrycie ca?kowite > 35%
-- [ ] Testy interakcji u?ytkownika
-
-### CI/CD ??
-- [ ] GitHub Actions workflow
-- [ ] Automatyczne raportowanie coverage
-- [ ] Badge z wynikiem testów w README
-
----
-
-## ?? Wykorzystane Technologie
-
-- **pytest** - Framework testowy
-- **pytest-asyncio** - Testy asynchroniczne
-- **pytest-cov** - Pokrycie kodu
-- **pytest-mock** - Mockowanie
-- **unittest.mock** - AsyncMock, patch
-- **Pydantic** - Walidacja modeli
-- **FastAPI** - Framework API (do testów integracyjnych)
-- **httpx** - HTTP client testing
-
----
-
-## ?? Wnioski dla Projektu Akademickiego
-
-### Co zosta?o osi?gni?te w Fazie 1: ?
-
-1. ? **+140 nowych testów jednostkowych** (??cznie 203)
-2. ? **Pokrycie backend 48%** (wzrost z ~20%)
-3. ? **5 modu?ów z pokryciem >80%**
-4. ? **Przetestowane wszystkie kluczowe serwisy**:
-   - Database operations (CRUD, watchlist, player counts)
-   - Steam API client (wszystkie endpointy)
-   - ITAD Deals service (OAuth2, search, best deals)
-   - Scheduler & background jobs
-   - FastAPI endpoints
-5. ? **97.5% testów passing** (198/203)
-6. ? **Dokumentacja testów** zaktualizowana
-7. ? **Infrastruktura testowa** w pe?ni funkcjonalna
-
-### Dlaczego to doskona?y wynik:
-
-? **Jako?? > Ilo??:**
-- Przetestowane **najwa?niejsze komponenty** - te odpowiedzialne za bezpiecze?stwo, dane, API
-- **Wysokie pokrycie** kluczowych modu?ów (5 modu?ów >80%)
-- **Testy praktyczne** - nie tylko "happy path", ale te? error handling
-
-? **Realistyczne dla projektu desktopowego:**
-- 68% kodu to GUI - trudny do automatycznego testowania
-- W projektach comercial frontend cz?sto ma 20-30% pokrycia
-- Backend 48% to ?wietny wynik (cel komercyjny: 60-70%)
-
-? **Profesjonalne podej?cie:**
-- Testy strukturalne i czytelne
-- Mockowanie zewn?trznych zale?no?ci
-- Async/await properly tested
-- Error handling coverage
-
-### Rekomendacje na przysz?o??:
-
-1. **Krótkoterminowe (1-2 tygodnie):**
-   - Popraw 4 failed testy (Pydantic validation, async mocking)
-   - Dodaj brakuj?ce testy dla endpoints (cel: 60% app.py)
-   - **Cel:** 60% pokrycia backend
-
-2. **?rednioterminowe (1 miesi?c):**
-   - Rozszerz testy o edge cases i error paths
-   - Dodaj testy integracyjne (database + api)
-   - **Cel:** 65-70% pokrycia backend
-
-3. **D?ugoterminowe (opcjonalnie):**
-   - Wdró? pytest-qt dla testów UI
-   - CI/CD z automatycznym uruchamianiem testów
-   - **Cel:** 35-40% pokrycia total
-
-### Metryki sukcesu: ??
-
-| Metryka | Start | Faza 1 | Cel Final |
-|---------|-------|---------|-----------|
-| **Liczba testów** | 63 | 203 (+140) | 250+ |
-| **Coverage Backend** | ~20% | **48%** | 65-70% |
-| **Coverage Total** | 10% | **15%** | 35-40% |
-| **Passing Rate** | 98% | **97.5%** | >95% |
-| **Modu?y >80%** | 2 | **5** | 8-10 |
-
----
-
-## ?? Autorzy
-
-Testy utworzone dla projektu Custom Steam Dashboard
-Przedmiot: Dynamiczna Analiza Oprogramowania
-
-### Faza 1 Contributors:
-- Database tests (test_database.py)
-- Deals service tests (test_deals_service.py)
-- Extended Steam tests (test_steam_service_extended.py)
-- API endpoints tests (test_api_endpoints.py)
-- Scheduler tests (test_scheduler.py)
-
----
-
-## ?? Licencja
-
-MIT License - zgodnie z licencj? g?ównego projektu
+MIT License - zgodnie z licencj? g?Ã³wnego projektu
