@@ -1,4 +1,4 @@
-# ?? System Test體 Jednostkowych - Custom Steam Dashboard
+# ?? System Test贸w Jednostkowych - Custom Steam Dashboard
 
 ## ? Status
 **Faza 1 Zako?czona!** 198 passed, 4 failed, 1 skipped
@@ -6,40 +6,15 @@
 
 ---
 
-## ?? Nowe Osi?gni?cia - Faza 1
-
-### Statystyki:
-- **+140 nowych test體** (z 63 do 203)
-- **Backend Coverage:** 20% ? **48%** (+28% ??)
-- **Total Coverage:** 10% ? **15%** (+5%)
-- **Success Rate:** 97.5% (198/203)
-- **Czas wykonania:** ~19 sekund
-
-### Nowe Modu?y Testowe:
-1. ? **test_database.py** - 25 test體 (CRUD, watchlist, player counts)
-2. ? **test_deals_service.py** - 44 testy (ITAD API, OAuth2, deals)
-3. ? **test_steam_service_extended.py** - 23 testy (Steam API extended)
-4. ? **test_api_endpoints.py** - 49 test體 (FastAPI endpoints)
-5. ? **test_scheduler.py** - 32 testy (background jobs, scheduler)
-
-### Modu?y z Najwy?szym Pokryciem:
-1. ? **models.py** - 100%
-2. ? **parse_html.py** - 100%
-3. ? **_base_http.py** - 87%
-4. ? **steam_service.py** - 82%
-5. ? **security.py** - 65%
-
----
-
 ## ?? Szybki Start
 
-### 1. Instalacja zale?no?ci testowych
+### 1. Instalacja zale偶no艣ci testowych
 
 ```bash
 pip install -r requirements-test.txt
 ```
 
-### 2. Uruchomienie test體
+### 2. Uruchomienie test贸w
 
 **Windows:**
 ```bash
@@ -76,7 +51,7 @@ pytest tests/ --cov=server --cov-report=term
 pytest tests/ --cov=server --cov=app --cov-report=html --cov-report=term
 ```
 
-Nast?pnie otw髍z: `htmlcov/index.html` w przegl?darce
+Nast?pnie otw贸rz: `htmlcov/index.html` w przegl?darce
 
 ### Coverage tylko dla backend:
 ```bash
@@ -85,7 +60,7 @@ pytest tests/ --cov=server --cov-report=term-missing
 
 ---
 
-## ?? Uruchomienie Konkretnych Test體
+## ?? Uruchomienie Konkretnych Test贸w
 
 ### Tylko nowe testy (Faza 1):
 ```bash
@@ -111,29 +86,29 @@ pytest tests/ -k "not integration" -v
 
 ---
 
-## ?? Co zosta?o przetestowane?
+## ?? Co zosta艂o przetestowane?
 
 ### ? Komponenty z testami (Faza 1 Complete):
 
-1. **Walidacja danych** (16 test體) - 54% coverage
+1. **Walidacja danych** (16 test贸w) - 54% coverage
    - Steam ID validation (ID64, vanity URL, profile URL)
    - App ID validation (range, format)
 
-2. **Bezpiecze?stwo** (12 test體) - 65% coverage
+2. **Bezpiecze艅stwo** (12 test贸w) - 65% coverage
    - JWT token generation & verification
    - HMAC signature verification
    - Nonce management (anti-replay)
 
-3. **Modele danych** (13 test體) - **100% coverage** ?
+3. **Modele danych** (13 test贸w) - **100% coverage** ?
    - SteamGameDetails, PlayerCountResponse
    - DealInfo, GamePrice
 
-4. **Parsowanie HTML** (11 test體) - **100% coverage** ?
+4. **Parsowanie HTML** (11 test贸w) - **100% coverage** ?
    - Tag removal, entity decoding
    - Whitespace normalization
 
-5. **Steam Service** (31 test體) - **82% coverage** ?
-   - Basic client (8 test體)
+5. **Steam Service** (31 test贸w) - **82% coverage** ?
+   - Basic client (8 test贸w)
    - Extended API (23 testy):
      - Player owned games
      - Recently played games
@@ -142,7 +117,7 @@ pytest tests/ -k "not integration" -v
      - Vanity URL resolution
      - Coming soon & most played games
 
-6. **Database Operations** (25 test體) - 43% coverage
+6. **Database Operations** (25 test贸w) - 43% coverage
    - Connection management
    - Watchlist CRUD
    - Player count operations
@@ -156,7 +131,7 @@ pytest tests/ -k "not integration" -v
    - Game price lookup
    - Deal search functionality
 
-8. **API Endpoints** (49 test體) - 34% coverage
+8. **API Endpoints** (49 test贸w) - 34% coverage
    - Root & health endpoints
    - Game endpoints
    - Watchlist management
@@ -210,7 +185,7 @@ TOTAL                              15%
 
 ## ?? Quick Commands
 
-### Najcz??ciej u?ywane:
+### Najcz臋艣ciej u偶ywane:
 
 ```bash
 # Szybkie testy (wszystkie):
@@ -240,36 +215,6 @@ pytest tests/ -v -s
 
 ---
 
-## ?? Co dalej? (Opcjonalne)
-
-### Faza 2: Zwi?ksz pokrycie backend (48% ? 65%)
-
-**Priorytet:** ?REDNI | **Czas:** 6-8h | **Wzrost:** +17%
-
-```bash
-# Rozszerz testy:
-1. tests/test_api_endpoints.py - dodaj wi?cej endpoint tests
-2. tests/test_database.py - transakcje i migracje  
-3. tests/test_scheduler.py - full lifecycle
-4. tests/test_deals_service.py - popraw failed tests
-```
-
-### Faza 3: UI Testing z pytest-qt (15% ? 35%)
-
-**Priorytet:** NISKI | **Czas:** 15-20h | **Wzrost:** +20%
-
-```bash
-pip install pytest-qt
-
-# Utw髍z:
-tests/ui/test_main_window.py
-tests/ui/test_home_view.py
-tests/ui/test_library_view.py
-tests/ui/test_deals_view.py
-```
-
----
-
 ## ?? Troubleshooting
 
 ### Problem: Testy trwaj? zbyt d?ugo
@@ -287,7 +232,7 @@ pip install -r requirements-test.txt
 
 ### Problem: Database connection errors
 ```bash
-# Testy u?ywaj? mock體, nie wymagaj? prawdziwej bazy
+# Testy u?ywaj? mock贸w, nie wymagaj? prawdziwej bazy
 # Sprawd? czy asyncpg jest zainstalowany:
 pip install asyncpg
 ```
@@ -304,14 +249,14 @@ pytest tests/ --cov=server --cov-report=html
 
 ## ?? Dokumentacja
 
-- **Pe?ny raport:** `TEST_REPORT.md`
+- **Pe艂ny raport:** `TEST_REPORT.md`
 - **Coverage HTML:** `htmlcov/index.html`  
 - **Pytest docs:** https://docs.pytest.org
 - **Coverage docs:** https://coverage.readthedocs.io
 
 ---
 
-## ?? Osi?gni?cia
+## ?? Osi膮gni臋cia
 
 ### Metryki Sukcesu:
 
@@ -322,24 +267,3 @@ pytest tests/ --cov=server --cov-report=html
 | Total Coverage | 10% | **15%** | +5% |
 | Passing Rate | 98% | **97.5%** | ? |
 | Modu?y >80% | 2 | **5** | +3 ? |
-
-### ?? Dla Projektu Akademickiego:
-
-? **Doskona?y wynik!**
-- Backend coverage 48% (cel komercyjny: 60-70%)
-- 5 modu?體 z pokryciem >80%
-- Przetestowane wszystkie kluczowe serwisy
-- 198/203 testy passing (97.5%)
-- Profesjonalna struktura test體
-
----
-
-## ?? Autorzy
-
-Testy utworzone dla projektu Custom Steam Dashboard
-Przedmiot: Dynamiczna Analiza Oprogramowania
-
-**Faza 1 Complete** ?
-- 140 nowych test體
-- 48% backend coverage
-- 5 nowych modu?體 testowych
