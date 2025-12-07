@@ -1,33 +1,33 @@
 # ?? Testy Jednostkowe - Custom Steam Dashboard
 
-## ?? Spis Tre?ci
-- [Przegl?d](#przegl?d)
-- [Struktura Test�w](#struktura-test�w)
+## ?? Spis Treści
+- [Przegląd](#przegląd)
+- [Struktura Testów](#struktura-testów)
 - [Instalacja](#instalacja)
-- [Uruchamianie Test�w](#uruchamianie-test�w)
+- [Uruchamianie Testów](#uruchamianie-testów)
 - [Pokrycie Kodu](#pokrycie-kodu)
-- [Typy Test�w](#typy-test�w)
+- [Typy Testów](#typy-testów)
 
 ---
 
-## ?? Przegl?d
+## ?? Przegląd
 
-Projekt zawiera kompleksowy zestaw test�w jednostkowych i integracyjnych dla aplikacji Custom Steam Dashboard. Testy pokrywaj? nast?puj?ce obszary:
+Projekt zawiera kompleksowy zestaw testów jednostkowych i integracyjnych dla aplikacji Custom Steam Dashboard. Testy pokrywaj? nast?puj?ce obszary:
 
 - ? **Walidacja danych** - testy dla modeli Pydantic
-- ? **Bezpiecze?stwo** - testy JWT i HMAC signature
+- ? **Bezpieczeństwo** - testy JWT i HMAC signature
 - ? **Modele danych** - testy wszystkich modeli Steam i Deals
 - ? **Parsowanie HTML** - testy utility do czyszczenia HTML
 - ? **Serwis Steam** - testy (z mockami) dla Steam API
-- ? **Integracja API** - podstawowe testy endpoint�w FastAPI
+- ? **Integracja API** - podstawowe testy endpointów FastAPI
 
 ---
 
-## ?? Struktura Test�w
+## ?? Struktura Testów
 
 ```
 tests/
-??? __init__.py              # Inicjalizacja pakietu test�w
+??? __init__.py              # Inicjalizacja pakietu testów
 ??? conftest.py              # Konfiguracja pytest i fixture'y
 ??? test_validation.py       # Testy walidacji (Steam ID, App ID)
 ??? test_security.py         # Testy JWT, HMAC, nonce
@@ -47,13 +47,13 @@ tests/
 pip install -r requirements-test.txt
 ```
 
-Lub zainstaluj wymagane pakiety r?cznie:
+Lub zainstaluj wymagane pakiety ręcznie:
 
 ```bash
 pip install pytest pytest-asyncio pytest-cov pytest-mock
 ```
 
-### 2. Opcjonalnie - narz?dzia do jako?ci kodu
+### 2. Opcjonalnie - narzędzia do jakości kodu
 
 ```bash
 pip install ruff mypy
@@ -61,7 +61,7 @@ pip install ruff mypy
 
 ---
 
-## ?? Uruchamianie Test�w
+## ?? Uruchamianie Testów
 
 ### Uruchom wszystkie testy
 
@@ -81,7 +81,7 @@ pytest -v
 pytest tests/test_validation.py
 ```
 
-### Uruchom konkretn? klas? testow?
+### Uruchom konkretną klasę testow
 
 ```bash
 pytest tests/test_validation.py::TestSteamIDValidator
@@ -105,7 +105,7 @@ pytest -m unit
 pytest -m integration
 ```
 
-### Uruchom testy z pomini?ciem wolnych test�w
+### Uruchom testy z pominięciem wolnych testów
 
 ```bash
 pytest -m "not slow"
@@ -121,9 +121,9 @@ pytest -m "not slow"
 pytest --cov=server --cov=app --cov-report=html --cov-report=term-missing
 ```
 
-### Zobacz raport w przegl?darce
+### Zobacz raport w przeglądarce
 
-Po uruchomieniu test�w z opcj? `--cov-report=html`, otw�rz:
+Po uruchomieniu testów z opcją `--cov-report=html`, otwórz:
 
 ```bash
 # Windows
@@ -141,7 +141,7 @@ pytest --cov=server --cov=app --cov-report=xml
 
 ---
 
-## ?? Typy Test�w
+## ?? Typy Testów
 
 ### 1. **Testy Walidacji** (`test_validation.py`)
 
@@ -150,67 +150,67 @@ Testuj? walidacj? danych wej?ciowych:
 - App ID (zakres, format)
 
 ```python
-# Przyk?ad uruchomienia
+# Przykład uruchomienia
 pytest tests/test_validation.py -v
 ```
 
-### 2. **Testy Bezpiecze?stwa** (`test_security.py`)
+### 2. **Testy Bezpieczeństwa** (`test_security.py`)
 
 Testuj? mechanizmy bezpiecze?stwa:
 - Generowanie i weryfikacja JWT
 - HMAC signature verification
-- Zarz?dzanie nonce
+- Zarządzanie nonce
 
 ```python
-# Przyk?ad uruchomienia
+# Przykład uruchomienia
 pytest tests/test_security.py -v
 ```
 
 ### 3. **Testy Modeli** (`test_models.py`)
 
-Testuj? modele danych Pydantic:
+Testują modele danych Pydantic:
 - `SteamGameDetails`
 - `PlayerCountResponse`
 - `DealInfo`
 - `GamePrice`
 
 ```python
-# Przyk?ad uruchomienia
+# Przykład uruchomienia
 pytest tests/test_models.py -v
 ```
 
 ### 4. **Testy Parsowania HTML** (`test_parse_html.py`)
 
-Testuj? funkcj? czyszczenia HTML:
-- Usuwanie tag�w HTML
+Testują funkcję czyszczenia HTML:
+- Usuwanie tagów HTML
 - Dekodowanie encji HTML
-- Normalizacja bia?ych znak�w
+- Normalizacja bia?ych znaków
 
 ```python
-# Przyk?ad uruchomienia
+# Przykład uruchomienia
 pytest tests/test_parse_html.py -v
 ```
 
 ### 5. **Testy Serwisu Steam** (`test_steam_service.py`)
 
-Testuj? Steam Client z mockami:
+Testują Steam Client z mockami:
 - Pobieranie liczby graczy
-- Pobieranie szczeg�?�w gier
+- Pobieranie szczegó?ów gier
 - Konfiguracja timeout
 
 ```python
-# Przyk?ad uruchomienia
+# Przykład uruchomienia
 pytest tests/test_steam_service.py -v
 ```
 
 ### 6. **Testy Integracyjne API** (`test_api_integration.py`)
 
-Testuj? endpointy FastAPI:
+Testują endpointy FastAPI:
 - Health check
 - Endpointy autoryzacji
 
 ```python
-# Przyk?ad uruchomienia
+# Przykład uruchomienia
 pytest tests/test_api_integration.py -m integration -v
 ```
 
@@ -220,7 +220,7 @@ pytest tests/test_api_integration.py -m integration -v
 
 ### pytest.ini
 
-Podstawowa konfiguracja pytest znajduje si? w pliku `pytest.ini`:
+Podstawowa konfiguracja pytest znajduje się w pliku `pytest.ini`:
 
 ```ini
 [pytest]
@@ -233,7 +233,7 @@ asyncio_mode = auto
 
 ### pyproject.toml
 
-Zaawansowana konfiguracja (je?li u?ywasz):
+Zaawansowana konfiguracja (jeśli używasz):
 
 ```toml
 [tool.pytest.ini_options]
@@ -245,9 +245,9 @@ addopts = ["--verbose", "--cov=server", "--cov=app"]
 
 ## ?? Continuous Integration
 
-### Przyk?ad dla GitHub Actions
+### Przykład dla GitHub Actions
 
-Utw�rz plik `.github/workflows/tests.yml`:
+Utwórz plik `.github/workflows/tests.yml`:
 
 ```yaml
 name: Tests
@@ -279,7 +279,7 @@ jobs:
 
 ### Problem: `ModuleNotFoundError`
 
-**Rozwi?zanie**: Upewnij si?, ?e ?cie?ka projektu jest w PYTHONPATH:
+**Rozwiązanie**: Upewnij się, że ścieżka projektu jest w PYTHONPATH:
 
 ```bash
 export PYTHONPATH="${PYTHONPATH}:${PWD}"
@@ -293,23 +293,23 @@ $env:PYTHONPATH = "$env:PYTHONPATH;$(pwd)"
 pytest
 ```
 
-### Problem: Testy asynchroniczne nie dzia?aj?
+### Problem: Testy asynchroniczne nie działają
 
-**Rozwi?zanie**: Zainstaluj `pytest-asyncio`:
+**Rozwiązanie**: Zainstaluj `pytest-asyncio`:
 
 ```bash
 pip install pytest-asyncio
 ```
 
-### Problem: Import errors dla zmiennych ?rodowiskowych
+### Problem: Import errors dla zmiennych środowiskowych
 
-**Rozwi?zanie**: Ustaw zmienne ?rodowiskowe przed uruchomieniem test�w lub upewnij si?, ?e `conftest.py` je ustawia.
+**Rozwiązanie**: Ustaw zmienne środowiskowe przed uruchomieniem testów lub upewnij si?, ?e `conftest.py` je ustawia.
 
 ---
 
-## ?? Dodawanie Nowych Test�w
+## ?? Dodawanie Nowych Testów
 
-### 1. Utw�rz nowy plik testowy
+### 1. Utwórz nowy plik testowy
 
 ```python
 # tests/test_new_feature.py
@@ -320,11 +320,11 @@ class TestNewFeature:
         assert True
 ```
 
-### 2. U?yj fixtures z conftest.py
+### 2. Użyj fixtures z conftest.py
 
 ```python
 def test_with_fixture(event_loop):
-    # U?yj fixture event_loop
+    # Użyj fixture event_loop
     pass
 ```
 
@@ -357,24 +357,20 @@ def test_slow_integration():
 - [ ] Wszystkie testy przechodz?: `pytest`
 - [ ] Pokrycie kodu > 80%: `pytest --cov`
 - [ ] Kod sformatowany: `ruff format .`
-- [ ] Brak b??d�w lintingu: `ruff check .`
+- [ ] Brak błędów lintingu: `ruff check .`
 - [ ] Type checking OK: `mypy server/ app/`
 
 ---
 
-## ?? Wk?ad w Testy
+## ?? Wkład w Testy
 
-Aby doda? nowe testy:
+Aby dodał nowe testy:
 
 1. Zidentyfikuj nieprzetestowany kod
-2. Utw�rz odpowiedni plik testowy w `tests/`
+2. Utwórz odpowiedni plik testowy w `tests/`
 3. Napisz testy zgodnie z konwencj? `test_*`
 4. Uruchom testy: `pytest`
 5. Sprawd? pokrycie: `pytest --cov`
-6. Utw�rz Pull Request
+6. Utwórz Pull Request
 
 ---
-
-## ?? Licencja
-
-Testy s? cz??ci? projektu Custom Steam Dashboard i obj?te t? sam? licencj? MIT.
