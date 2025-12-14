@@ -1,0 +1,50 @@
+# Coverage.py configuration file
+# Exclude UI code from coverage as it requires E2E testing with pytest-qt
+
+[run]
+source = app, server
+omit =
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */site-packages/*
+    */dist-packages/*
+    */venv/*
+    */.venv/*
+    */app/ui/*
+    */app/icons/*
+    */app/main_window.py
+    */app/main_server.py
+    setup.py
+    conftest.py
+
+[report]
+exclude_lines =
+    # Standard pragmas
+    pragma: no cover
+
+    # Don't complain about missing debug code
+    def __repr__
+    def __str__
+
+    # Don't complain if tests don't cover defensive assertion code
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+
+    # Don't complain about abstract methods
+    @abstractmethod
+    @abc.abstractmethod
+
+    # Don't complain about Qt slots
+    @Slot
+    @pyqtSlot
+
+precision = 2
+
+[html]
+directory = htmlcov
+

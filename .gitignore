@@ -129,6 +129,7 @@ MANIFEST.in
 notebooks/.ipynb_checkpoints/
 docs/_build/
 docs/build/
+docs_archive/
 *.bak
 *.old
 *.orig
