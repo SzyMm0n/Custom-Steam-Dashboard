@@ -3,7 +3,7 @@
 
 ## 📊 Status
 
-**Faza 1 Zakończona!** 198 passed, 4 failed, 1 skipped
+**Faza 1 Zakończona!** 198 passed, 1 skipped
 
 **Backend Coverage: 48%** | **Total Coverage: 15%**
 
