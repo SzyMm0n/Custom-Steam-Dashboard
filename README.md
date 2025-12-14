@@ -718,18 +718,38 @@ Kompleksowy przewodnik po systemie JWT:
 
 ## 🧪 Testy
 
-Projekt implementuje **330 testów** w dwóch kategoriach z różnymi strategiami mockowania.
+Projekt implementuje **355 testów** w trzech kategoriach z różnymi strategiami mockowania.
 
 ### 📊 Statystyki
 
 ```
 Testy jednostkowe:     229/232 passing (98.7%)
-Testy integracyjne:    ~96/100 passing (96%)
-ŁĄCZNIE:               ~325/332 passing (97.9%)
+Testy integracyjne:    ~91/97 passing (94%)
+Testy funkcjonalne:    26/26 passing (100%)
+ŁĄCZNIE:               ~346/355 passing (97.5%)
 
 Pokrycie kodu:         ~75% (backend + app core)
                        UI wykluczone (wymaga pytest-qt/E2E)
 ```
+
+### 🎯 Typy Testów
+
+#### **Unit Tests (232)** - Mock Everything
+Logika w izolacji, wszystkie zależności mockowane.
+
+#### **Integration Tests (97)** - Real Infrastructure  
+Prawdziwa baza + FastAPI + AsyncClient.
+
+#### **Functional Tests (26)** - End-to-End Scenarios
+Kompletne scenariusze użytkownika (Happy + Sad paths):
+- Authentication (5 testów) - HMAC + JWT flow
+- Watchlist CRUD (4 testy) - Complete lifecycle
+- Steam API (4 testy) - External integration
+- Scheduler (2 testy) - Background jobs
+- Rate Limiting (1 test) - Normal usage
+- Concurrent Operations (2 testy) - Race conditions
+- Data Validation (6 testów) - Input validation
+- Error Handling (2 testy) - Graceful degradation
 
 ### 🚀 Uruchamianie
 
@@ -744,20 +764,26 @@ Pokrycie kodu:         ~75% (backend + app core)
 
 # Integration (sekwencyjnie z opóźnieniami)
 ./run_tests.sh integration
+
+# Functional scenarios (end-to-end)
+pytest tests/functional/ -v
 ```
 
 ### 📚 Dokumentacja Testów
 
-| Dokument                                                    | Opis |
-|-------------------------------------------------------------|------|
-| 📖 **[README.md](tests/README.md)**                         | **Główny przewodnik** - filozofia, infrastruktura, zasady |
-| 📊 [SUMMARY.md](tests/docs/SUMMARY.md)                      | Coverage, scenariusze, metryki z analizą |
-| 🔬 [UNIT.md](tests/docs/UNIT.md)                  | 5 przykładów unit testów ze scenariuszami |
-| 🔗 [INTEGRATION.md](tests/docs/INTEGRATION.md)   | 5 przykładów integration testów |
+| Dokument | Opis |
+|----------|------|
+| 📖 **[tests/README.md](tests/README.md)** | **Główny przewodnik** - filozofia, infrastruktura, zasady |
+| 📊 [tests/docs/SUMMARY.md](tests/docs/SUMMARY.md) | Coverage, scenariusze, metryki z analizą |
+| 🔬 [tests/docs/UNIT.md](tests/docs/UNIT.md) | 5 przykładów unit testów ze scenariuszami |
+| 🔗 [tests/docs/INTEGRATION.md](tests/docs/INTEGRATION.md) | 5 przykładów integration testów |
+| 🎯 [tests/docs/FUNCTIONAL_TEST_PLAN.md](tests/docs/FUNCTIONAL_TEST_PLAN.md) | **26 testów funkcjonalnych** (szczegółowo opisane) |
+| 🛠️ [tests/docs/TEST_RUNNERS.md](tests/docs/TEST_RUNNERS.md) | Dokumentacja skryptów |
 
 **Kluczowe koncepty:**
 - **Unit tests** - mockuj wszystko, szybkie (<100ms każdy), deterministyczne
 - **Integration tests** - prawdziwa infrastruktura, unique schema per test, cleanup automatyczny
+- **Functional tests** - end-to-end scenariusze użytkownika, real world user flows
 - **Sekwencyjne uruchamianie** - eliminuje resource exhaustion (opóźnienia 1-3s między grupami)
 - **UI wykluczone** z coverage - wymaga pytest-qt/E2E testów
 

@@ -6,13 +6,16 @@
 
 ## 📋 Przegląd
 
-Projekt implementuje **330 testów** w dwóch kategoriach:
+Projekt implementuje **355 testów** w trzech kategoriach:
 
 ### **Testy Jednostkowe (Unit Tests)** - 232 testy
 Izolowane testy logiki biznesowej z **mockowanymi** zależnościami.
 
-### **Testy Integracyjne (Integration Tests)** - 98 testów
+### **Testy Integracyjne (Integration Tests)** - 97 testów
 Testy komunikacji między komponentami z **prawdziwą** infrastrukturą.
+
+### **Testy Funkcjonalne (Functional Tests)** - 26 testów
+End-to-end scenariusze użytkownika (Happy + Sad paths) testujące kompletne user flows.
 
 ---
 
@@ -73,6 +76,33 @@ async def test_login_and_fetch_players_from_database(test_db_manager, async_test
     assert response.status_code == 200
 ```
 
+### **Functional Tests - End-to-End Scenarios**
+
+**Cel:** Testować kompletne scenariusze użytkownika (Happy + Sad paths).
+
+**26 testów w 8 kategoriach:**
+1. **Authentication** (5 testów) - HMAC + JWT + replay attacks
+2. **Watchlist CRUD** (4 testy) - Complete lifecycle
+3. **Steam API** (4 testy) - External integration
+4. **Scheduler** (2 testy) - Background jobs
+5. **Rate Limiting** (1 test) - Normal usage
+6. **Concurrent** (2 testy) - Race conditions
+7. **Validation** (6 testów) - Input validation
+8. **Error Handling** (2 testy) - Graceful degradation
+
+**Przykład:**
+```python
+# tests/functional/test_scenarios.py
+async def test_complete_authentication_flow_happy_path(...):
+    # 1. Generate HMAC signature
+    # 2. Login and get JWT
+    # 3. Access protected endpoint
+    # 4. Verify data integrity
+    # Complete end-to-end flow verification
+```
+
+**Dokumentacja:** [tests/docs/FUNCTIONAL_TEST_PLAN.md](docs/FUNCTIONAL_TEST_PLAN.md)
+
 ---
 
 ## 🏗️ Infrastruktura Testowa
@@ -119,10 +149,11 @@ Kategoria               Testy    Passing    Coverage
 Unit - App              72       69 (96%)   ~85%
 Unit - Server           160      160 (100%) ~90%
 Integration - App       13       9 (69%)    -
-Integration - Server    85       82 (96%)   -
+Integration - Server    84       82 (98%)   -
+Functional - All        26       26 (100%)  -
 Utils                   1        1 (100%)   -
 ─────────────────────────────────────────────────────
-TOTAL                   330      ~321 (97%) ~75%*
+TOTAL                   355      ~347 (98%) ~75%*
 
 * UI wykluczone z coverage (wymaga pytest-qt/E2E)
 ```
@@ -156,15 +187,20 @@ tests/
 │   ├── app/                # 72 - GUI logic, clients, signing
 │   └── server/             # 160 - Backend logic, services
 │
-├── integration/            # 98 testów integracyjnych
+├── integration/            # 97 testów integracyjnych
 │   ├── app/                # 13 - End-to-end flows z AsyncClient
-│   └── server/             # 85 - API endpoints, database, scheduler
+│   └── server/             # 84 - API endpoints, database, scheduler
+│
+├── functional/             # 26 testów funkcjonalnych ✅
+│   └── test_scenarios.py   # End-to-end user scenarios
 │
 ├── conftest.py             # Shared fixtures
+├── README.md               # Ten plik
 └── docs/                   # Dokumentacja testów
     ├── SUMMARY.md          # Coverage i scenariusze
     ├── UNIT.md             # Przykłady unit testów
-    └── INTEGRATION.md      # Przykłady integration testów
+    ├── INTEGRATION.md      # Przykłady integration testów
+    └── FUNCTIONAL_TEST_PLAN.md  # 26 testów funkcjonalnych (szczegółowo)
 ```
 
 ---
@@ -198,6 +234,7 @@ tests/
 - **[SUMMARY.md](docs/SUMMARY.md)** - Szczegółowe coverage i scenariusze
 - **[UNIT.md](docs/UNIT.md)** - Przykłady testów jednostkowych
 - **[INTEGRATION.md](docs/INTEGRATION.md)** - Przykłady testów integracyjnych
+- **[FUNCTIONAL_TEST_PLAN.md](docs/FUNCTIONAL_TEST_PLAN.md)** - 26 testów funkcjonalnych (Happy + Sad paths)
 - **[TEST_RUNNERS.md](docs/TEST_RUNNERS.md)** - Dokumentacja skryptów
 
 ---
