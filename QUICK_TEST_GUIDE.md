@@ -344,8 +344,3 @@ pytest tests/ --cov=server --cov-report=html
 | Total Coverage | 10% | **15%** | +5% |
 | Passing Rate | 98% | **97.5%** | ✅ |
 | Moduły >80% | 2 | **5** | +3 🚀 |
-
-
-
-
-to jest kod z markdown zrób tak: usuń znaki zapytania, popraw polskie znaki oraz wszystko mi wypisz gotowe to wklejenia do githuba jako plik .md 
