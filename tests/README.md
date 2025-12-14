@@ -1,376 +1,206 @@
-# ?? Testy Jednostkowe - Custom Steam Dashboard
+# 🧪 Testy - README
 
-## ?? Spis Treści
-- [Przegląd](#przegląd)
-- [Struktura Testów](#struktura-testów)
-- [Instalacja](#instalacja)
-- [Uruchamianie Testów](#uruchamianie-testów)
-- [Pokrycie Kodu](#pokrycie-kodu)
-- [Typy Testów](#typy-testów)
+**Custom Steam Dashboard** - System testowy
 
 ---
 
-## ?? Przegląd
+## 📋 Przegląd
 
-Projekt zawiera kompleksowy zestaw testów jednostkowych i integracyjnych dla aplikacji Custom Steam Dashboard. Testy pokrywaj? nast?puj?ce obszary:
+Projekt implementuje **330 testów** w dwóch kategoriach:
 
-- ? **Walidacja danych** - testy dla modeli Pydantic
-- ? **Bezpieczeństwo** - testy JWT i HMAC signature
-- ? **Modele danych** - testy wszystkich modeli Steam i Deals
-- ? **Parsowanie HTML** - testy utility do czyszczenia HTML
-- ? **Serwis Steam** - testy (z mockami) dla Steam API
-- ? **Integracja API** - podstawowe testy endpointów FastAPI
+### **Testy Jednostkowe (Unit Tests)** - 232 testy
+Izolowane testy logiki biznesowej z **mockowanymi** zależnościami.
+
+### **Testy Integracyjne (Integration Tests)** - 98 testów
+Testy komunikacji między komponentami z **prawdziwą** infrastrukturą.
 
 ---
 
-## ?? Struktura Testów
+## 🎯 Filozofia Testowania
+
+### **Unit Tests - Mockuj Wszystko**
+
+**Cel:** Testować logikę w izolacji, szybko (<1s), deterministycznie.
+
+**Co mockujemy:**
+- ✅ **HTTP requests** (respx, httpx.Mock)
+- ✅ **Database connections** (AsyncMock dla DatabaseManager)
+- ✅ **External APIs** (Steam API, IsThereAnyDeal)
+- ✅ **File I/O** (patches dla filesystem operations)
+- ✅ **Time/Date** (freezegun)
+
+**Przykład:**
+```python
+# tests/unit/server/test_steam_service.py
+@respx.mock
+def test_get_player_count():
+    # Mock Steam API response
+    respx.get("https://api.steampowered.com/...").mock(
+        return_value=Response(200, json={"response": {"player_count": 50000}})
+    )
+    
+    # Test logic without real API call
+    result = steam_client.get_player_count(730)
+    assert result == 50000
+```
+
+### **Integration Tests - Prawdziwa Infrastruktura**
+
+**Cel:** Testować rzeczywistą komunikację między komponentami.
+
+**Czego NIE mockujemy:**
+- ✅ **Database** - prawdziwa PostgreSQL (Neon) z test schema
+- ✅ **FastAPI app** - rzeczywisty backend
+- ✅ **AsyncClient** - prawdziwy HTTP client
+- ✅ **Async fixtures** - prawdziwy event loop
+
+**Co mockujemy (minimalnie):**
+- ⚠️ **External APIs** - tylko Steam/ITAD API (aby nie przekroczyć rate limits)
+- ⚠️ **Database instance** - patch do test schema (izolacja)
+
+**Przykład:**
+```python
+# tests/integration/app/test_async_real_integration.py
+async def test_login_and_fetch_players_from_database(test_db_manager, async_test_client):
+    # Prawdziwa baza danych
+    await test_db_manager.upsert_watchlist(appid=730, name="CS2", last_count=500000)
+    
+    # Prawdziwy FastAPI + AsyncClient
+    async with async_test_client(app) as client:
+        response = await client.post("/auth/login", ...)
+        
+    # Weryfikacja: dane z prawdziwej bazy przez prawdziwy backend
+    assert response.status_code == 200
+```
+
+---
+
+## 🏗️ Infrastruktura Testowa
+
+### **Fixtures (tests/conftest.py)**
+
+#### **1. test_db_manager** (async)
+```python
+@pytest.fixture(scope="function")
+async def test_db_manager():
+    # Tworzy unique schema: test_custom_steam_dashboard_{uuid}
+    # Inicjalizuje prawdziwe tabele w Neon PostgreSQL
+    # Cleanup po teście (DROP SCHEMA CASCADE)
+```
+
+**Użycie:** Testy integracyjne wymagające bazy danych
+
+#### **2. async_test_client** (async)
+```python
+@pytest.fixture
+async def async_test_client():
+    # Tworzy httpx.AsyncClient z ASGITransport
+    # Dla testów FastAPI z async database operations
+```
+
+**Użycie:** Testy integracyjne API
+
+#### **3. Mocki HTTP (unit)**
+```python
+# respx automatycznie mockuje httpx requests
+@pytest.fixture
+def mock_steam_api():
+    with respx.mock:
+        yield respx
+```
+
+---
+
+## 📊 Statystyki
+
+```
+Kategoria               Testy    Passing    Coverage
+─────────────────────────────────────────────────────
+Unit - App              72       69 (96%)   ~85%
+Unit - Server           160      160 (100%) ~90%
+Integration - App       13       9 (69%)    -
+Integration - Server    85       82 (96%)   -
+Utils                   1        1 (100%)   -
+─────────────────────────────────────────────────────
+TOTAL                   330      ~321 (97%) ~75%*
+
+* UI wykluczone z coverage (wymaga pytest-qt/E2E)
+```
+
+---
+
+## 🚀 Uruchamianie
+
+### **Zalecane (sekwencyjnie):**
+```bash
+./run_tests.sh              # Wszystkie testy z coverage
+./run_tests.sh unit         # Tylko unit (szybkie)
+./run_tests.sh integration  # Tylko integration (sekwencyjnie)
+```
+
+### **Dlaczego sekwencyjnie?**
+Integration testy uruchamiane razem powodują resource exhaustion:
+- Async fixtures saturation
+- Database connection pool exhaustion
+- Event loop conflicts
+
+**Rozwiązanie:** Skrypty uruchamiają testy z opóźnieniami (1-3s) między grupami.
+
+---
+
+## 📁 Struktura
 
 ```
 tests/
-??? __init__.py              # Inicjalizacja pakietu testów
-??? conftest.py              # Konfiguracja pytest i fixture'y
-??? test_validation.py       # Testy walidacji (Steam ID, App ID)
-??? test_security.py         # Testy JWT, HMAC, nonce
-??? test_models.py           # Testy modeli Pydantic
-??? test_parse_html.py       # Testy parsowania HTML
-??? test_steam_service.py    # Testy Steam Client (mock)
-??? test_api_integration.py  # Testy integracyjne API
+├── unit/                   # 232 testy jednostkowe
+│   ├── app/                # 72 - GUI logic, clients, signing
+│   └── server/             # 160 - Backend logic, services
+│
+├── integration/            # 98 testów integracyjnych
+│   ├── app/                # 13 - End-to-end flows z AsyncClient
+│   └── server/             # 85 - API endpoints, database, scheduler
+│
+├── conftest.py             # Shared fixtures
+└── docs/                   # Dokumentacja testów
+    ├── SUMMARY.md          # Coverage i scenariusze
+    ├── UNIT.md             # Przykłady unit testów
+    └── INTEGRATION.md      # Przykłady integration testów
 ```
 
 ---
 
-## ?? Instalacja
+## 🔑 Kluczowe Zasady
 
-### 1. Zainstaluj zale?no?ci testowe
+### **Unit Tests:**
+1. ✅ Mock wszystkie I/O operations
+2. ✅ Każdy test < 100ms
+3. ✅ Deterministyczne (zawsze ten sam wynik)
+4. ✅ Testuj jeden "unit" (function/method)
+5. ✅ Używaj `@pytest.mark.unit`
 
-```bash
-pip install -r requirements-test.txt
-```
+### **Integration Tests:**
+1. ✅ Prawdziwa baza danych (unique test schema)
+2. ✅ Prawdziwy FastAPI app
+3. ✅ AsyncClient dla async operations
+4. ✅ Cleanup po każdym teście
+5. ✅ Używaj `@pytest.mark.integration`
 
-Lub zainstaluj wymagane pakiety ręcznie:
-
-```bash
-pip install pytest pytest-asyncio pytest-cov pytest-mock
-```
-
-### 2. Opcjonalnie - narzędzia do jakości kodu
-
-```bash
-pip install ruff mypy
-```
-
----
-
-## ?? Uruchamianie Testów
-
-### Uruchom wszystkie testy
-
-```bash
-pytest
-```
-
-### Uruchom z verbose output
-
-```bash
-pytest -v
-```
-
-### Uruchom konkretny plik testowy
-
-```bash
-pytest tests/test_validation.py
-```
-
-### Uruchom konkretną klasę testow
-
-```bash
-pytest tests/test_validation.py::TestSteamIDValidator
-```
-
-### Uruchom konkretny test
-
-```bash
-pytest tests/test_validation.py::TestSteamIDValidator::test_valid_steam_id64
-```
-
-### Uruchom tylko testy jednostkowe
-
-```bash
-pytest -m unit
-```
-
-### Uruchom tylko testy integracyjne
-
-```bash
-pytest -m integration
-```
-
-### Uruchom testy z pominięciem wolnych testów
-
-```bash
-pytest -m "not slow"
-```
+### **Czego NIE robić:**
+- ❌ TestClient z async fixtures (konflikt sync/async)
+- ❌ Mockowanie w integration tests (poza external APIs)
+- ❌ Dzielenie state między testami
+- ❌ Uruchamianie integration testów wszystkich razem (resource exhaustion)
 
 ---
 
-## ?? Pokrycie Kodu
+## 📚 Więcej Informacji
 
-### Uruchom testy z raportem pokrycia
-
-```bash
-pytest --cov=server --cov=app --cov-report=html --cov-report=term-missing
-```
-
-### Zobacz raport w przeglądarce
-
-Po uruchomieniu testów z opcją `--cov-report=html`, otwórz:
-
-```bash
-# Windows
-start htmlcov/index.html
-
-# Linux/Mac
-open htmlcov/index.html
-```
-
-### Wygeneruj raport w formacie XML (dla CI/CD)
-
-```bash
-pytest --cov=server --cov=app --cov-report=xml
-```
+- **[SUMMARY.md](docs/SUMMARY.md)** - Szczegółowe coverage i scenariusze
+- **[UNIT.md](docs/UNIT.md)** - Przykłady testów jednostkowych
+- **[INTEGRATION.md](docs/INTEGRATION.md)** - Przykłady testów integracyjnych
+- **[TEST_RUNNERS.md](docs/TEST_RUNNERS.md)** - Dokumentacja skryptów
 
 ---
 
-## ?? Typy Testów
+**Ostatnia aktualizacja:** 14 grudnia 2025
 
-### 1. **Testy Walidacji** (`test_validation.py`)
-
-Testuj? walidacj? danych wej?ciowych:
-- Steam ID (ID64, vanity URL, profile URL)
-- App ID (zakres, format)
-
-```python
-# Przykład uruchomienia
-pytest tests/test_validation.py -v
-```
-
-### 2. **Testy Bezpieczeństwa** (`test_security.py`)
-
-Testuj? mechanizmy bezpiecze?stwa:
-- Generowanie i weryfikacja JWT
-- HMAC signature verification
-- Zarządzanie nonce
-
-```python
-# Przykład uruchomienia
-pytest tests/test_security.py -v
-```
-
-### 3. **Testy Modeli** (`test_models.py`)
-
-Testują modele danych Pydantic:
-- `SteamGameDetails`
-- `PlayerCountResponse`
-- `DealInfo`
-- `GamePrice`
-
-```python
-# Przykład uruchomienia
-pytest tests/test_models.py -v
-```
-
-### 4. **Testy Parsowania HTML** (`test_parse_html.py`)
-
-Testują funkcję czyszczenia HTML:
-- Usuwanie tagów HTML
-- Dekodowanie encji HTML
-- Normalizacja bia?ych znaków
-
-```python
-# Przykład uruchomienia
-pytest tests/test_parse_html.py -v
-```
-
-### 5. **Testy Serwisu Steam** (`test_steam_service.py`)
-
-Testują Steam Client z mockami:
-- Pobieranie liczby graczy
-- Pobieranie szczegó?ów gier
-- Konfiguracja timeout
-
-```python
-# Przykład uruchomienia
-pytest tests/test_steam_service.py -v
-```
-
-### 6. **Testy Integracyjne API** (`test_api_integration.py`)
-
-Testują endpointy FastAPI:
-- Health check
-- Endpointy autoryzacji
-
-```python
-# Przykład uruchomienia
-pytest tests/test_api_integration.py -m integration -v
-```
-
----
-
-## ?? Konfiguracja
-
-### pytest.ini
-
-Podstawowa konfiguracja pytest znajduje się w pliku `pytest.ini`:
-
-```ini
-[pytest]
-testpaths = tests
-python_files = test_*.py
-python_classes = Test*
-python_functions = test_*
-asyncio_mode = auto
-```
-
-### pyproject.toml
-
-Zaawansowana konfiguracja (jeśli używasz):
-
-```toml
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = ["--verbose", "--cov=server", "--cov=app"]
-```
-
----
-
-## ?? Continuous Integration
-
-### Przykład dla GitHub Actions
-
-Utwórz plik `.github/workflows/tests.yml`:
-
-```yaml
-name: Tests
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-test.txt
-      - name: Run tests
-        run: pytest --cov=server --cov=app --cov-report=xml
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-```
-
----
-
-## ?? Troubleshooting
-
-### Problem: `ModuleNotFoundError`
-
-**Rozwiązanie**: Upewnij się, że ścieżka projektu jest w PYTHONPATH:
-
-```bash
-export PYTHONPATH="${PYTHONPATH}:${PWD}"
-pytest
-```
-
-Lub w Windows:
-
-```powershell
-$env:PYTHONPATH = "$env:PYTHONPATH;$(pwd)"
-pytest
-```
-
-### Problem: Testy asynchroniczne nie działają
-
-**Rozwiązanie**: Zainstaluj `pytest-asyncio`:
-
-```bash
-pip install pytest-asyncio
-```
-
-### Problem: Import errors dla zmiennych środowiskowych
-
-**Rozwiązanie**: Ustaw zmienne środowiskowe przed uruchomieniem testów lub upewnij si?, ?e `conftest.py` je ustawia.
-
----
-
-## ?? Dodawanie Nowych Testów
-
-### 1. Utwórz nowy plik testowy
-
-```python
-# tests/test_new_feature.py
-import pytest
-
-class TestNewFeature:
-    def test_something(self):
-        assert True
-```
-
-### 2. Użyj fixtures z conftest.py
-
-```python
-def test_with_fixture(event_loop):
-    # Użyj fixture event_loop
-    pass
-```
-
-### 3. Dodaj markery dla kategoryzacji
-
-```python
-@pytest.mark.unit
-def test_unit_feature():
-    pass
-
-@pytest.mark.slow
-@pytest.mark.integration
-def test_slow_integration():
-    pass
-```
-
----
-
-## ?? Dodatkowe Zasoby
-
-- [Pytest Documentation](https://docs.pytest.org/)
-- [pytest-asyncio Documentation](https://pytest-asyncio.readthedocs.io/)
-- [Coverage.py Documentation](https://coverage.readthedocs.io/)
-- [FastAPI Testing](https://fastapi.tiangolo.com/tutorial/testing/)
-
----
-
-## ? Checklist przed Commitem
-
-- [ ] Wszystkie testy przechodz?: `pytest`
-- [ ] Pokrycie kodu > 80%: `pytest --cov`
-- [ ] Kod sformatowany: `ruff format .`
-- [ ] Brak błędów lintingu: `ruff check .`
-- [ ] Type checking OK: `mypy server/ app/`
-
----
-
-## ?? Wkład w Testy
-
-Aby dodał nowe testy:
-
-1. Zidentyfikuj nieprzetestowany kod
-2. Utwórz odpowiedni plik testowy w `tests/`
-3. Napisz testy zgodnie z konwencj? `test_*`
-4. Uruchom testy: `pytest`
-5. Sprawd? pokrycie: `pytest --cov`
-6. Utwórz Pull Request
-
----

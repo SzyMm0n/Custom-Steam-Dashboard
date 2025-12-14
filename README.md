@@ -526,7 +526,7 @@ Wszystkie preferencje są automatycznie zapisywane:
   - Wybór sklepów (Steam, GOG, Epic, Humble)
   - Filtr treści dla dorosłych
   - Sortowanie (według zniżki, ceny, ocen)
-- Kliknij przycisk **Filtry** aby otworzyć dialog zaawansowanych opcji
+- Kliknij przycisk **Filtry** aby otworzyć dialog zaawansowanych opcji filtrowania
 - Szczegóły gry po kliknięciu w pozycję
 
 #### 📊 **Widok Porównawczy (Comparison)**
@@ -713,6 +713,53 @@ Kompleksowy przewodnik po systemie JWT:
 - **GUI:** [UI_OVERVIEW.md](docs/ui/UI_OVERVIEW.md) → poznaj interfejs użytkownika  
 - **Autoryzacja:** [AUTH_AND_SIGNING_README.md](docs/security/AUTH_AND_SIGNING_README.md) → zrozum bezpieczeństwo  
 - **JWT:** [JWT_OVERVIEW.md](docs/jwt/JWT_OVERVIEW.md) → podstawy tokenów
+
+---
+
+## 🧪 Testy
+
+Projekt implementuje **330 testów** w dwóch kategoriach z różnymi strategiami mockowania.
+
+### 📊 Statystyki
+
+```
+Testy jednostkowe:     229/232 passing (98.7%)
+Testy integracyjne:    ~96/100 passing (96%)
+ŁĄCZNIE:               ~325/332 passing (97.9%)
+
+Pokrycie kodu:         ~75% (backend + app core)
+                       UI wykluczone (wymaga pytest-qt/E2E)
+```
+
+### 🚀 Uruchamianie
+
+**ZALECANE:** Użyj skryptów wrapper (uruchamiają sekwencyjnie)
+
+```bash
+# Wszystkie testy z coverage
+./run_tests.sh
+
+# Unit (szybkie)
+./run_tests.sh unit
+
+# Integration (sekwencyjnie z opóźnieniami)
+./run_tests.sh integration
+```
+
+### 📚 Dokumentacja Testów
+
+| Dokument                                                    | Opis |
+|-------------------------------------------------------------|------|
+| 📖 **[README.md](tests/README.md)**                         | **Główny przewodnik** - filozofia, infrastruktura, zasady |
+| 📊 [SUMMARY.md](tests/docs/SUMMARY.md)                      | Coverage, scenariusze, metryki z analizą |
+| 🔬 [UNIT.md](tests/docs/UNIT.md)                  | 5 przykładów unit testów ze scenariuszami |
+| 🔗 [INTEGRATION.md](tests/docs/INTEGRATION.md)   | 5 przykładów integration testów |
+
+**Kluczowe koncepty:**
+- **Unit tests** - mockuj wszystko, szybkie (<100ms każdy), deterministyczne
+- **Integration tests** - prawdziwa infrastruktura, unique schema per test, cleanup automatyczny
+- **Sekwencyjne uruchamianie** - eliminuje resource exhaustion (opóźnienia 1-3s między grupami)
+- **UI wykluczone** z coverage - wymaga pytest-qt/E2E testów
 
 ---
 
