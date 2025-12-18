@@ -1,0 +1,8 @@
+app/__init__.py
+app/core/__init__.py
+app/core/services/__init__.py
+app/helpers/__init__.py
+app/ui/__init__.py
+server/__init__.py
+server/database/__init__.py
+server/services/__init__.py

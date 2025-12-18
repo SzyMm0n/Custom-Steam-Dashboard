@@ -1,0 +1,5 @@
+app/icons/icon-128x128.png:  binary file
+app/icons/icon-16x16.png:  binary file
+app/icons/icon-256x256.png:  binary file
+app/icons/icon-32x32.png:  binary file
+app/icons/icon.ico:  binary file

@@ -51,8 +51,6 @@ app.log
 # Local exports / analytics
 exports/
 reports/
-*.csv
-*.json
 *.xlsx
 *.parquet
 
