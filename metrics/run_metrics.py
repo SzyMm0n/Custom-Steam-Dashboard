@@ -39,6 +39,25 @@ def _run(cmd: list[str], cwd: Path) -> RunResult:
     return RunResult(proc.stdout, proc.stderr, proc.returncode)
 
 
+def _rel_path_display(path_str: str) -> str:
+    """Return a repo-relative, forward-slash path for report display."""
+    s = str(path_str)
+    try:
+        p = Path(s)
+        # Only resolve if it looks like a filesystem path.
+        if p.is_absolute():
+            return p.resolve().relative_to(REPO_ROOT).as_posix()
+    except Exception:
+        pass
+
+    # Best-effort normalization for already-relative or non-path strings.
+    s_norm = s.replace("\\", "/")
+    root_norm = str(REPO_ROOT).replace("\\", "/")
+    if s_norm.lower().startswith(root_norm.lower() + "/"):
+        return s_norm[len(root_norm) + 1 :]
+    return s_norm
+
+
 def _ensure_dirs() -> None:
     METRICS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -230,6 +249,8 @@ def _iter_cc_units(cc_json: dict[str, Any]) -> Iterable[dict[str, Any]]:
         if not isinstance(blocks, list):
             continue
 
+        file_display = _rel_path_display(str(file_path))
+
         has_method_blocks = any(
             isinstance(b, dict) and str(b.get("type") or "").lower() == "method" for b in blocks
         )
@@ -256,7 +277,7 @@ def _iter_cc_units(cc_json: dict[str, Any]) -> Iterable[dict[str, Any]]:
             if not isinstance(block, dict):
                 continue
             unit = dict(block)
-            unit["__file"] = file_path
+            unit["__file"] = file_display
 
             if str(unit.get("type") or "").lower() == "method":
                 key = (unit.get("name"), unit.get("lineno"), unit.get("endline"))
@@ -274,7 +295,7 @@ def _iter_cc_units(cc_json: dict[str, Any]) -> Iterable[dict[str, Any]]:
                         if isinstance(m, dict):
                             unit_m = dict(m)
                             unit_m.setdefault("type", "method")
-                            unit_m["__file"] = file_path
+                            unit_m["__file"] = file_display
                             cls_name = block.get("name")
                             if cls_name and unit_m.get("name"):
                                 unit_m["qualified_name"] = f"{cls_name}.{unit_m['name']}"
@@ -463,7 +484,7 @@ def _generate_report(
         rank = mi_data.get("rank")
         if mi is None or not isinstance(rank, str):
             continue
-        mi_entries.append((file_path, mi, rank))
+        mi_entries.append((_rel_path_display(str(file_path)), mi, rank))
 
     mi_backend = [mi for (p, mi, _) in mi_entries if _path_kind(p) == "backend"]
     mi_frontend = [mi for (p, mi, _) in mi_entries if _path_kind(p) == "frontend"]
@@ -551,7 +572,7 @@ def _generate_report(
     report_lines.append("- 3–5 najbardziej złożonych jednostek:")
     for u in top_complex:
         report_lines.append(
-            f"  - {u.get('__file')}: {_cc_name(u)} | CC={_cc_complexity(u)} | rank={_cc_rank(u)}"
+            f"  - `{u.get('__file')}`: `{_cc_name(u)}` | CC={_cc_complexity(u)} | rank={_cc_rank(u)}"
         )
     report_lines.append(
         "- Funkcje o rank D/E/F: "
@@ -563,7 +584,9 @@ def _generate_report(
     report_lines.append(f"- Średni MI backend: {_format_float(avg_mi_backend)}")
     report_lines.append(f"- Średni MI frontend: {_format_float(avg_mi_frontend)}")
     if lowest_mi:
-        report_lines.append(f"- Najniższy MI: {lowest_mi[0]} | MI={_format_float(lowest_mi[1])} | rank={lowest_mi[2]}")
+        report_lines.append(
+            f"- Najniższy MI: `{lowest_mi[0]}` | MI={_format_float(lowest_mi[1])} | rank={lowest_mi[2]}"
+        )
     else:
         report_lines.append("- Najniższy MI: n/a")
     report_lines.append("- Interpretacja: >85 bardzo dobra, 65–85 poprawna, <65 trudna w utrzymaniu.")

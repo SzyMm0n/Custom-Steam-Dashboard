@@ -1,6 +1,6 @@
 # METRICS REPORT — Custom-Steam-Dashboard
 
-Generated: 2025-12-18 12:59:01
+Generated: 2025-12-18 14:05:57
 
 ## Zakres analizy (pokrycie plików)
 - Katalogi: `server/` (backend), `app/` (frontend)
@@ -27,17 +27,17 @@ Generated: 2025-12-18 12:59:01
 - Średnia CC backend: 3.47
 - Średnia CC frontend: 3.27
 - 3–5 najbardziej złożonych jednostek:
-  - D:\github\Custom-Steam-Dashboard\app\ui\components_server.py: GameDetailPanel._load_from_server | CC=26 | rank=D
-  - D:\github\Custom-Steam-Dashboard\app\ui\components_server.py: GameDetailPanel._load_steam_store_details | CC=22 | rank=D
-  - D:\github\Custom-Steam-Dashboard\app\ui\home_view_server.py: HomeView._fetch_upcoming | CC=21 | rank=D
-  - D:\github\Custom-Steam-Dashboard\server\services\deals_service.py: IsThereAnyDealClient.search_deals | CC=20 | rank=C
-  - D:\github\Custom-Steam-Dashboard\server\app.py: get_best_deals | CC=18 | rank=C
+  - `app/ui/components_server.py`: `GameDetailPanel._load_from_server` | CC=26 | rank=D
+  - `app/ui/components_server.py`: `GameDetailPanel._load_steam_store_details` | CC=22 | rank=D
+  - `app/ui/home_view_server.py`: `HomeView._fetch_upcoming` | CC=21 | rank=D
+  - `server/services/deals_service.py`: `IsThereAnyDealClient.search_deals` | CC=20 | rank=C
+  - `server/app.py`: `get_best_deals` | CC=18 | rank=C
 - Funkcje o rank D/E/F: TAK
 
 ## Maintainability Index (MI)
 - Średni MI backend: 69.83
 - Średni MI frontend: 66.29
-- Najniższy MI: D:\github\Custom-Steam-Dashboard\app\ui\components_server.py | MI=14.05 | rank=B
+- Najniższy MI: `app/ui/components_server.py` | MI=14.05 | rank=B
 - Interpretacja: >85 bardzo dobra, 65–85 poprawna, <65 trudna w utrzymaniu.
 
 ## Metryki obiektowe (strukturalne)
