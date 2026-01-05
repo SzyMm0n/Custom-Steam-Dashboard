@@ -3,13 +3,10 @@ Main window module for Custom Steam Dashboard.
 Contains the primary application window with navigation and view management.
 """
 import asyncio
-import os
 import sys
 from pathlib import Path
 from typing import Optional
-from PySide6 import __version__ as PYSIDE_VERSION
 from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QToolBar, QSizePolicy
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QStackedWidget, QToolBar, QSizePolicy, QMessageBox
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QSize
 from .config import get_server_url
@@ -50,13 +47,6 @@ class MainWindow(QMainWindow):
         if server_url is None:
             server_url = get_server_url()
         self._server_url = server_url
-
-        # Detect debug mode from environment variables (start OFF if nothing set)
-        self._debug_mode, self._debug_source = self._detect_debug_mode()
-        if not self._debug_mode:
-            # Force debug mode on if nothing was set, so the button always shows useful info
-            self._debug_mode = True
-            self._debug_source = "forced=TRUE (no env debug vars set)"
 
         # Initialize theme manager FIRST - this ensures singleton is created with default values
         self._theme_manager = ThemeManager()
@@ -153,12 +143,6 @@ class MainWindow(QMainWindow):
         refresh_action.triggered.connect(self.refresh_current_view)
         toolbar.addAction(refresh_action)
 
-        # Debug action: show current debug mode and source
-        debug_action = QAction("Debug", self)
-        debug_action.setToolTip("Pokaż tryb debug i źródło zmiennych środowiskowych")
-        debug_action.triggered.connect(self._show_debug_info)
-        toolbar.addAction(debug_action)
-
         # Add separator and spacer to push theme switcher to the right
         toolbar.addSeparator()
 
@@ -230,39 +214,3 @@ class MainWindow(QMainWindow):
             print(f"Could not save window geometry: {e}")
         
         event.accept()
-
-    def _detect_debug_mode(self) -> tuple[bool, str]:
-        """Detect debug mode based on common env vars (DEBUG_MODE/DEBUG/DEBUG_CONFIG)."""
-        sources = ["DEBUG_MODE", "DEBUG", "DEBUG_CONFIG"]
-        truthy = {"1", "true", "yes", "on"}
-        for name in sources:
-            val = os.getenv(name)
-            if val is not None:
-                return str(val).strip().lower() in truthy, f"{name}={val}"
-        return False, "brak zmiennych środowiskowych"
-
-    def _show_debug_info(self):
-        """Show current debug mode details in a dialog. If off, enable it before showing."""
-        if not self._debug_mode:
-            self._debug_mode = True
-            self._debug_source = "manual-toggle"
-
-        env_snapshot = {k: os.getenv(k, "<brak>") for k in ["DEBUG_MODE", "DEBUG", "DEBUG_CONFIG"]}
-        proxies = {k: os.getenv(k, "<brak>") for k in ["HTTP_PROXY", "HTTPS_PROXY"]}
-        current_view = type(self.stack.currentWidget()).__name__ if self.stack.currentWidget() else "<none>"
-        mode_text = "WŁĄCZONY" if self._debug_mode else "WYŁĄCZONY"
-        details = (
-            f"Tryb debug: {mode_text}\n"
-            f"Źródło: {self._debug_source}\n"
-            f"Env: {env_snapshot}\n"
-            f"Proxy: {proxies}\n"
-            f"SERVER_URL: {self._server_url}\n"
-            f"Aktualny widok: {current_view}\n"
-            f"PID: {os.getpid()}\n"
-            f"CWD: {os.getcwd()}\n"
-            f"Executable: {sys.executable}\n"
-            f"Frozen: {getattr(sys, 'frozen', False)}\n"
-            f"PySide6: {PYSIDE_VERSION}\n"
-            f"Python: {sys.version.split()[0]}\n"
-        )
-        QMessageBox.information(self, "Tryb debug", details)
