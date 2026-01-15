@@ -31,12 +31,12 @@ try:
     CLIENTS_MAP: Dict[str, str] = json.loads(CLIENTS_JSON)
 except json.JSONDecodeError:
     logger.error("Failed to parse CLIENTS_JSON environment variable")
-    CLIENTS_MAP = {}
+    raise ValueError("Failed to parse CLIENTS_JSON environment variable")
 
 # Validate that JWT_SECRET is set
 if not JWT_SECRET or JWT_SECRET == "":
-    logger.warning("JWT_SECRET not set! Using insecure default. Set JWT_SECRET in environment!")
-    JWT_SECRET = "insecure-default-change-me"
+    logger.error("JWT_SECRET not set! Using insecure default. Set JWT_SECRET in environment!")
+    raise EnvironmentError("JWT_SECRET not set! Set JWT_SECRET in environment!")
 
 # In-memory nonce cache with TTL (OrderedDict for LRU behavior)
 # Format: {nonce: expiry_timestamp}

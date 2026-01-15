@@ -56,10 +56,12 @@ class IsThereAnyDealClient(BaseAsyncService, IDealsService):
         self.client_id = os.getenv('ITAD_CLIENT_ID', '')
         self.client_secret = os.getenv('ITAD_CLIENT_SECRET', '')
 
-        if not self.api_key or not self.client_id:
-            logger.warning(
+        if not all in (self.api_key, self.client_id, self.client_secret):
+            logger.error(
                 "IsThereAnyDeal credentials not found in environment variables. "
-                "Set ITAD_API_KEY and ITAD_CLIENT_ID for full functionality."
+            )
+            raise ValueError(
+                "IsThereAnyDeal credentials not found in environment variables. "
             )
 
         self.base_url = "https://api.isthereanydeal.com"

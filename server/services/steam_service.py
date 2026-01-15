@@ -64,7 +64,7 @@ class SteamClient(BaseAsyncService, ISteamService):
         self.api_key = os.getenv('STEAM_API_KEY', '')
         if not self.api_key:
             logger.error("STEAM_API_KEY not found in environment variables.")
-            raise ValueError("STEAM_API_KEY not found in environment variables.")
+            raise EnvironmentError("STEAM_API_KEY not found in environment variables.")
 
     async def get_player_count(self, appid: int) -> PlayerCountResponse:
         """
