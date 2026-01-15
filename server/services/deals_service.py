@@ -56,7 +56,7 @@ class IsThereAnyDealClient(BaseAsyncService, IDealsService):
         self.client_id = os.getenv('ITAD_CLIENT_ID', '')
         self.client_secret = os.getenv('ITAD_CLIENT_SECRET', '')
 
-        if not all in (self.api_key, self.client_id, self.client_secret):
+        if not self.api_key or not self.client_id or not self.client_secret:
             logger.error(
                 "IsThereAnyDeal credentials not found in environment variables. "
             )
