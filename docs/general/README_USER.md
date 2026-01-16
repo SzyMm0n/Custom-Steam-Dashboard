@@ -1,160 +1,253 @@
 # Custom Steam Dashboard - Instrukcja Użytkownika
 
-## 🚀 Pierwsze Uruchomienie
-
-### 1. Konfiguracja
-
-Przed uruchomieniem aplikacji **MUSISZ** skonfigurować plik `.env`:
-
-1. Otwórz plik `.env` w edytorze tekstu (np. Notepad, nano, vim)
-2. Wypełnij wymagane pola:
-
-```bash
-# Adres serwera backend (otrzymasz od administratora)
-SERVER_URL=http://localhost:8000
-
-# Dane uwierzytelniające (otrzymasz od administratora)
-CLIENT_ID=desktop-main
-CLIENT_SECRET=twój-sekretny-klucz-tutaj
-```
-
-3. Zapisz plik
-
-### 2. Uruchomienie
-
-**Linux/macOS:**
-```bash
-./CustomSteamDashboard
-```
-
-**Windows:**
-```
-Kliknij dwukrotnie: CustomSteamDashboard.exe
-```
+**Custom Steam Dashboard** to aplikacja pozwalająca na przeglądanie statystyk gier Steam, porównywanie liczby graczy, śledzenie promocji oraz przeglądanie biblioteki gier użytkownika. Wszystkie dane pobierane są z serwera backend.
 
 ---
 
-## ⚙️ Konfiguracja
+## 📋 Spis Treści
 
-### Wymagane zmienne w .env:
-
-| Zmienna | Opis | Przykład |
-|---------|------|----------|
-| `SERVER_URL` | Adres serwera backend | `http://192.168.1.100:8000` |
-| `CLIENT_ID` | Twój identyfikator klienta | `desktop-main` |
-| `CLIENT_SECRET` | Sekretny klucz (od administratora) | `ABC123XYZ...` |
-
-### Jak uzyskać dane konfiguracyjne?
-
-Skontaktuj się z administratorem serwera. Otrzymasz:
-- Adres serwera (`SERVER_URL`)
-- Identyfikator (`CLIENT_ID`)
-- Sekretny klucz (`CLIENT_SECRET`)
+1. [Uruchomienie aplikacji](#-uruchomienie-aplikacji)
+2. [Interfejs główny](#-interfejs-główny)
+3. [Widok Home - Statystyki gier](#-widok-home---statystyki-gier)
+4. [Widok Biblioteka gier](#-widok-biblioteka-gier)
+5. [Widok Porównanie gier](#-widok-porównanie-gier)
+6. [Widok Promocje](#-widok-promocje)
+7. [Personalizacja motywu](#-personalizacja-motywu)
+8. [Rozwiązywanie problemów](#-rozwiązywanie-problemów)
 
 ---
 
-## 🐛 Rozwiązywanie Problemów
+## 🚀 Uruchomienie aplikacji
 
-### ❌ "Authentication Failed"
+Aplikacja jest gotowa do użycia bezpośrednio po pobraniu. Wystarczy uruchomić plik wykonywalny:
 
-**Problem:** Nie można uwierzytelnić z serwerem
+- **Windows:** Kliknij dwukrotnie `CustomSteamDashboard.exe`
+- **Linux/macOS:** Kliknij dwukrotnie `CustomSteamDashboard` lub uruchom w terminalu `./CustomSteamDashboard`
 
-**Rozwiązanie:**
-1. Sprawdź czy `SERVER_URL` w `.env` jest prawidłowy
-2. Sprawdź czy serwer działa (pytaj administratora)
-3. Sprawdź czy `CLIENT_ID` i `CLIENT_SECRET` są poprawne
-4. Sprawdź czy `.env` jest w tym samym folderze co aplikacja
-
-### ❌ "Cannot connect to server"
-
-**Problem:** Aplikacja nie może połączyć się z serwerem
-
-**Rozwiązanie:**
-1. Sprawdź połączenie internetowe / sieciowe
-2. Sprawdź czy `SERVER_URL` jest prawidłowy
-3. Skontaktuj się z administratorem serwera
-4. Sprawdź firewall / blokady sieci
-
-### ❌ Aplikacja się nie uruchamia
-
-**Problem:** Nic się nie dzieje po kliknięciu
-
-**Rozwiązanie:**
-1. Sprawdź czy plik `.env` istnieje w tym samym folderze
-2. Uruchom z konsoli/terminala, aby zobaczyć błędy:
-   - **Linux/macOS:** `./CustomSteamDashboard`
-   - **Windows:** Otwórz cmd, przejdź do folderu, uruchom `CustomSteamDashboard.exe`
-3. Sprawdź uprawnienia do wykonania (Linux/macOS): `chmod +x CustomSteamDashboard`
-
-### ❌ "File .env not found"
-
-**Problem:** Aplikacja nie może znaleźć pliku .env
-
-**Rozwiązanie:**
-1. Upewnij się, że `.env` jest w tym samym katalogu co executable
-2. Sprawdź nazwę pliku (dokładnie `.env`, nie `.env.txt`)
-3. Na Windows: włącz wyświetlanie rozszerzeń plików
+> **Uwaga:** Przy pierwszym uruchomieniu aplikacja łączy się z serwerem. Upewnij się, że masz połączenie z siecią.
 
 ---
 
-## 📁 Struktura Plików
+## 🏠 Interfejs główny
 
-Poprawna struktura folderów:
+![Interfejs główny](interfejs.png)
 
-```
-SteamDashboard/
-├── CustomSteamDashboard        # Executable (lub .exe na Windows)
-├── .env                         # Konfiguracja (WYMAGANE!)
-├── README_USER.md              # Ten plik
-└── [inne pliki...]             # Biblioteki (nie usuwaj!)
-```
+Po uruchomieniu aplikacji zobaczysz okno z paskiem narzędzi u góry:
 
-**WAŻNE:** Nie przenoś samego executable - zawsze przenoś cały folder!
+### Pasek narzędzi
 
----
-
-## 🔐 Bezpieczeństwo
-
-### ⚠️ Chroń swój `.env`!
-
-Plik `.env` zawiera sekretny klucz (`CLIENT_SECRET`):
-- ❌ **NIE udostępniaj** tego pliku innym osobom
-- ❌ **NIE wysyłaj** go przez email/chat
-- ❌ **NIE wrzucaj** go na publiczne repozytoria (GitHub itp.)
-- ✅ **TRZYMAJ** go tylko na swoim komputerze
-
-Jeśli ktoś zdobędzie twój `CLIENT_SECRET`, może:
-- Udawać ciebie w systemie
-- Uzyskać dostęp do twoich danych
-- Wykonywać operacje w twoim imieniu
-
-### Co zrobić jeśli ujawnisz sekret?
-
-1. Natychmiast skontaktuj się z administratorem
-2. Poproś o wygenerowanie nowego `CLIENT_SECRET`
-3. Zaktualizuj `.env` z nowym kluczem
+- **Home** - Widok główny ze statystykami gier
+- **Biblioteka gier** - Przeglądanie biblioteki użytkownika Steam
+- **Porównanie gier** - Porównywanie liczby graczy między grami
+- **Promocje** - Przeglądanie aktualnych promocji i okazji
+- **Odśwież** - Odświeżanie danych w aktualnym widoku
+- **Przełącznik motywu** *(prawy górny róg)* - Zmiana motywu aplikacji
 
 ---
 
-## 📞 Pomoc
+## 📊 Widok Home - Statystyki gier
 
-Jeśli masz problemy:
+![Widok Home](widok-home.png)
 
-1. Sprawdź tę instrukcję
-2. Skontaktuj się z administratorem serwera
-3. Podaj dokładny komunikat błędu
+Główny widok aplikacji przedstawia aktualną liczbę graczy online dla obserwowanych gier.
+
+### Funkcje:
+
+#### 1. Lista gier z liczbą graczy
+- Wyświetla aktualne statystyki liczby graczy online
+- Dane odświeżane co 5 minut automatycznie
+- Kliknięcie na grę otwiera szczegółowe informacje
+
+#### 2. Panel filtrowania
+**Filtrowanie po liczbie graczy:**
+- Użyj suwaków "Min graczy" i "Max graczy" aby zawęzić wyniki
+- Wyświetlana jest tylko gry w określonym przedziale
+
+**Wyszukiwanie:**
+- Wpisz nazwę gry w polu "Wyszukaj grę..." aby szybko odnaleźć konkretną grę
+
+**Filtrowanie po tagach:**
+- Wybierz tagi (np. Action, RPG, Strategy) aby wyświetlić tylko gry z określonymi kategoriami
+- Możesz wybrać wiele tagów jednocześnie
+- Kliknij "Wyczyść tagi" aby usunąć wszystkie filtry
+
+#### 3. Szczegóły gry
+![Szczegóły gry](game-stats.png)
+
+Po kliknięciu na grę zobaczysz:
+- Nazwę gry i aktualna liczbę graczy
+- Szczegółowe informacje o grze
+- Tagi i kategorie
+- Link do strony Steam
+- Przycisk "Otwórz w Steam" - otwiera kartę gry w przeglądarce
 
 ---
 
-## ℹ️ Informacje Techniczne
+## 📚 Widok Biblioteka gier
 
-- **Framework:** PySide6 (Qt)
-- **Platforma:** Windows, Linux, macOS
-- **Wymagania:** Połączenie z serwerem backend
-- **Licencja:** Zobacz plik LICENSE
+![Widok Biblioteka](widok-biblioteka.png)
+
+Ten widok pozwala przeglądać bibliotekę gier dowolnego użytkownika Steam.
+
+### Jak używać:
+
+1. **Wprowadź identyfikator użytkownika** w polu "SteamID / URL / vanity"
+   - Możesz użyć SteamID64 (np. `76561198012345678`)
+   - Lub vanity name (np. `twoja_nazwa`)
+   - Lub pełnego URL profilu (np. `https://steamcommunity.com/id/twoja_nazwa`)
+
+2. **Kliknij "Pobierz"** - aplikacja pobierze bibliotekę gier
+
+3. **Przeglądaj wyniki:**
+   - Tabela wyświetla wszystkie gry użytkownika
+   - **Nazwa gry** - nazwa gry
+   - **Łączna liczba godzin** - całkowity czas gry
+   - **Ostatnie 2 tygodnie** - czas gry w ostatnich 2 tygodniach
+
+### Funkcje dodatkowe:
+
+- **Sortowanie:** Kliknij nagłówek kolumny aby posortować (nazwa, czas gry)
+- **Awatar i nazwa użytkownika:** Wyświetlane u góry ekranu
+- **Automatyczne zapisywanie:** Ostatnio przeglądana biblioteka jest zapisywana i ładowana przy następnym uruchomieniu
 
 ---
 
-**Wersja dokumentacji:** 1.0  
-**Data:** 2025-01-11
+## 📈 Widok Porównanie gier
+
+![Widok Porównanie](widok-porownanie.png)
+
+Porównuj liczbę graczy między różnymi grami w czasie.
+
+### Jak używać:
+
+1. **Wybierz gry do porównania:**
+   - Z listy po lewej stronie zaznacz gry (możesz wybrać wiele)
+   - Przytrzymaj Ctrl/Cmd aby zaznaczyć więcej gier
+
+2. **Wybierz zakres czasu:**
+   - Użyj listy rozwijanej "Zakres czasu"
+   - Dostępne opcje: 1h, 3h, 6h, 12h, 1d, 3d, 7d
+
+3. **Kliknij "Porównaj wybrane"**
+
+### Wyniki:
+
+#### Wykres liczby graczy
+- Interaktywny wykres pokazujący zmiany liczby graczy w czasie
+- Każda gra ma inny kolor
+- Możesz najechać kursorem na punkty aby zobaczyć dokładne wartości
+
+#### Tabela statystyk
+Dla każdej gry wyświetlane są:
+- **Minimum** - najniższa liczba graczy w okresie
+- **Maksimum** - najwyższa liczba graczy
+- **Średnia** - średnia liczba graczy
+- **Mediana** - mediana liczby graczy
+- **Wahanie %** - procentowa różnica między min a max
+
+---
+
+## 💰 Widok Promocje
+
+![Widok Promocje](widok-promocji.png)
+
+Przeglądaj najlepsze promocje i okazje na gry.
+
+### Panel "Najlepsze okazje"
+
+Wyświetla aktualne najlepsze promocje ze wszystkich sklepów.
+
+**Funkcje:**
+- **Odśwież** - pobierz najnowsze promocje
+- **⚙ Filtry** - otwórz okno zaawansowanych filtrów
+- **Na stronę** - wybierz ile promocji wyświetlić (50, 100, 150, 200)
+- **Stronicowanie** - przełączaj się między stronami wyników
+
+**Informacje o promocji:**
+Każda pozycja wyświetla:
+- Nazwę gry
+- Zniżkę (np. `-75%`)
+- Cenę przed i po zniżce
+- Nazwę sklepu
+
+**Kliknięcie na promocję** otwiera stronę sklepu w przeglądarce.
+
+### Panel "Wyszukiwanie gier"
+
+Szukaj promocji dla konkretnej gry.
+
+**Jak używać:**
+1. Wpisz nazwę gry w polu "Nazwa gry"
+2. Opcjonalnie ustaw minimalną zniżkę (w %)
+3. Kliknij "Szukaj"
+
+Wyniki pokażą wszystkie dostępne promocje dla tej gry w różnych sklepach.
+
+### Zaawansowane filtry
+
+![Filtry promocji](dialog-filtrowania.png)
+
+Kliknij **"⚙ Filtry"** aby otworzyć okno filtrowania:
+
+**Dostępne filtry:**
+- **Minimalna zniżka** - pokaż tylko promocje z określoną minimalną zniżką
+- **Minimalna cena** - ukryj bardzo tanie gry
+- **Sklepy** - wybierz z których sklepów wyświetlać promocje (Steam, GOG, Epic, Humble)
+- **Sortowanie** - sortuj po zniżce, cenie lub dacie
+- **Treści dla dorosłych** - włącz/wyłącz gry z oznaczeniem mature
+
+Po ustawieniu filtrów kliknij **"Zastosuj"** aby zobaczyć wyniki.
+
+---
+
+## 🎨 Personalizacja motywu
+
+![Przełącznik motywu](przelacznik.png)
+
+Aplikacja oferuje możliwość dostosowania wyglądu do własnych preferencji.
+
+### Przełącznik motywu (prawy górny róg)
+
+**Tryb ciemny/jasny:**
+- 🌙 - Tryb ciemny (domyślny)
+- ☀️ - Tryb jasny
+
+**Palety kolorów:**
+- 🟢 Zielony (domyślny)
+- 🔵 Niebieski
+- 🟣 Fioletowy
+- 🟠 Pomarańczowy
+- 🎨 Własny motyw
+
+### Tworzenie własnego motywu
+![Kreator motywu](dialog-motyw.png)
+
+Kliknij **"🎨 Własny motyw..."** aby otworzyć kreator:
+
+1. **Wybierz kolor bazowy:**
+   - Kliknij "Wybierz kolor"
+   - Użyj palety kolorów lub wpisz kod HEX
+
+2. **Podejrzyj wygląd:**
+   - Przełączaj między trybem ciemnym i jasnym
+   - Zobacz jak wyglądają przyciski, tekst i akcenty
+
+3. **Nazwij motyw:**
+   - Wpisz unikalną nazwę dla swojego motywu
+
+4. **Zapisz:**
+   - Kliknij "Zapisz i zastosuj" aby użyć motywu
+   - Motyw zostanie zapisany i dostępny w przełączniku
+
+![Wybór koloru](motyw-nowy.png)
+
+
+**Zarządzanie motywami:**
+- Zapisane motywy możesz usunąć zaznaczając "Usunąć istniejący motyw o tej nazwie"
+- Możesz nadpisać istniejący motyw podając tę samą nazwę
+
+---
+
+**Wersja dokumentacji:** 2.0  
+**Data aktualizacji:** 2026-01-16
 
