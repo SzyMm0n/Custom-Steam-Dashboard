@@ -235,7 +235,6 @@ tests/
 - **[UNIT.md](docs/UNIT.md)** - Przykłady testów jednostkowych
 - **[INTEGRATION.md](docs/INTEGRATION.md)** - Przykłady testów integracyjnych
 - **[FUNCTIONAL_TEST_PLAN.md](docs/FUNCTIONAL_TEST_PLAN.md)** - 26 testów funkcjonalnych (Happy + Sad paths)
-- **[TEST_RUNNERS.md](docs/TEST_RUNNERS.md)** - Dokumentacja skryptów
 
 ---
 

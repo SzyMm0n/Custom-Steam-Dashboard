@@ -491,7 +491,7 @@ Wszystkie preferencje są automatycznie zapisywane:
 - Własne motywy
 - Ostatnio używana biblioteka Steam
 
-**Szczegóły:** [docs/ui/UI_THEME_SYSTEM.md](docs/ui/UI_THEME_SYSTEM.md)
+**Szczegóły:** [UI_THEME_SYSTEM.md](docs/ui/UI_THEME_SYSTEM.md)
 
 ---
 
@@ -607,37 +607,6 @@ Plik wykonywalny znajdziesz w katalogu `dist/`:
 - ✅ **Brak wrażliwych plików** - żadnych `.env` do dystrybucji
 - ✅ **Jednorazowe budowanie** - dla każdego środowiska osobny build
 - ✅ **Bezpieczne** - sekrety wbudowane w binary, trudniejsze do wydobycia
-
-### Dystrybucja
-
-**Najprościej:**
-```bash
-# Spakuj tylko executable
-zip SteamDashboard.zip dist/CustomSteamDashboard
-```
-
-**Instrukcje dla użytkownika:**
-1. Pobierz plik
-2. Uruchom
-3. Gotowe! 🎉
-
-### Opcjonalne Nadpisywanie
-
-Jeśli użytkownik chce zmienić serwer, może użyć zmiennych środowiskowych:
-
-```bash
-# Linux/macOS
-export SERVER_URL=http://custom-server.com
-./CustomSteamDashboard
-
-# Windows
-set SERVER_URL=http://custom-server.com
-CustomSteamDashboard.exe
-```
-
-**Szczegółowa dokumentacja:**
-- 📦 [DISTRIBUTION.md](docs/general/DISTRIBUTION.md) - Kompletny przewodnik dystrybucji
-- 📖 [README_USER.md](docs/general/README_USER.md) - Instrukcja dla użytkownika końcowego
 
 ---
 
@@ -771,14 +740,13 @@ pytest tests/functional/ -v
 
 ### 📚 Dokumentacja Testów
 
-| Dokument | Opis |
-|----------|------|
-| 📖 **[tests/README.md](tests/README.md)** | **Główny przewodnik** - filozofia, infrastruktura, zasady |
-| 📊 [tests/docs/SUMMARY.md](tests/docs/SUMMARY.md) | Coverage, scenariusze, metryki z analizą |
-| 🔬 [tests/docs/UNIT.md](tests/docs/UNIT.md) | 5 przykładów unit testów ze scenariuszami |
-| 🔗 [tests/docs/INTEGRATION.md](tests/docs/INTEGRATION.md) | 5 przykładów integration testów |
-| 🎯 [tests/docs/FUNCTIONAL_TEST_PLAN.md](tests/docs/FUNCTIONAL_TEST_PLAN.md) | **26 testów funkcjonalnych** (szczegółowo opisane) |
-| 🛠️ [tests/docs/TEST_RUNNERS.md](tests/docs/TEST_RUNNERS.md) | Dokumentacja skryptów |
+| Dokument                                                                   | Opis |
+|----------------------------------------------------------------------------|------|
+| 📖 **[README.md](tests/README.md)**                                        | **Główny przewodnik** - filozofia, infrastruktura, zasady |
+| 📊 [SUMMARY.md](tests/docs/SUMMARY.md)                                     | Coverage, scenariusze, metryki z analizą |
+| 🔬 [UNIT.md](tests/docs/UNIT.md)                                           | 5 przykładów unit testów ze scenariuszami |
+| 🔗 [INTEGRATION.md](tests/docs/INTEGRATION.md)                   | 5 przykładów integration testów |
+| 🎯 [FUNCTIONAL_TEST_PLAN.md](tests/docs/FUNCTIONAL_TEST_PLAN.md) | **26 testów funkcjonalnych** (szczegółowo opisane) |
 
 **Kluczowe koncepty:**
 - **Unit tests** - mockuj wszystko, szybkie (<100ms każdy), deterministyczne
@@ -817,217 +785,10 @@ pytest tests/functional/ -v
 | **loguru**        | Zaawansowane logowanie               |
 | **platformdirs**  | Ścieżki specyficzne dla OS           |
 | **PyInstaller**   | Budowanie plików wykonywalnych       |
-
 ---
-
-## 🔒 Bezpieczeństwo
-
-### Zaimplementowane Zabezpieczenia
-
-#### Serwer Backend
-- ✅ **Rate Limiting** - ograniczenie zapytań (100/minutę domyślnie)
-- ✅ **Input Validation** - walidacja wszystkich danych wejściowych (Pydantic)
-- ✅ **CORS** - konfiguracja dozwolonych origin
-- ✅ **SQL Injection Protection** - parametryzowane zapytania (asyncpg)
-- ✅ **Environment Variables** - wrażliwe dane w `.env`
-- ✅ **Error Handling** - generyczne komunikaty błędów
-- ✅ **Logging** - szczegółowe logi operacji
-
-#### Aplikacja GUI
-- ✅ **HTTPS Support** - możliwość połączenia przez TLS
-- ✅ **Timeout Handling** - limity czasu żądań HTTP
-- ✅ **Retry Logic** - automatyczne ponowne próby z backoff
-- ✅ **Data Sanitization** - oczyszczanie danych przed wyświetleniem
-
-### Zalecenia Produkcyjne
-
-Przed wdrożeniem w środowisku produkcyjnym:
-
-1. **Użyj HTTPS** - skonfiguruj certyfikat SSL/TLS
-2. **Zmień hasła domyślne** - w PostgreSQL i `.env`
-3. **Firewall** - ogranicz dostęp do portu 8000
-4. **Reverse Proxy** - użyj nginx/Apache przed FastAPI
-5. **Monitoring** - skonfiguruj Sentry lub podobne
-6. **Backupy** - regularne kopie zapasowe bazy danych
-
-
----
-
-## 🔮 Rozwój
-
-### Zrealizowane Funkcjonalności
-
-- ✅ **System motywów** - Ciemny/Jasny + 4 palety kolorów + kreator własnych
-- ✅ **Trwałość danych** - automatyczne zapisywanie preferencji użytkownika
-- ✅ **Zaawansowane filtry promocji** - dialog z wieloma opcjami filtrowania
-- ✅ **Wykresy i wizualizacje** - interaktywne wykresy liczby graczy (matplotlib)
-- ✅ **Porównywanie gier** - analiza wielu gier jednocześnie z statystykami
-- ✅ **System promocji** - przeglądanie i wyszukiwanie okazji na gry
-- ✅ **Multi-view navigation** - 4 główne widoki (Home, Library, Comparison, Deals)
-
-### Planowane Funkcjonalności
-
-- [ ] **Heatmapa aktywności** - wizualizacja godzin szczytu
-- [ ] **Multi-user support** - obsługa wielu profili Steam
-- [ ] **Rozszerzone filtry** - więcej opcji filtrowania w widokach
-- [ ] **PWA/Web UI** - interfejs webowy obok GUI
-- [ ] **Notyfikacje** - powiadomienia o promocjach ulubionych gier
-- [ ] **Eksport danych** - eksport statystyk do CSV/JSON
-
-### Architektura Docelowa
-
-Planowana migracja do pełnej chmury:
-- **AWS EC2** - hosting serwera FastAPI
-- **AWS RDS** - PostgreSQL w chmurze
-
----
-
-## 🐛 Troubleshooting
-
-### Problemy z Serwerem
-
-#### ❌ Błąd: "Connection to PostgreSQL failed"
-```bash
-# Sprawdź czy PostgreSQL działa
-sudo systemctl status postgresql
-
-# Sprawdź połączenie
-psql -h localhost -U steam_user -d steam_dashboard
-
-# Zweryfikuj dane w .env
-cat .env | grep PG
-```
-
-#### ❌ Błąd: "Port 8000 already in use"
-```bash
-# Znajdź proces na porcie 8000
-lsof -i :8000  # Linux/Mac
-netstat -ano | findstr :8000  # Windows
-
-# Zatrzymaj proces lub użyj innego portu
-uvicorn server.app:app --port 8001
-```
-
-#### ❌ Błąd: "Steam API rate limit exceeded"
-- Steam API ma limit ~200 żądań na 5 minut
-- Scheduler automatycznie przestrzega limitów
-- Możesz zwiększyć interwał w `scheduler.py`
-
----
-
-### Problemy z GUI
-
-#### ❌ Błąd: "Cannot connect to server"
-```bash
-# Sprawdź czy serwer działa
-curl http://localhost:8000/health
-
-# Sprawdź URL w zmiennej środowiskowej SERVER_URL
-# Domyślnie używa http://localhost:8000
-echo $SERVER_URL
-```
-
-#### ❌ Błąd: "Qt platform plugin not found"
-```bash
-# Linux - zainstaluj Qt dependencies
-sudo apt install libxcb-xinerama0 libxcb-cursor0
-
-# Reinstall PySide6
-pip uninstall PySide6
-pip install PySide6
-```
-
-#### ❌ Okno się nie wyświetla
-```bash
-# Sprawdź display (Linux)
-echo $DISPLAY
-
-# Możliwe konflikty z Wayland - użyj X11
-export QT_QPA_PLATFORM=xcb
-python -m app.main_server
-```
-
----
-
-### Logi i Debugowanie
-
-#### Włączenie szczegółowych logów
-```python
-# W server/app.py
-import logging
-logging.basicConfig(level=logging.DEBUG)
-```
-
-#### Lokalizacja logów
-- **Serwer**: stdout/stderr (lub plik konfigurowany w `app.py`)
-- **GUI**: stdout aplikacji
-- **PostgreSQL**: `/var/log/postgresql/` (Linux)
-
----
-
-## 🤝 Contributing
-
-Zapraszamy do współpracy! Aby wnieść swój wkład:
-
-1. **Fork** repozytorium
-2. Utwórz branch dla swojej funkcjonalności (`git checkout -b feature/AmazingFeature`)
-3. Commit zmian (`git commit -m 'Add some AmazingFeature'`)
-4. Push do brancha (`git push origin feature/AmazingFeature`)
-5. Otwórz **Pull Request**
-
-### Development Setup
-
-```bash
-# Klonuj repo
-git clone https://github.com/SzyMm0n/Custom-Steam-Dashboard.git
-cd Custom-Steam-Dashboard
-
-# Zainstaluj zależności dev
-pip install -r requirements.txt
-```
-
----
-
-## 📝 Licencja
-
-Projekt jest dostępny na licencji **MIT** - szczegóły w pliku [LICENSE](LICENSE).
-
-```
-MIT License
-
-Copyright (c) 2025 Custom Steam Dashboard
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files...
-```
-
----
-
 ## 🎨 Credits
 
 ### Ikony
 
 Ikona aplikacji pochodzi z:
 - **Marketing analysis icons** stworzone przez Fajrul Fitrianto - [Flaticon](https://www.flaticon.com/free-icons/marketing-analysis)
-
----
-
-## 📧 Kontakt
-
-Masz pytania lub sugestie? Skontaktuj się z nami!
-
-- 🐛 **Issues**: [GitHub Issues](https://github.com/SzyMm0n/Custom-Steam-Dashboard/issues)
-- 💬 **Dyskusje**: [GitHub Discussions](https://github.com/SzyMm0n/Custom-Steam-Dashboard/discussions)
-
----
-
-<div align="center">
-
-**⭐ Jeśli projekt Ci się podoba, zostaw gwiazdkę! ⭐**
-
-Made with ❤️ using Python, Qt, and FastAPI
-
-[⬆ Powrót do góry](#-custom-steam-dashboard)
-
-</div>
-
